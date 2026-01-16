@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+  # ---------------- Mongo для threadly-auth ----------------
+  mongo-auth:
+    image: mongo:4.4
+    container_name: mongo-auth
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: threadly_auth_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-auth-data:/data/db
+
+  # ---------------- threadly-auth ----------------
+  threadly-auth:
+    build:
+      context: ./threadly-auth
+      dockerfile: Dockerfile
+    container_name: threadly-auth
+    ports:
+      - "8081:8081"
+    depends_on:
+      - mongo-auth
+    environment:
+      SPRING_DATA_MONGODB_HOST: mongo-auth
+      SPRING_DATA_MONGODB_PORT: 27017
+    restart: unless-stopped
+
+  # ---------------- Mongo для threadly-chat ----------------
+  mongo-chat:
+    image: mongo:4.4
+    container_name: mongo-chat
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: threadly_chat_db
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo-chat-data:/data/db
+
+  # ---------------- threadly-chat ----------------
+  threadly-chat:
+    build:
+      context: ./threadly-chat
+      dockerfile: Dockerfile
+    container_name: threadly-chat
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongo-chat
+      - threadly-auth
+    environment:
+      SPRING_DATA_MONGODB_HOST: mongo-chat
+      SPRING_DATA_MONGODB_PORT: 27017
+      THREDLY_AUTH_URL: http://threadly-auth:8081
+    restart: unless-stopped
+
+  # ---------------- threadly-frontend ----------------
+  threadly-frontend:
+    build:
+      context: ./threadly-frontend
+      dockerfile: Dockerfile
+    container_name: threadly-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - threadly-auth
+      - threadly-chat
+    restart: unless-stopped
+
+volumes:
+  mongo-auth-data:
+  mongo-chat-data:
