@@ -1,5 +1,7 @@
-const AUTH_SERVICE = "http://localhost:8081";
-const CHAT_SERVICE = "http://localhost:8080";
+// const AUTH_SERVICE = "http://localhost:8081";
+// const CHAT_SERVICE = "http://localhost:8080";
+export const AUTH_SERVICE = "/api/auth";
+export  const CHAT_SERVICE = "/api/chat";
 
 const request = (options) => {
     const headers = new Headers();

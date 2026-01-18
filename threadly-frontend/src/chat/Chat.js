@@ -4,8 +4,9 @@ import {
     getUsers,
     countNewMessages,
     findChatMessages,
-    findChatMessage,
+    findChatMessage, CHAT_SERVICE,
 } from "../util/ApiUtil";
+import {AUTH_SERVICE} from "../util/ApiUtil";
 import {useRecoilValue, useRecoilState} from "recoil";
 import {
     loggedInUser,
@@ -42,7 +43,7 @@ const Chat = (props) => {
     const connect = () => {
         const Stomp = require("stompjs");
         var SockJS = require("sockjs-client");
-        SockJS = new SockJS("http://localhost:8080/ws");
+        SockJS = new SockJS(CHAT_SERVICE + "/ws");
         stompClient = Stomp.over(SockJS);
         stompClient.connect({userId: currentUser.id}, onConnected, onError);
     };
