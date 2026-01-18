@@ -41,8 +41,9 @@ const Chat = (props) => {
 
     const connect = () => {
         const Stomp = require("stompjs");
-        WebSocket = new WebSocket("/api/chat/ws");
-        stompClient = Stomp.over(WebSocket);
+        var SockJS = require("sockjs-client");
+        SockJS = new SockJS("/api/chat/ws");
+        stompClient = Stomp.over(SockJS);
         stompClient.connect({userId: currentUser.id}, onConnected, onError);
     };
 
