@@ -902,3 +902,12 @@ span.status-circle:before {
     padding: 4px 10px;
     border-radius: 12px;
 }
+
+.no-contact-selected {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    font-size: 1.2rem;
+    color: #999;
+}

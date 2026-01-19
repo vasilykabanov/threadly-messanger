@@ -1,10 +1,11 @@
 import React from "react";
-import {BrowserRouter, Route, Switch} from "react-router-dom";
+import {BrowserRouter, Redirect, Route, Switch} from "react-router-dom";
 import Signin from "./signin/Signin";
 import Signup from "./signup/Signup";
 import Profile from "./profile/Profile";
 import Chat from "./chat/Chat";
 import "./App.css";
+import PrivateRoute from "./PrivateRoute";
 
 export const AppContext = React.createContext();
 const App = (props) => {
@@ -13,18 +14,11 @@ const App = (props) => {
             <BrowserRouter>
                 <Switch>
                     <Route exact path="/" render={(props) => <Profile {...props} />}/>
-                    <Route
-                        exact
-                        path="/login"
-                        render={(props) => <Signin {...props} />}
-                    />
-                    <Route
-                        exact
-                        path="/signup"
-                        render={(props) => <Signup {...props} />}
-                    />
-                    <Route exact path="/chat" render={(props) => <Chat {...props} />}/>
-                    {/*<Route path="/profile" element={<Profile />} />*/}
+                    <Route exact path="/login" render={(props) => <Signin {...props} />}/>
+                    <Route exact path="/signup" render={(props) => <Signup {...props} />}/>
+                    {/*<Route exact path="/chat" render={(props) => <Chat {...props} />}/>*/}
+                    <PrivateRoute exact path="/chat" component={Chat} />
+                    <Redirect to="/login" />
                 </Switch>
             </BrowserRouter>
         </div>

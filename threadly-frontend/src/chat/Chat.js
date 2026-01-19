@@ -222,65 +222,74 @@ const Chat = (props) => {
                     </button>
                 </div>
             </div>
-            <div class="content">
-                <div class="contact-profile">
-                    <img src={activeContact && activeContact.profilePicture} alt=""/>
-                    <p>{activeContact && activeContact.name}</p>
-                </div>
+            <div className="content">
+                {activeContact ? (
+                    <>
+                        <div className="contact-profile">
+                            <img src={activeContact.profilePicture} alt=""/>
+                            <p>{activeContact.name}</p>
+                        </div>
 
-                <ScrollToBottom className="messages">
-                    <ul>
-                        {messages.map((msg, index) => {
-                            const showDate = isNewDay(msg.timestamp, messages[index - 1]?.timestamp);
+                        <ScrollToBottom className="messages">
+                            <ul>
+                                {messages.map((msg, index) => {
+                                    const showDate = isNewDay(msg.timestamp, messages[index - 1]?.timestamp);
 
-                            return (
-                                <React.Fragment key={msg.id}>
-                                    {showDate && (
-                                        <li className="date-separator">
-                                            <span>{formatDate(msg.timestamp)}</span>
-                                        </li>
-                                    )}
+                                    return (
+                                        <React.Fragment key={msg.id}>
+                                            {showDate && (
+                                                <li className="date-separator">
+                                                    <span>{formatDate(msg.timestamp)}</span>
+                                                </li>
+                                            )}
 
-                                    <li className={msg.senderId === currentUser.id ? "sent" : "replies"}>
-                                        {msg.senderId !== currentUser.id && (
-                                            <img src={activeContact.profilePicture} alt=""/>
-                                        )}
+                                            <li className={msg.senderId === currentUser.id ? "sent" : "replies"}>
+                                                {msg.senderId !== currentUser.id && (
+                                                    <img src={activeContact.profilePicture} alt=""/>
+                                                )}
 
-                                        <p className="message-bubble">
-                                            <span className="text">{msg.content}</span>
-                                            <span className="time">{formatTime(msg.timestamp)}</span>
-                                        </p>
-                                    </li>
-                                </React.Fragment>
-                            );
-                        })}
-                    </ul>
-                </ScrollToBottom>
-                <div class="message-input">
-                    <div class="wrap">
-                        <input
-                            name="user_input"
-                            size="large"
-                            placeholder="Write your message..."
-                            value={text}
-                            onChange={(event) => setText(event.target.value)}
-                            onKeyPress={(event) => {
-                                if (event.key === "Enter") {
-                                    sendMessage(text);
-                                    setText("");
-                                }
-                            }}
-                        />
+                                                <p className="message-bubble">
+                                                    <span className="text">{msg.content}</span>
+                                                    <span className="time">{formatTime(msg.timestamp)}</span>
+                                                </p>
+                                            </li>
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </ul>
+                        </ScrollToBottom>
 
-                        <Button
-                            icon={<i class="fa fa-paper-plane" aria-hidden="true"></i>}
-                            onClick={() => {
-                                sendMessage(text);
-                                setText("");
-                            }}
-                        />
+                        <div className="message-input">
+                            <div className="wrap">
+                                <input
+                                    name="user_input"
+                                    size="large"
+                                    placeholder="Write your message..."
+                                    value={text}
+                                    onChange={(event) => setText(event.target.value)}
+                                    onKeyPress={(event) => {
+                                        if (event.key === "Enter") {
+                                            sendMessage(text);
+                                            setText("");
+                                        }
+                                    }}
+                                />
+
+                                <Button
+                                    icon={<i className="fa fa-paper-plane" aria-hidden="true"></i>}
+                                    onClick={() => {
+                                        sendMessage(text);
+                                        setText("");
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <div className="no-contact-selected">
+                        <p>Выберите контакт для отправки сообщений</p>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );
