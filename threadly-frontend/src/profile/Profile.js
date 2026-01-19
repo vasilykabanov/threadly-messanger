@@ -2,7 +2,6 @@ import React, {useEffect} from "react";
 import {Card, Avatar, Button} from "antd";
 import {useRecoilState} from "recoil";
 import {loggedInUser} from "../atom/globalState";
-import {LogoutOutlined} from "@ant-design/icons";
 import {getCurrentUser} from "../util/ApiUtil";
 import "./Profile.css";
 
