@@ -110,7 +110,6 @@ const Signin = (props) => {
                     marginBottom: 16
                 }}
             />
-
             <Form
                 name="normal_login"
                 className="login-form"

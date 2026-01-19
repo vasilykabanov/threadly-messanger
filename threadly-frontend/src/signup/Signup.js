@@ -37,7 +37,14 @@ const Signup = (props) => {
 
     return (
         <div className="login-container">
-            <DingtalkOutlined style={{fontSize: 50}}/>
+            <img
+                src="/logo50.png" alt="Threadly"
+                style={{
+                    width: 50,
+                    height: 50,
+                    marginBottom: 16
+                }}
+            />
             <Form
                 name="normal_login"
                 className="login-form"
