@@ -16,6 +16,16 @@ import ScrollToBottom from "react-scroll-to-bottom";
 import "./Chat.css";
 import Avatar from "../profile/Avatar";
 
+const setVH = () => {
+    document.documentElement.style.setProperty(
+        "--vh",
+        `${window.innerHeight}px`
+    );
+};
+
+setVH();
+window.addEventListener("resize", setVH);
+
 var stompClient = null;
 const Chat = (props) => {
     const currentUser = useRecoilValue(loggedInUser);
@@ -34,12 +44,12 @@ const Chat = (props) => {
     }, []);
 
     useEffect(() => {
-        if (activeContact === undefined) return;
-        findChatMessages(activeContact.id, currentUser.id).then((msgs) =>
-            setMessages(msgs)
-        );
-        loadContacts();
-    }, [activeContact]);
+        if (!activeContact?.id) return;
+        setMessages([]);
+
+        findChatMessages(activeContact.id, currentUser.id)
+            .then(setMessages);
+    }, [activeContact?.id]);
 
     const connect = () => {
         const Stomp = require("stompjs");
@@ -249,7 +259,7 @@ const Chat = (props) => {
                             <p>{activeContact.name}</p>
                         </div>
 
-                        <ScrollToBottom className="messages">
+                        <ScrollToBottom key={activeContact.id} className="messages">
                             <ul>
                                 {messages.map((msg, index) => {
                                     const showDate = isNewDay(msg.timestamp, messages[index - 1]?.timestamp);
@@ -285,12 +295,12 @@ const Chat = (props) => {
                         <div className="message-input">
                             <div className="wrap">
                                 <input
+                                    className="chat-input"
                                     name="user_input"
-                                    size="large"
                                     placeholder="Write your message..."
                                     value={text}
                                     onChange={(event) => setText(event.target.value)}
-                                    onKeyPress={(event) => {
+                                    onKeyDown={(event) => {
                                         if (event.key === "Enter") {
                                             sendMessage(text);
                                             setText("");
@@ -299,7 +309,8 @@ const Chat = (props) => {
                                 />
 
                                 <Button
-                                    icon={<i className="fa fa-paper-plane" aria-hidden="true"></i>}
+                                    className="send-btn"
+                                    icon={<i className="fa fa-paper-plane" />}
                                     onClick={() => {
                                         sendMessage(text);
                                         setText("");
