@@ -12,7 +12,7 @@
     #frame {
         width: 100%;
         height: 100vh;
-        margin: 0px;
+        margin: 0;
     }
 }
 
@@ -35,20 +35,71 @@
         width: 58px;
         min-width: 58px;
     }
-}
 
-#frame #sidepanel #profile {
-    width: 80%;
-    margin: 25px auto;
-}
-
-@media screen and (max-width: 735px) {
     #frame #sidepanel #profile {
         width: 100%;
         margin: 0 auto;
         padding: 5px 0 0 0;
         background: #32465a;
     }
+
+    #frame #sidepanel #profile .wrap {
+        height: 55px;
+        margin: 0;
+    }
+
+    #frame #sidepanel #profile .wrap img {
+        width: 40px;
+        margin-left: 4px;
+    }
+
+    #frame #sidepanel #profile .wrap p {
+        display: none;
+    }
+
+    #frame #sidepanel #profile .wrap i.expand-button {
+        display: none;
+    }
+
+    #frame #sidepanel #profile .wrap #status-options {
+        width: 58px;
+        margin-top: 57px;
+    }
+
+    #frame #sidepanel #profile .wrap #status-options.active {
+        margin-top: 62px;
+    }
+
+    #frame #sidepanel #profile .wrap #status-options:before {
+        margin-left: 23px;
+    }
+}
+
+.avatar-wrapper.online::after,
+.avatar-wrapper.away::after,
+.avatar-wrapper.busy::after,
+.avatar-wrapper.offline::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: -3px;
+    bottom: 4px;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid #2c3e50; /* обводка */
+}
+
+.avatar-wrapper.online::after { background: #2ecc71; }
+.avatar-wrapper.away::after { background: #f1c40f; }
+.avatar-wrapper.busy::after { background: #e74c3c; }
+.avatar-wrapper.offline::after { background: #95a5a6; }
+
+
+#frame #sidepanel #profile {
+    width: 80%;
+    margin: 25px auto;
 }
 
 #frame #sidepanel #profile.expanded .wrap {
@@ -79,13 +130,6 @@
     transition: 0.3s height ease;
 }
 
-@media screen and (max-width: 735px) {
-    #frame #sidepanel #profile .wrap {
-        height: 55px;
-        margin: 0px;
-    }
-}
-
 #frame #sidepanel #profile .wrap img {
     width: 50px;
     border-radius: 50%;
@@ -98,13 +142,6 @@
     -o-transition: 0.3s border ease;
     -webkit-transition: 0.3s border ease;
     transition: 0.3s border ease;
-}
-
-@media screen and (max-width: 735px) {
-    #frame #sidepanel #profile .wrap img {
-        width: 40px;
-        margin-left: 4px;
-    }
 }
 
 #frame #sidepanel #profile .wrap img.online {
@@ -128,24 +165,12 @@
     margin-left: 15px;
 }
 
-@media screen and (max-width: 735px) {
-    #frame #sidepanel #profile .wrap p {
-        display: none;
-    }
-}
-
 #frame #sidepanel #profile .wrap i.expand-button {
     float: right;
     margin-top: 23px;
     font-size: 0.8em;
     cursor: pointer;
     color: #435f7a;
-}
-
-@media screen and (max-width: 735px) {
-    #frame #sidepanel #profile .wrap i.expand-button {
-        display: none;
-    }
 }
 
 #frame #sidepanel #profile .wrap #status-options {
@@ -164,23 +189,10 @@
     transition: 0.3s all ease;
 }
 
-@media screen and (max-width: 735px) {
-    #frame #sidepanel #profile .wrap #status-options {
-        width: 58px;
-        margin-top: 57px;
-    }
-}
-
 #frame #sidepanel #profile .wrap #status-options.active {
     opacity: 1;
     visibility: visible;
     margin: 75px 0 0 0;
-}
-
-@media screen and (max-width: 735px) {
-    #frame #sidepanel #profile .wrap #status-options.active {
-        margin-top: 62px;
-    }
 }
 
 #frame #sidepanel #profile .wrap #status-options:before {
@@ -194,12 +206,6 @@
     margin: -8px 0 0 24px;
 }
 
-@media screen and (max-width: 735px) {
-    #frame #sidepanel #profile .wrap #status-options:before {
-        margin-left: 23px;
-    }
-}
-
 #frame #sidepanel #profile .wrap #status-options ul {
     overflow: hidden;
     border-radius: 6px;
@@ -209,12 +215,6 @@
     padding: 15px 0 30px 18px;
     display: block;
     cursor: pointer;
-}
-
-@media screen and (max-width: 735px) {
-    #frame #sidepanel #profile .wrap #status-options ul li {
-        padding: 15px 0 35px 22px;
-    }
 }
 
 #frame #sidepanel #profile .wrap #status-options ul li:hover {
@@ -499,9 +499,11 @@ span.status-circle:before {
 }
 
 #frame #sidepanel #contacts ul li.contact .wrap {
-    width: 88%;
-    margin: 0 auto;
-    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding-left: 12px;
+    gap: 12px;
 }
 
 @media screen and (max-width: 735px) {
@@ -534,20 +536,26 @@ span.status-circle:before {
 }
 
 #frame #sidepanel #contacts ul li.contact .wrap img {
-    width: 40px;
+    display: block;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
-    float: left;
-    margin-right: 10px;
+    object-fit: cover;
+    margin-right: 12px;
+    flex-shrink: 0;
 }
 
 @media screen and (max-width: 735px) {
     #frame #sidepanel #contacts ul li.contact .wrap img {
-        margin-right: 0px;
+        margin-right: 0;
     }
 }
 
 #frame #sidepanel #contacts ul li.contact .wrap .meta {
-    padding: 5px 0 0 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 @media screen and (max-width: 735px) {
@@ -557,7 +565,11 @@ span.status-circle:before {
 }
 
 #frame #sidepanel #contacts ul li.contact .wrap .meta .name {
+    margin: 0;
     font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 #frame #sidepanel #contacts ul li.contact .wrap .meta .preview {
@@ -674,19 +686,28 @@ span.status-circle:before {
 #frame .content .contact-profile {
     width: 100%;
     height: 60px;
-    line-height: 60px;
     background: #f5f5f5;
+    display: flex; /* строка элементов */
+    align-items: center; /* вертикальное выравнивание */
+    padding: 0 10px; /* отступы слева и справа */
 }
 
 #frame .content .contact-profile img {
     width: 40px;
+    height: 40px;
     border-radius: 50%;
-    float: left;
-    margin: 9px 12px 0 9px;
+    margin: 0 12px 0 0; /* справа от аватара небольшой отступ */
+    object-fit: cover;
+    flex-shrink: 0; /* не сжимается */
 }
 
 #frame .content .contact-profile p {
-    float: left;
+    margin: 0; /* убираем float и лишние отступы */
+    font-weight: 600;
+    line-height: 1; /* чтобы текст не съезжал вниз */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* длинные имена обрезаем */
 }
 
 #frame .content .contact-profile .social-media {
@@ -910,4 +931,115 @@ span.status-circle:before {
     height: 100%;
     font-size: 1.2rem;
     color: #999;
+}
+
+.back-btn {
+    display: none;
+}
+
+#frame #sidepanel #contacts ul li.contact .wrap .avatar-wrapper {
+    margin-left: 12px; /* отступ от левого края панели */
+    flex-shrink: 0;    /* чтобы аватар не сжимался */
+}
+
+.avatar-wrapper {
+    position: relative;
+    display: inline-block; /* чтобы точка позиционировалась относительно аватара */
+}
+
+.wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* DESKTOP CHAT MODE */
+@media screen and (min-width: 736px) {
+    #frame .content .contact-profile p {
+        margin-left: 12px;
+    }
+}
+
+/* MOBILE CHAT MODE */
+@media screen and (max-width: 768px) {
+    #frame .content .contact-profile p {
+        margin-left: 0;
+    }
+
+    #frame {
+        position: relative;
+    }
+
+    #frame .content {
+        display: none;
+    }
+
+    #frame #sidepanel {
+        width: 100%;
+        max-width: 100%;
+        min-width: 100%;
+        border-radius: 0;
+    }
+
+    #frame.chat-open #sidepanel {
+        display: none;
+    }
+
+    #frame.chat-open .content {
+        display: flex;
+        width: 100%;
+        min-width: 100%;
+        border-radius: 0;
+    }
+
+    .contact-profile {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .contact-profile .back-btn {
+        border: none;
+        background: none;
+        font-size: 22px;
+        cursor: pointer;
+        padding: 0 10px;
+        display: block;
+    }
+
+    .message-input {
+        position: sticky;
+        bottom: 0;
+        background: #fff;
+    }
+
+    #frame .content .messages ul li p {
+        max-width: 80%;
+    }
+
+    #frame #sidepanel {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    #frame #sidepanel #contacts ul li.contact {
+        padding: 12px 0 12px 12px;
+    }
+
+    #frame #sidepanel #contacts ul li.contact .wrap {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    #frame #sidepanel #contacts ul li.contact .wrap img {
+        width: 36px;
+        height: 36px;
+        margin-right: 8px;
+    }
+
+    #frame #sidepanel #contacts ul li.contact .wrap .meta {
+        display: block;
+    }
 }

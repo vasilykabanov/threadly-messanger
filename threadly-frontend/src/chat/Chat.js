@@ -14,6 +14,7 @@ import {
 } from "../atom/globalState";
 import ScrollToBottom from "react-scroll-to-bottom";
 import "./Chat.css";
+import Avatar from "../profile/Avatar";
 
 var stompClient = null;
 const Chat = (props) => {
@@ -22,6 +23,7 @@ const Chat = (props) => {
     const [contacts, setContacts] = useState([]);
     const [activeContact, setActiveContact] = useRecoilState(chatActiveContact);
     const [messages, setMessages] = useRecoilState(chatMessages);
+    const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
 
     useEffect(() => {
         if (localStorage.getItem("accessToken") === null) {
@@ -146,16 +148,17 @@ const Chat = (props) => {
     };
 
     return (
-        <div id="frame">
+        <div id="frame" className={isMobileChatOpen ? "chat-open" : ""}>
             <div id="sidepanel">
                 <div id="profile">
                     <div class="wrap">
-                        <img
-                            id="profile-img"
-                            src={currentUser.profilePicture}
-                            class="online"
-                            alt=""
-                        />
+                        <div className={`avatar-wrapper ${currentUser.status || "online"}`}>
+                            <Avatar
+                                name={currentUser.name}
+                                src={currentUser.profilePicture}
+                                size={50}
+                            />
+                        </div>
                         <p>{currentUser.name}</p>
                         <div id="status-options">
                             <ul>
@@ -180,24 +183,33 @@ const Chat = (props) => {
                     <ul>
                         {contacts.map((contact) => (
                             <li
-                                onClick={() => setActiveContact(contact)}
+                                onClick={() => {
+                                    setActiveContact(contact);
+                                    setIsMobileChatOpen(true);
+                                }}
                                 class={
                                     activeContact && contact.id === activeContact.id
                                         ? "contact active"
                                         : "contact"
                                 }
                             >
-                                <div class="wrap">
-                                    <span className={`contact-status ${contact.status}`}></span>
-                                    <img id={contact.id} src={contact.profilePicture} alt=""/>
-                                    <div class="meta">
-                                        <p class="name">{contact.name}</p>
-                                        {contact.newMessages !== undefined &&
-                                            contact.newMessages > 0 && (
-                                                <p class="preview">
-                                                    {contact.newMessages} new messages
-                                                </p>
-                                            )}
+                                <div className="wrap">
+                                    <div className={`avatar-wrapper ${contact.status}`}>
+                                        <Avatar
+                                            name={contact.name}
+                                            src={contact.profilePicture}
+                                            size={44}
+                                        />
+                                    </div>
+                                    <div className="meta">
+                                        <p className="name">
+                                            {contact.name}
+                                        </p>
+                                        {contact.newMessages !== undefined && contact.newMessages > 0 && (
+                                            <p className="preview">
+                                                {contact.newMessages} new messages
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                             </li>
@@ -226,7 +238,14 @@ const Chat = (props) => {
                 {activeContact ? (
                     <>
                         <div className="contact-profile">
-                            <img src={activeContact.profilePicture} alt=""/>
+                            <button className="back-btn" onClick={() => setIsMobileChatOpen(false)}>
+                                ←
+                            </button>
+                            <Avatar
+                                name={activeContact.name}
+                                src={activeContact.profilePicture}
+                                size={44}
+                            />
                             <p>{activeContact.name}</p>
                         </div>
 
@@ -245,7 +264,11 @@ const Chat = (props) => {
 
                                             <li className={msg.senderId === currentUser.id ? "sent" : "replies"}>
                                                 {msg.senderId !== currentUser.id && (
-                                                    <img src={activeContact.profilePicture} alt=""/>
+                                                    <Avatar
+                                                        name={activeContact.name}
+                                                        src={activeContact.profilePicture}
+                                                        size={28}
+                                                    />
                                                 )}
 
                                                 <p className="message-bubble">
