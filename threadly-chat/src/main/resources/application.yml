@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: threadly-chat
+  data:
+    mongodb:
+      database: threadly_chat_db
+      host: ${SPRING_DATA_MONGODB_HOST:localhost}
+      port: ${SPRING_DATA_MONGODB_PORT:27017}
+      authentication-database: admin
+server:
+  port: 8080

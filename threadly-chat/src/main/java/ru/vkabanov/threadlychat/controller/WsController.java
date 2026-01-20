@@ -1,0 +1,41 @@
+package ru.vkabanov.threadlychat.controller;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Controller;
+import ru.vkabanov.threadlychat.model.ChatMessage;
+import ru.vkabanov.threadlychat.model.ChatNotification;
+import ru.vkabanov.threadlychat.model.StatusMessage;
+import ru.vkabanov.threadlychat.service.ChatMessageService;
+import ru.vkabanov.threadlychat.service.ChatRoomService;
+import ru.vkabanov.threadlychat.service.UserStatusService;
+
+@Controller
+@RequiredArgsConstructor
+public class WsController {
+
+    private final SimpMessagingTemplate messagingTemplate;
+
+    private final UserStatusService userStatusService;
+
+    private final ChatRoomService chatRoomService;
+
+    private final ChatMessageService chatMessageService;
+
+    @MessageMapping("/chat")
+    public void processMessage(@Payload ChatMessage chatMessage) {
+        var chatId = chatRoomService.getChatId(chatMessage.getSenderId(), chatMessage.getRecipientId(), true);
+        chatMessage.setChatId(chatId.get());
+
+        ChatMessage saved = chatMessageService.save(chatMessage);
+        messagingTemplate.convertAndSendToUser(chatMessage.getRecipientId(), "/queue/messages",
+                new ChatNotification(saved.getId(), saved.getSenderId(), saved.getSenderName()));
+    }
+
+    public void updateStatus(String userId, String status) {
+        userStatusService.setStatus(userId, status);
+        messagingTemplate.convertAndSend("/topic/status", new StatusMessage(userId, status));
+    }
+}

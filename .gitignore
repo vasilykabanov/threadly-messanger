@@ -37,3 +37,30 @@ build/
 ### Mac OS ###
 .DS_Store
 /.idea/
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/build
+
+# misc
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+HELP.md
+.mvn/wrapper/maven-wrapper.jar
+/threadly-frontend/package-lock.json
+/threadly-frontend/node_modules/
+/threadly-chat/target/
+/threadly-auth/target/

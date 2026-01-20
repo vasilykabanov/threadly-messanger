@@ -1,0 +1,26 @@
+spring:
+  data:
+    mongodb:
+      database: threadly_auth
+      host: ${SPRING_DATA_MONGODB_HOST:localhost}
+      port: ${SPRING_DATA_MONGODB_PORT:27017}
+      authentication-database: admin
+server:
+  port: 8081
+      
+security:
+  basic:
+    enable: false
+  jwt:
+    uri: /auth/**
+    header: Authorization
+    prefix: Bearer
+    expiration: 86400
+    secret: JwtSecretKey
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+        loggerLevel: basic

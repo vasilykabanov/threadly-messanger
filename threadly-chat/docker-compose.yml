@@ -1,0 +1,10 @@
+version: '3.6'
+services:
+    mongo-chat:
+      image: mongo:4.4
+      container_name: mongo-chat
+      restart: always
+      environment:
+        MONGO_INITDB_DATABASE: threadly_chat_db
+      ports:
+        - "27018:27017"

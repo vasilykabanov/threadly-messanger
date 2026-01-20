@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: threadly-auth
+  cloud:
+    kubernetes:
+      reload:
+        period: 1000
+        enabled: true
+      config:
+        enabled: true
+        name: auth-configs
+        namespace: default
+        sources:
+          - name: auth-configs
+management:
+  endpoint:
+    restart:
+      enabled: true
