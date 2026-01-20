@@ -1,19 +1,15 @@
+:root {
+    --vh: 100vh;
+}
+
 #frame {
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: var(--vh);
     background: #e6eaea;
     display: flex;
     flex-direction: row;
     margin: 0;
     overflow: hidden;
-}
-
-@media screen and (max-width: 360px) {
-    #frame {
-        width: 100%;
-        height: 100vh;
-        margin: 0;
-    }
 }
 
 #frame #sidepanel {
@@ -81,14 +77,14 @@
 .avatar-wrapper.offline::after {
     content: "";
     position: absolute;
-    top: 50%;
-    right: -3px;
-    bottom: 4px;
-    transform: translateY(-50%);
     width: 10px;
     height: 10px;
     border-radius: 50%;
     border: 2px solid #2c3e50; /* обводка */
+    top: auto;
+    bottom: 2px;
+    right: 0;
+    transform: none;
 }
 
 .avatar-wrapper.online::after { background: #2ecc71; }
@@ -661,6 +657,7 @@ span.status-circle:before {
 #frame .content {
     width: 60%;
     height: 100%;
+    min-height: 0;
     overflow: hidden;
     position: relative;
     border-top-right-radius: 10px;
@@ -735,12 +732,6 @@ span.status-circle:before {
     width: 100%;
 }
 
-@media screen and (max-width: 735px) {
-    #frame .content .messages {
-        max-height: calc(100% - 105px);
-    }
-}
-
 #frame .content .messages::-webkit-scrollbar {
     width: 8px;
     background: transparent;
@@ -808,27 +799,11 @@ span.status-circle:before {
     bottom: 0 !important;
     width: 100%;
     z-index: 99;
+    flex-shrink: 0;
 }
 
 #frame .content .message-input .wrap {
     position: relative;
-}
-
-#frame .content .message-input .wrap input {
-    font-family: "proxima-nova", "Source Sans Pro", sans-serif;
-    float: left;
-    border: none;
-    width: calc(100% - 51px);
-    padding: 14px 32px 8px 8px;
-    font-size: 0.8em;
-    color: #32465a;
-    font-size: 16px;
-}
-
-@media screen and (max-width: 735px) {
-    #frame .content .message-input .wrap input {
-        padding: 15px 32px 16px 8px;
-    }
 }
 
 #frame .content .message-input .wrap input:focus {
@@ -855,23 +830,6 @@ span.status-circle:before {
 
 #frame .content .message-input .wrap .attachment:hover {
     opacity: 1;
-}
-
-#frame .content .message-input .wrap button {
-    float: right;
-    border: none;
-    width: 50px;
-    padding: 12px 0;
-    cursor: pointer;
-    background: #32465a;
-    color: #f5f5f5;
-    height: 48px;
-}
-
-@media screen and (max-width: 735px) {
-    #frame .content .message-input .wrap button {
-        padding: 16px 0;
-    }
 }
 
 #frame .content .message-input .wrap button:hover {
@@ -933,6 +891,52 @@ span.status-circle:before {
     color: #999;
 }
 
+.message-input {
+    position: relative;
+    width: 100%;
+    z-index: 99;
+    flex-shrink: 0;
+    padding: 10px 16px 20px 16px; /* сверху 10px, слева/справа 16px, снизу 20px */
+    box-sizing: border-box;
+    background: #e6eaea;
+}
+
+.message-input .wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.chat-input {
+    flex: 1;
+    height: 42px;
+    padding: 0 16px;
+    border: none;
+    outline: none;
+    border-radius: 999px;
+    background: #ffffff;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* лёгкая тень для «парения» */
+}
+
+.send-btn {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #32465a !important;
+    color: #fff !important;
+    border: none !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* лёгкая тень для «парения» */
+}
+
+.send-btn:hover {
+    background: #32465a !important;
+}
+
 .back-btn {
     display: none;
 }
@@ -947,11 +951,12 @@ span.status-circle:before {
     display: inline-block; /* чтобы точка позиционировалась относительно аватара */
 }
 
-.wrap {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
+/*.wrap {*/
+/*    position: relative;*/
+/*    display: flex;*/
+/*    align-items: center;*/
+/*}*/
+
 
 /* DESKTOP CHAT MODE */
 @media screen and (min-width: 736px) {
@@ -1005,12 +1010,6 @@ span.status-circle:before {
         cursor: pointer;
         padding: 0 10px;
         display: block;
-    }
-
-    .message-input {
-        position: sticky;
-        bottom: 0;
-        background: #fff;
     }
 
     #frame .content .messages ul li p {
