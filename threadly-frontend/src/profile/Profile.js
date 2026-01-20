@@ -46,10 +46,9 @@ const Profile = (props) => {
             >
                 <Meta
                     avatar={
-                        <Avatar
-                            src={currentUser.profilePicture}
-                            className="user-avatar-circle"
-                        />
+                        <Avatar src={currentUser.profilePicture} className="user-avatar-circle">
+                            {currentUser.name?.[0]?.toUpperCase()}
+                        </Avatar>
                     }
                     title={currentUser.name}
                     description={"@" + currentUser.username}
