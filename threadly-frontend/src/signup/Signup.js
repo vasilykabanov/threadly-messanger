@@ -18,18 +18,18 @@ const Signup = (props) => {
         signup(values)
             .then((response) => {
                 notification.success({
-                    message: "Success",
+                    message: "Успешно",
                     description:
-                        "Thank you! You're successfully registered. Please Login to continue!",
+                        "Спасибо! Регистрация прошла успешно. Войдите, чтобы продолжить!",
                 });
                 props.history.push("/login");
                 setLoading(false);
             })
             .catch((error) => {
                 notification.error({
-                    message: "Error",
+                    message: "Ошибка",
                     description:
-                        error.message || "Sorry! Something went wrong. Please try again!",
+                        error.message || "Что-то пошло не так. Пожалуйста, попробуйте еще раз!",
                 });
                 setLoading(false);
             });
@@ -53,38 +53,38 @@ const Signup = (props) => {
             >
                 <Form.Item
                     name="name"
-                    rules={[{required: true, message: "Please input your name!"}]}
+                    rules={[{required: true, message: "Введите имя!"}]}
                 >
-                    <Input size="large" placeholder="Name"/>
+                    <Input size="large" placeholder="Имя"/>
                 </Form.Item>
                 <Form.Item
                     name="username"
-                    rules={[{required: true, message: "Please input your Username!"}]}
+                    rules={[{required: true, message: "Введите логин!"}]}
                 >
-                    <Input size="large" placeholder="Username"/>
+                    <Input size="large" placeholder="Логин"/>
                 </Form.Item>
                 <Form.Item
                     name="email"
-                    rules={[{required: true, message: "Please input your email!"}]}
+                    rules={[{required: true, message: "Введите email!"}]}
                 >
                     <Input size="large" placeholder="Email"/>
                 </Form.Item>
                 <Form.Item
                     name="password"
-                    rules={[{required: true, message: "Please input your Password!"}]}
+                    rules={[{required: true, message: "Введите пароль!"}]}
                 >
-                    <Input size="large" type="password" placeholder="Password"/>
+                    <Input size="large" type="password" placeholder="Пароль"/>
                 </Form.Item>
                 <Form.Item
                     name="profilePicUrl"
                     rules={[
                         {
                             required: true,
-                            message: "Please input your profile picture URL!",
+                            message: "Введите ссылку на аватар!",
                         },
                     ]}
                 >
-                    <Input size="large" placeholder="Profile picture url"/>
+                    <Input size="large" placeholder="Ссылка на аватар"/>
                 </Form.Item>
                 <Form.Item>
                     <Button
@@ -94,10 +94,10 @@ const Signup = (props) => {
                         className="login-form-button"
                         loading={loading}
                     >
-                        Signup
+                        Зарегистрироваться
                     </Button>
                 </Form.Item>
-                Already a member? <a href="/login">Log in</a>
+                Уже есть аккаунт? <a href="/login">Войти</a>
             </Form>
         </div>
     );

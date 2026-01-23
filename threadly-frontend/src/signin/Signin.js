@@ -54,15 +54,15 @@ const Signin = (props) => {
                         .catch((error) => {
                             if (error.status === 401) {
                                 notification.error({
-                                    message: "Error",
-                                    description: "Invalid credentials",
+                                    message: "Ошибка",
+                                    description: "Неверные учетные данные",
                                 });
                             } else {
                                 notification.error({
-                                    message: "Error",
+                                    message: "Ошибка",
                                     description:
                                         error.message ||
-                                        "Sorry! Something went wrong. Please try again!",
+                                        "Что-то пошло не так. Пожалуйста, попробуйте еще раз!",
                                 });
                             }
                             setFacebookLoading(false);
@@ -86,14 +86,14 @@ const Signin = (props) => {
             .catch((error) => {
                 if (error.status === 401) {
                     notification.error({
-                        message: "Error",
-                        description: "Username or Password is incorrect. Please try again!",
+                        message: "Ошибка",
+                        description: "Неверный логин или пароль. Попробуйте еще раз!",
                     });
                 } else {
                     notification.error({
-                        message: "Error",
+                        message: "Ошибка",
                         description:
-                            error.message || "Sorry! Something went wrong. Please try again!",
+                            error.message || "Что-то пошло не так. Пожалуйста, попробуйте еще раз!",
                     });
                 }
                 setLoading(false);
@@ -118,23 +118,23 @@ const Signin = (props) => {
             >
                 <Form.Item
                     name="username"
-                    rules={[{required: true, message: "Please input your Username!"}]}
+                    rules={[{required: true, message: "Введите логин!"}]}
                 >
                     <Input
                         size="large"
                         prefix={<UserOutlined className="site-form-item-icon"/>}
-                        placeholder="Username"
+                        placeholder="Логин"
                     />
                 </Form.Item>
                 <Form.Item
                     name="password"
-                    rules={[{required: true, message: "Please input your Password!"}]}
+                    rules={[{required: true, message: "Введите пароль!"}]}
                 >
                     <Input
                         size="large"
                         prefix={<LockOutlined className="site-form-item-icon"/>}
                         type="password"
-                        placeholder="Password"
+                        placeholder="Пароль"
                     />
                 </Form.Item>
                 <Form.Item>
@@ -145,10 +145,10 @@ const Signin = (props) => {
                         className="login-form-button"
                         loading={loading}
                     >
-                        Log in
+                        Войти
                     </Button>
                 </Form.Item>
-                <Divider>OR</Divider>
+                <Divider>ИЛИ</Divider>
                 <Form.Item>
                     <Button
                         icon={<FacebookFilled style={{fontSize: 20}}/>}
@@ -158,10 +158,10 @@ const Signin = (props) => {
                         size="large"
                         onClick={getFacebookAccessToken}
                     >
-                        Log in With Facebook
+                        Войти через Facebook
                     </Button>
                 </Form.Item>
-                Not a member yet? <a href="/signup">Sign up</a>
+                Еще нет аккаунта? <a href="/signup">Зарегистрироваться</a>
             </Form>
         </div>
     );

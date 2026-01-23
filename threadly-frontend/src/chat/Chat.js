@@ -45,10 +45,7 @@ const Chat = (props) => {
 
     useEffect(() => {
         if (!activeContact?.id) return;
-        setMessages([]);
-
-        findChatMessages(activeContact.id, currentUser.id)
-            .then(setMessages);
+        loadChatForContact(activeContact);
     }, [activeContact?.id]);
 
     const connect = () => {
@@ -75,7 +72,7 @@ const Chat = (props) => {
         const active = JSON.parse(sessionStorage.getItem("recoil-persist"))
             .chatActiveContact;
 
-        if (active.id === notification.senderId) {
+        if (active && active.id === notification.senderId) {
             findChatMessage(notification.id).then((message) => {
                 const newMessages = JSON.parse(sessionStorage.getItem("recoil-persist"))
                     .chatMessages;
@@ -113,20 +110,30 @@ const Chat = (props) => {
         }
     };
 
+    const loadChatForContact = (contact) => {
+        if (!contact?.id) return;
+        setMessages([]);
+        findChatMessages(contact.id, currentUser.id)
+            .then(setMessages);
+    };
+
     const loadContacts = () => {
         const promise = getUsers().then((users) =>
-            users.map((contact) =>
-                countNewMessages(contact.id, currentUser.id).then((count) => {
-                    contact.newMessages = count;
-                    return contact;
-                })
-            )
+            users
+                .filter((contact) => !currentUser?.id || contact.id !== currentUser.id)
+                .map((contact) =>
+                    countNewMessages(contact.id, currentUser.id).then((count) => {
+                        contact.newMessages = count;
+                        return contact;
+                    })
+                )
         );
 
         promise.then((promises) =>
             Promise.all(promises).then((users) => {
                 setContacts(users);
-                if (activeContact === undefined && users.length > 0) {
+                const activeInList = users.find((contact) => contact.id === activeContact?.id);
+                if (!activeInList && users.length > 0) {
                     setActiveContact(users[0]);
                 }
             })
@@ -161,7 +168,7 @@ const Chat = (props) => {
         <div id="frame" className={isMobileChatOpen ? "chat-open" : ""}>
             <div id="sidepanel">
                 <div id="profile">
-                    <div class="wrap">
+                    <div className="wrap">
                         <div className={`avatar-wrapper ${currentUser.status || "online"}`}>
                             <Avatar
                                 name={currentUser.name}
@@ -172,17 +179,17 @@ const Chat = (props) => {
                         <p>{currentUser.name}</p>
                         <div id="status-options">
                             <ul>
-                                <li id="status-online" class="active">
-                                    <span class="status-circle"></span> <p>Online</p>
+                                <li id="status-online" className="active">
+                                    <span className="status-circle"></span> <p>В сети</p>
                                 </li>
                                 <li id="status-away">
-                                    <span class="status-circle"></span> <p>Away</p>
+                                    <span className="status-circle"></span> <p>Нет на месте</p>
                                 </li>
                                 <li id="status-busy">
-                                    <span class="status-circle"></span> <p>Busy</p>
+                                    <span className="status-circle"></span> <p>Занят</p>
                                 </li>
                                 <li id="status-offline">
-                                    <span class="status-circle"></span> <p>Offline</p>
+                                    <span className="status-circle"></span> <p>Оффлайн</p>
                                 </li>
                             </ul>
                         </div>
@@ -193,11 +200,16 @@ const Chat = (props) => {
                     <ul>
                         {contacts.map((contact) => (
                             <li
+                                key={contact.id}
                                 onClick={() => {
-                                    setActiveContact(contact);
                                     setIsMobileChatOpen(true);
+                                    if (activeContact?.id !== contact.id) {
+                                        setActiveContact(contact);
+                                    } else {
+                                        loadChatForContact(contact);
+                                    }
                                 }}
-                                class={
+                                className={
                                     activeContact && contact.id === activeContact.id
                                         ? "contact active"
                                         : "contact"
@@ -217,7 +229,7 @@ const Chat = (props) => {
                                         </p>
                                         {contact.newMessages !== undefined && contact.newMessages > 0 && (
                                             <p className="preview">
-                                                {contact.newMessages} new messages
+                                                {contact.newMessages} новых сообщений
                                             </p>
                                         )}
                                     </div>
@@ -236,11 +248,11 @@ const Chat = (props) => {
                         id="addcontact"
                         onClick={() => props.history.push("/")}>
                         <i className="fa fa-user fa-fw" aria-hidden="true"></i>{" "}
-                        <span>Profile</span>
+                        <span>Профиль</span>
                     </button>
                     <button id="settings">
-                        <i class="fa fa-cog fa-fw" aria-hidden="true"></i>{" "}
-                        <span>Settings</span>
+                        <i className="fa fa-cog fa-fw" aria-hidden="true"></i>{" "}
+                        <span>Настройки</span>
                     </button>
                 </div>
             </div>
@@ -265,7 +277,9 @@ const Chat = (props) => {
                                     const showDate = isNewDay(msg.timestamp, messages[index - 1]?.timestamp);
 
                                     return (
-                                        <React.Fragment key={msg.id}>
+                                        <React.Fragment
+                                            key={msg.id || `${msg.senderId}-${msg.timestamp}-${index}`}
+                                        >
                                             {showDate && (
                                                 <li className="date-separator">
                                                     <span>{formatDate(msg.timestamp)}</span>
@@ -297,7 +311,7 @@ const Chat = (props) => {
                                 <input
                                     className="chat-input"
                                     name="user_input"
-                                    placeholder="Write your message..."
+                                    placeholder="Напишите сообщение..."
                                     value={text}
                                     onChange={(event) => setText(event.target.value)}
                                     onKeyDown={(event) => {
@@ -310,7 +324,7 @@ const Chat = (props) => {
 
                                 <Button
                                     className="send-btn"
-                                    icon={<i className="fa fa-paper-plane" />}
+                                    icon={<i className="fa fa-paper-plane"/>}
                                     onClick={() => {
                                         sendMessage(text);
                                         setText("");

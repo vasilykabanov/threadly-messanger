@@ -76,6 +76,30 @@ export function getUsers() {
     });
 }
 
+export function updateProfile(updateProfileRequest) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+
+    return request({
+        url: AUTH_SERVICE + "/users/me",
+        method: "PUT",
+        body: JSON.stringify(updateProfileRequest),
+    });
+}
+
+export function changePassword(changePasswordRequest) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+
+    return request({
+        url: AUTH_SERVICE + "/users/me/password",
+        method: "PUT",
+        body: JSON.stringify(changePasswordRequest),
+    });
+}
+
 export function countNewMessages(senderId, recipientId) {
     if (!localStorage.getItem("accessToken")) {
         return Promise.reject("No access token set.");
