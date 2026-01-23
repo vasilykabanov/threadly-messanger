@@ -10,24 +10,32 @@ const request = (options) => {
         headers.append("Content-Type", "application/json");
     }
 
-    if (localStorage.getItem("accessToken")) {
-        headers.append(
-            "Authorization",
-            "Bearer " + localStorage.getItem("accessToken")
-        );
+    const token = localStorage.getItem("accessToken");
+
+    if (token) {
+        headers.append("Authorization", "Bearer " + token);
     }
 
     const defaults = {headers: headers};
     options = Object.assign({}, defaults, options);
 
-    return fetch(options.url, options).then((response) =>
-        response.json().then((json) => {
-            if (!response.ok) {
-                return Promise.reject(json);
+    return fetch(options.url, options).then(async (response) => {
+        const json = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            if (response.status === 401 && token && !options.skipAuthRedirect) {
+                localStorage.removeItem("accessToken");
+                window.location.href = "/login";
             }
-            return json;
-        })
-    );
+
+            return Promise.reject({
+                status: response.status,
+                ...json
+            });
+        }
+
+        return json;
+    });
 };
 
 export function login(loginRequest) {
@@ -35,6 +43,7 @@ export function login(loginRequest) {
         url: AUTH_SERVICE + "/signin",
         method: "POST",
         body: JSON.stringify(loginRequest),
+        skipAuthRedirect: true
     });
 }
 
@@ -43,6 +52,7 @@ export function facebookLogin(facebookLoginRequest) {
         url: AUTH_SERVICE + "/facebook/signin",
         method: "POST",
         body: JSON.stringify(facebookLoginRequest),
+        skipAuthRedirect: true
     });
 }
 
