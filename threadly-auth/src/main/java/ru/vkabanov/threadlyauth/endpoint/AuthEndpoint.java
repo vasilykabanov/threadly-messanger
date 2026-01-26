@@ -16,7 +16,6 @@ import ru.vkabanov.threadlyauth.model.Profile;
 import ru.vkabanov.threadlyauth.model.Role;
 import ru.vkabanov.threadlyauth.model.User;
 import ru.vkabanov.threadlyauth.payload.*;
-import ru.vkabanov.threadlyauth.service.FacebookService;
 import ru.vkabanov.threadlyauth.service.UserService;
 
 import javax.validation.Valid;
@@ -28,19 +27,10 @@ public class AuthEndpoint {
 
     @Autowired
     private UserService userService;
-    @Autowired
-    private FacebookService facebookService;
 
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         String token = userService.loginUser(loginRequest.getUsername(), loginRequest.getPassword());
-        return ResponseEntity.ok(new JwtAuthenticationResponse(token));
-    }
-
-    @PostMapping("/facebook/signin")
-    public ResponseEntity<?> facebookAuth(@Valid @RequestBody FacebookLoginRequest facebookLoginRequest) {
-        log.info("facebook login {}", facebookLoginRequest);
-        String token = facebookService.loginUser(facebookLoginRequest.getAccessToken());
         return ResponseEntity.ok(new JwtAuthenticationResponse(token));
     }
 

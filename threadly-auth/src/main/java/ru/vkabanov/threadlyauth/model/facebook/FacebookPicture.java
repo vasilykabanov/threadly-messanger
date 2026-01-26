@@ -1,14 +1,3 @@
-package ru.vkabanov.threadlyauth.model.facebook;
+package ru.vkabanov.threadlyauth.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-@Data
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
-public class FacebookPicture {
-    private PictureData data;
-}
+// Social login removed.

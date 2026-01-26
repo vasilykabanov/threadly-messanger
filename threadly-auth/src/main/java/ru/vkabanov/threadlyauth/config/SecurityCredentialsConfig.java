@@ -52,7 +52,6 @@ public class SecurityCredentialsConfig extends WebSecurityConfigurerAdapter {
                 .addFilterBefore(new JwtTokenAuthenticationFilter(jwtConfig, tokenProvider, userService), UsernamePasswordAuthenticationFilter.class)
                 .authorizeRequests()
                 .antMatchers(HttpMethod.POST, "/signin").permitAll()
-                .antMatchers(HttpMethod.POST, "/facebook/signin").permitAll()
                 .antMatchers(HttpMethod.POST, "/users").anonymous()
                 .anyRequest().authenticated();
     }
