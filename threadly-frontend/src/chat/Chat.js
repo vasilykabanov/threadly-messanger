@@ -7,8 +7,9 @@ import {
     findChatMessage,
     getUserSummary,
     getChatContacts,
+    getCurrentUser,
 } from "../util/ApiUtil";
-import {useRecoilValue, useRecoilState} from "recoil";
+import {useRecoilState} from "recoil";
 import {
     loggedInUser,
     chatActiveContact,
@@ -30,7 +31,7 @@ window.addEventListener("resize", setVH);
 
 var stompClient = null;
 const Chat = (props) => {
-    const currentUser = useRecoilValue(loggedInUser);
+    const [currentUser, setLoggedInUser] = useRecoilState(loggedInUser);
     const [text, setText] = useState("");
     const [contacts, setContacts] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
@@ -46,9 +47,26 @@ const Chat = (props) => {
         if (localStorage.getItem("accessToken") === null) {
             props.history.push("/login");
         }
+        if (!currentUser?.id) {
+            getCurrentUser()
+                .then((response) => setLoggedInUser(response))
+                .catch(() => {});
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!currentUser?.id) return;
+
+        const activeUserId = sessionStorage.getItem("activeUserId");
+        if (activeUserId && activeUserId !== currentUser.id) {
+            setActiveContact(null);
+            setMessages([]);
+        }
+        sessionStorage.setItem("activeUserId", currentUser.id);
+
         connect();
         loadContacts();
-    }, []);
+    }, [currentUser?.id]);
 
     useEffect(() => {
         if (!activeContact?.id) return;
@@ -385,7 +403,10 @@ const Chat = (props) => {
                         <i className="fa fa-user fa-fw" aria-hidden="true"></i>{" "}
                         <span>Профиль</span>
                     </button>
-                    <button id="settings">
+                    <button
+                        id="settings"
+                        onClick={() => props.history.push("/settings")}
+                    >
                         <i className="fa fa-cog fa-fw" aria-hidden="true"></i>{" "}
                         <span>Настройки</span>
                     </button>

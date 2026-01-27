@@ -10,6 +10,21 @@ import "./Signin.css";
 const Signin = (props) => {
     const [loading, setLoading] = useState(false);
 
+    const clearPersistedState = () => {
+        const persisted = sessionStorage.getItem("recoil-persist");
+        if (!persisted) return;
+
+        try {
+            const data = JSON.parse(persisted);
+            delete data.chatActiveContact;
+            delete data.chatMessages;
+            delete data.loggedInUser;
+            sessionStorage.setItem("recoil-persist", JSON.stringify(data));
+        } catch (e) {
+            sessionStorage.removeItem("recoil-persist");
+        }
+    };
+
     useEffect(() => {
         if (localStorage.getItem("accessToken") !== null) {
             props.history.push("/");
@@ -20,6 +35,7 @@ const Signin = (props) => {
         setLoading(true);
         login(values)
             .then((response) => {
+                clearPersistedState();
                 localStorage.setItem("accessToken", response.accessToken);
                 props.history.push("/");
                 setLoading(false);

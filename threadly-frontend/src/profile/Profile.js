@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Card, Avatar, Button, Divider, Form, Input, message} from "antd";
 import {useRecoilState} from "recoil";
 import {loggedInUser} from "../atom/globalState";
-import {changePassword, getCurrentUser, updateProfile} from "../util/ApiUtil";
+import {getCurrentUser, updateProfile} from "../util/ApiUtil";
 import "./Profile.css";
 
 const {Meta} = Card;
@@ -10,9 +10,22 @@ const {Meta} = Card;
 const Profile = (props) => {
     const [currentUser, setLoggedInUser] = useRecoilState(loggedInUser);
     const [profileForm] = Form.useForm();
-    const [passwordForm] = Form.useForm();
     const [savingProfile, setSavingProfile] = useState(false);
-    const [changingPassword, setChangingPassword] = useState(false);
+
+    const clearPersistedState = () => {
+        const persisted = sessionStorage.getItem("recoil-persist");
+        if (!persisted) return;
+
+        try {
+            const data = JSON.parse(persisted);
+            delete data.chatActiveContact;
+            delete data.chatMessages;
+            delete data.loggedInUser;
+            sessionStorage.setItem("recoil-persist", JSON.stringify(data));
+        } catch (e) {
+            sessionStorage.removeItem("recoil-persist");
+        }
+    };
 
     useEffect(() => {
         if (localStorage.getItem("accessToken") === null) {
@@ -42,12 +55,17 @@ const Profile = (props) => {
     };
 
     const logout = () => {
+        clearPersistedState();
         localStorage.removeItem("accessToken");
         props.history.push("/login");
     };
 
     const goToChat = () => {
         props.history.push("/chat");
+    };
+
+    const goToSettings = () => {
+        props.history.push("/settings");
     };
 
     const onUpdateProfile = (values) => {
@@ -63,21 +81,6 @@ const Profile = (props) => {
             .finally(() => setSavingProfile(false));
     };
 
-    const onChangePassword = (values) => {
-        setChangingPassword(true);
-        changePassword({
-            currentPassword: values.currentPassword,
-            newPassword: values.newPassword,
-        })
-            .then((response) => {
-                message.success("Пароль изменён");
-                passwordForm.resetFields();
-            })
-            .catch((error) => {
-                message.error(error?.message || "Не удалось изменить пароль");
-            })
-            .finally(() => setChangingPassword(false));
-    };
 
     return (
         <div className="profile-container">
@@ -85,7 +88,8 @@ const Profile = (props) => {
                 style={{width: 520, border: "1px solid #e1e0e0"}}
                 actions={[
                     <Button type="primary" danger onClick={logout}>Выйти</Button>,
-                    <Button type="default" onClick={goToChat}>К чату</Button>
+                    <Button type="default" onClick={goToChat}>К чату</Button>,
+                    <Button type="default" onClick={goToSettings}>Настройки</Button>
                 ]}
             >
                 <Meta
@@ -152,57 +156,6 @@ const Profile = (props) => {
                     </Form.Item>
                 </Form>
 
-                <Divider>Смена пароля</Divider>
-                <Form
-                    form={passwordForm}
-                    layout="vertical"
-                    onFinish={onChangePassword}
-                    className="profile-form"
-                >
-                    <Form.Item
-                        name="currentPassword"
-                        label="Текущий пароль"
-                        rules={[{required: true, message: "Введите текущий пароль"}]}
-                    >
-                        <Input.Password placeholder="Текущий пароль"/>
-                    </Form.Item>
-
-                    <Form.Item
-                        name="newPassword"
-                        label="Новый пароль"
-                        rules={[
-                            {required: true, message: "Введите новый пароль"},
-                            {min: 6, max: 20, message: "От 6 до 20 символов"},
-                        ]}
-                    >
-                        <Input.Password placeholder="Новый пароль"/>
-                    </Form.Item>
-
-                    <Form.Item
-                        name="confirmPassword"
-                        label="Повторите новый пароль"
-                        dependencies={["newPassword"]}
-                        rules={[
-                            {required: true, message: "Повторите новый пароль"},
-                            ({getFieldValue}) => ({
-                                validator(_, value) {
-                                    if (!value || getFieldValue("newPassword") === value) {
-                                        return Promise.resolve();
-                                    }
-                                    return Promise.reject(new Error("Пароли не совпадают"));
-                                },
-                            }),
-                        ]}
-                    >
-                        <Input.Password placeholder="Повторите пароль"/>
-                    </Form.Item>
-
-                    <Form.Item>
-                        <Button type="primary" htmlType="submit" loading={changingPassword}>
-                            Обновить пароль
-                        </Button>
-                    </Form.Item>
-                </Form>
             </Card>
         </div>
     );

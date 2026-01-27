@@ -11,9 +11,11 @@ import ru.vkabanov.threadlyauth.exception.BadRequestException;
 import ru.vkabanov.threadlyauth.exception.EmailAlreadyExistsException;
 import ru.vkabanov.threadlyauth.exception.ResourceNotFoundException;
 import ru.vkabanov.threadlyauth.exception.UsernameAlreadyExistsException;
+import ru.vkabanov.threadlyauth.model.Profile;
 import ru.vkabanov.threadlyauth.model.Role;
 import ru.vkabanov.threadlyauth.model.User;
 import ru.vkabanov.threadlyauth.repository.UserRepository;
+import ru.vkabanov.threadlyauth.payload.UpdateProfileRequest;
 
 import java.util.HashSet;
 import java.util.List;
@@ -85,6 +87,44 @@ public class UserService {
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));
+        return userRepository.save(user);
+    }
+
+    public User updateProfile(String userId, UpdateProfileRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(userId));
+
+        String newUsername = request.getUsername();
+        if (!user.getUsername().equalsIgnoreCase(newUsername)) {
+            userRepository.findByUsernameIgnoreCase(newUsername).ifPresent(existing -> {
+                if (!existing.getId().equals(user.getId())) {
+                    throw new UsernameAlreadyExistsException(
+                            String.format("username %s already exists", newUsername));
+                }
+            });
+        }
+
+        String newEmail = request.getEmail();
+        if (!user.getEmail().equalsIgnoreCase(newEmail)) {
+            userRepository.findByEmail(newEmail).ifPresent(existing -> {
+                if (!existing.getId().equals(user.getId())) {
+                    throw new EmailAlreadyExistsException(
+                            String.format("email %s already exists", newEmail));
+                }
+            });
+        }
+
+        user.setUsername(newUsername);
+        user.setEmail(newEmail);
+
+        Profile profile = user.getUserProfile();
+        if (profile == null) {
+            profile = new Profile();
+        }
+        profile.setDisplayName(request.getName());
+        profile.setProfilePictureUrl(request.getProfilePictureUrl());
+        user.setUserProfile(profile);
+
         return userRepository.save(user);
     }
 }
