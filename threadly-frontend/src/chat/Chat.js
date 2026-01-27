@@ -119,7 +119,10 @@ const Chat = (props) => {
             const newMessages = [...messages];
             newMessages.push(message);
             setMessages(newMessages);
-            loadContacts();
+            if (!contacts.some((contact) => contact.id === activeContact.id)) {
+                setContacts([activeContact, ...contacts]);
+            }
+            loadContacts(activeContact?.id);
         }
     };
 
@@ -197,11 +200,14 @@ const Chat = (props) => {
             .finally(() => setProfileLoading(false));
     };
 
-    const loadContacts = () => {
+    const loadContacts = (forceContactId) => {
         Promise.all([getUsers(), getChatContacts(currentUser.id)])
             .then(([users, contactIds]) => {
+                const idsWithForce = forceContactId && !contactIds.includes(forceContactId)
+                    ? [...contactIds, forceContactId]
+                    : contactIds;
                 const contactsWithHistory = users.filter((contact) =>
-                    contact.id !== currentUser.id && contactIds.includes(contact.id)
+                    contact.id !== currentUser.id && idsWithForce.includes(contact.id)
                 );
 
                 setAllUsers(users.filter((contact) => contact.id !== currentUser.id));

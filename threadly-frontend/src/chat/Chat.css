@@ -1145,11 +1145,6 @@ span.status-circle:before {
     font-size: 16px;
 }
 
-.view-profile-btn {
-    margin-left: auto;
-    color: #2c3e50;
-}
-
 .contact-profile-drawer .ant-drawer-body {
     background: #f7f9fb;
 }

@@ -9,13 +9,19 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import ru.vkabanov.threadlyauth.exception.ResourceNotFoundException;
 import ru.vkabanov.threadlyauth.model.ThreadlyUserDetails;
 import ru.vkabanov.threadlyauth.model.User;
+import ru.vkabanov.threadlyauth.payload.ApiResponse;
+import ru.vkabanov.threadlyauth.payload.ChangePasswordRequest;
 import ru.vkabanov.threadlyauth.payload.UserSummary;
 import ru.vkabanov.threadlyauth.service.UserService;
+
+import javax.validation.Valid;
 
 
 @RestController
@@ -66,6 +72,15 @@ public class UserEndpoint {
                 .name(userDetails.getUserProfile().getDisplayName())
                 .profilePicture(userDetails.getUserProfile().getProfilePictureUrl())
                 .build();
+    }
+
+    @PutMapping(value = "/users/me/password", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse> changePassword(
+            @AuthenticationPrincipal ThreadlyUserDetails userDetails,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        userService.changePassword(userDetails.getId(), request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.ok(new ApiResponse(true, "Пароль изменён"));
     }
 
     @GetMapping(value = "/users/summary/{username}", produces = MediaType.APPLICATION_JSON_VALUE)
