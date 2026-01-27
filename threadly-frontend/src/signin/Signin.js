@@ -1,79 +1,20 @@
 import React, {useEffect, useState} from "react";
-import {Form, Input, Button, Divider, notification} from "antd";
+import {Form, Input, Button, notification} from "antd";
 import {
     UserOutlined,
     LockOutlined,
-    FacebookFilled,
 } from "@ant-design/icons";
-import {login, facebookLogin} from "../util/ApiUtil";
+import {login} from "../util/ApiUtil";
 import "./Signin.css";
-
-/*global FB*/
 
 const Signin = (props) => {
     const [loading, setLoading] = useState(false);
-    const [facebookLoading, setFacebookLoading] = useState(false);
-    const [test, setTest] = useState(localStorage.getItem("accessToken"));
 
     useEffect(() => {
         if (localStorage.getItem("accessToken") !== null) {
             props.history.push("/");
         }
-        initFacebookLogin();
     }, []);
-
-    useEffect(() => {
-        initFacebookLogin();
-    }, [test]);
-
-    const initFacebookLogin = () => {
-        window.fbAsyncInit = function () {
-            FB.init({
-                appId: "118319422120166",
-                autoLogAppEvents: true,
-                xfbml: true,
-                version: "v7.0",
-            });
-        };
-    };
-
-    const getFacebookAccessToken = () => {
-        setFacebookLoading(true);
-        FB.login(
-            function (response) {
-                if (response.status === "connected") {
-                    const facebookLoginRequest = {
-                        accessToken: response.authResponse.accessToken,
-                    };
-                    facebookLogin(facebookLoginRequest)
-                        .then((response) => {
-                            localStorage.setItem("accessToken", response.accessToken);
-                            props.history.push("/");
-                            setFacebookLoading(false);
-                        })
-                        .catch((error) => {
-                            if (error.status === 401) {
-                                notification.error({
-                                    message: "Ошибка",
-                                    description: "Неверные учетные данные",
-                                });
-                            } else {
-                                notification.error({
-                                    message: "Ошибка",
-                                    description:
-                                        error.message ||
-                                        "Что-то пошло не так. Пожалуйста, попробуйте еще раз!",
-                                });
-                            }
-                            setFacebookLoading(false);
-                        });
-                } else {
-                    console.log(response);
-                }
-            },
-            {scope: "email"}
-        );
-    };
 
     const onFinish = (values) => {
         setLoading(true);
@@ -146,19 +87,6 @@ const Signin = (props) => {
                         loading={loading}
                     >
                         Войти
-                    </Button>
-                </Form.Item>
-                <Divider>ИЛИ</Divider>
-                <Form.Item>
-                    <Button
-                        icon={<FacebookFilled style={{fontSize: 20}}/>}
-                        loading={facebookLoading}
-                        className="login-with-facebook"
-                        shape="round"
-                        size="large"
-                        onClick={getFacebookAccessToken}
-                    >
-                        Войти через Facebook
                     </Button>
                 </Form.Item>
                 Еще нет аккаунта? <a href="/signup">Зарегистрироваться</a>
