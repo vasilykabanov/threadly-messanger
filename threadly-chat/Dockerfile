@@ -1,6 +1,11 @@
-FROM eclipse-temurin:17-jdk-jammy
+FROM maven:3.9.9-eclipse-temurin-17 AS build
+COPY pom.xml .
+RUN mvn -B -DskipTests dependency:resolve
+COPY src ./src
+RUN mvn -B -DskipTests clean package
+
+FROM eclipse-temurin:17-jre-jammy
 VOLUME /tmp
 EXPOSE 8080
-ARG JAR_FILE=target/threadly-chat-0.0.1.jar
-ADD ${JAR_FILE} app.jar
+COPY --from=build /target/threadly-chat-0.0.1.jar app.jar
 ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]

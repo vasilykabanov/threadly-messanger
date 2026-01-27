@@ -80,7 +80,7 @@ const Chat = (props) => {
                 setMessages(newMessages);
             });
         } else {
-            message.info("Received a new message from " + notification.senderName);
+            // message.info("Received a new message from " + notification.senderName); TODO для чего тут так?
         }
         loadContacts();
     };
