@@ -39,12 +39,17 @@ const Settings = (props) => {
         props.history.push("/");
     };
 
+    const goToChat = () => {
+        props.history.push("/chat");
+    };
+
     return (
         <div className="profile-container">
             <Card
                 style={{width: 520, border: "1px solid #e1e0e0"}}
                 actions={[
-                    <Button type="default" onClick={goToProfile}>Профиль</Button>
+                    <Button type="default" onClick={goToProfile}>Профиль</Button>,
+                    <Button type="default" onClick={goToChat}>Чаты</Button>
                 ]}
             >
                 <div style={{textAlign: "center", fontWeight: 600}}>

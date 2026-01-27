@@ -27,7 +27,7 @@ const Signin = (props) => {
 
     useEffect(() => {
         if (localStorage.getItem("accessToken") !== null) {
-            props.history.push("/");
+            props.history.push("/chat");
         }
     }, []);
 
@@ -37,7 +37,7 @@ const Signin = (props) => {
             .then((response) => {
                 clearPersistedState();
                 localStorage.setItem("accessToken", response.accessToken);
-                props.history.push("/");
+                props.history.push("/chat");
                 setLoading(false);
             })
             .catch((error) => {
@@ -75,7 +75,17 @@ const Signin = (props) => {
             >
                 <Form.Item
                     name="username"
-                    rules={[{required: true, message: "Введите логин!"}]}
+                    rules={[
+                        {required: true, message: "Введите логин!"},
+                        {
+                            validator: (_, value) => {
+                                if (!value) return Promise.resolve();
+                                return /[А-Яа-яЁё]/.test(value)
+                                    ? Promise.reject(new Error("Логин должен быть на латинице"))
+                                    : Promise.resolve();
+                            },
+                        },
+                    ]}
                 >
                     <Input
                         size="large"

@@ -88,7 +88,7 @@ const Profile = (props) => {
                 style={{width: 520, border: "1px solid #e1e0e0"}}
                 actions={[
                     <Button type="primary" danger onClick={logout}>Выйти</Button>,
-                    <Button type="default" onClick={goToChat}>К чату</Button>,
+                    <Button type="default" onClick={goToChat}>Чаты</Button>,
                     <Button type="default" onClick={goToSettings}>Настройки</Button>
                 ]}
             >
