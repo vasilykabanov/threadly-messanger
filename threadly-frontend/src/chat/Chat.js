@@ -1,10 +1,12 @@
 import React, {useEffect, useState} from "react";
-import {Button, message} from "antd";
+import {Button, Drawer, message, Spin} from "antd";
 import {
     getUsers,
     countNewMessages,
     findChatMessages,
     findChatMessage,
+    getUserSummary,
+    getChatContacts,
 } from "../util/ApiUtil";
 import {useRecoilValue, useRecoilState} from "recoil";
 import {
@@ -31,9 +33,14 @@ const Chat = (props) => {
     const currentUser = useRecoilValue(loggedInUser);
     const [text, setText] = useState("");
     const [contacts, setContacts] = useState([]);
+    const [allUsers, setAllUsers] = useState([]);
     const [activeContact, setActiveContact] = useRecoilState(chatActiveContact);
     const [messages, setMessages] = useRecoilState(chatMessages);
     const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [profileLoading, setProfileLoading] = useState(false);
+    const [profileData, setProfileData] = useState(null);
+    const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
         if (localStorage.getItem("accessToken") === null) {
@@ -47,6 +54,11 @@ const Chat = (props) => {
         if (!activeContact?.id) return;
         loadChatForContact(activeContact);
     }, [activeContact?.id]);
+
+    useEffect(() => {
+        if (!isProfileOpen || !activeContact?.username) return;
+        loadContactProfile(activeContact);
+    }, [isProfileOpen, activeContact?.username]);
 
     const connect = () => {
         const Stomp = require("stompjs");
@@ -107,8 +119,66 @@ const Chat = (props) => {
             const newMessages = [...messages];
             newMessages.push(message);
             setMessages(newMessages);
+            loadContacts();
         }
     };
+
+    const normalizeText = (value = "") =>
+        value
+            .toLowerCase()
+            .replace(/^@/, "")
+            .replace(/[^a-z0-9а-яё]/gi, "");
+
+    const levenshtein = (a, b) => {
+        if (a === b) return 0;
+        if (!a) return b.length;
+        if (!b) return a.length;
+
+        const matrix = Array.from({length: a.length + 1}, () => []);
+
+        for (let i = 0; i <= a.length; i += 1) {
+            matrix[i][0] = i;
+        }
+        for (let j = 0; j <= b.length; j += 1) {
+            matrix[0][j] = j;
+        }
+
+        for (let i = 1; i <= a.length; i += 1) {
+            for (let j = 1; j <= b.length; j += 1) {
+                const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j] + 1,
+                    matrix[i][j - 1] + 1,
+                    matrix[i - 1][j - 1] + cost
+                );
+            }
+        }
+
+        return matrix[a.length][b.length];
+    };
+
+    const isFuzzyMatch = (query, value) => {
+        const normalizedQuery = normalizeText(query);
+        const normalizedValue = normalizeText(value);
+
+        if (!normalizedQuery) return true;
+        if (!normalizedValue) return false;
+        if (normalizedValue.includes(normalizedQuery)) return true;
+
+        const distance = levenshtein(normalizedQuery, normalizedValue);
+        const length = normalizedQuery.length;
+
+        const maxDistance = length <= 4 ? 1 : length <= 8 ? 2 : 3;
+        return distance <= maxDistance;
+    };
+
+    const filteredContacts = contacts.filter((contact) =>
+        isFuzzyMatch(searchQuery, contact.username || contact.name)
+    );
+
+    const searchResults = searchQuery.trim()
+        ? allUsers.filter((user) => isFuzzyMatch(searchQuery, user.username || user.name))
+        : [];
 
     const loadChatForContact = (contact) => {
         if (!contact?.id) return;
@@ -117,27 +187,41 @@ const Chat = (props) => {
             .then(setMessages);
     };
 
-    const loadContacts = () => {
-        const promise = getUsers().then((users) =>
-            users
-                .filter((contact) => !currentUser?.id || contact.id !== currentUser.id)
-                .map((contact) =>
-                    countNewMessages(contact.id, currentUser.id).then((count) => {
-                        contact.newMessages = count;
-                        return contact;
-                    })
-                )
-        );
+    const loadContactProfile = (contact) => {
+        if (!contact?.username) return;
+        setProfileData(null);
+        setProfileLoading(true);
+        getUserSummary(contact.username)
+            .then((data) => setProfileData(data))
+            .catch(() => setProfileData(contact))
+            .finally(() => setProfileLoading(false));
+    };
 
-        promise.then((promises) =>
-            Promise.all(promises).then((users) => {
+    const loadContacts = () => {
+        Promise.all([getUsers(), getChatContacts(currentUser.id)])
+            .then(([users, contactIds]) => {
+                const contactsWithHistory = users.filter((contact) =>
+                    contact.id !== currentUser.id && contactIds.includes(contact.id)
+                );
+
+                setAllUsers(users.filter((contact) => contact.id !== currentUser.id));
+
+                return Promise.all(
+                    contactsWithHistory.map((contact) =>
+                        countNewMessages(contact.id, currentUser.id).then((count) => {
+                            contact.newMessages = count;
+                            return contact;
+                        })
+                    )
+                );
+            })
+            .then((users) => {
                 setContacts(users);
                 const activeInList = users.find((contact) => contact.id === activeContact?.id);
                 if (!activeInList && users.length > 0) {
                     setActiveContact(users[0]);
                 }
-            })
-        );
+            });
     };
 
     const formatTime = (isoDate) => {
@@ -195,10 +279,55 @@ const Chat = (props) => {
                         </div>
                     </div>
                 </div>
-                <div id="search"/>
+                <div id="search">
+                    <label htmlFor="contact-search">
+                        <i className="fa fa-search" aria-hidden="true"></i>
+                    </label>
+                    <input
+                        id="contact-search"
+                        type="text"
+                        placeholder="Поиск по юзернейму"
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
+                    />
+                </div>
+                {searchQuery.trim() && (
+                    <div className="search-results">
+                        <div className="search-results-title">Результаты поиска</div>
+                        <ul>
+                            {searchResults.length > 0 ? (
+                                searchResults.map((user) => (
+                                    <li
+                                        key={user.id}
+                                        className="search-result-item"
+                                        onClick={() => {
+                                            setIsMobileChatOpen(true);
+                                            setActiveContact(user);
+                                            setSearchQuery("");
+                                        }}
+                                    >
+                                        <div className="avatar-wrapper">
+                                            <Avatar
+                                                name={user.name}
+                                                src={user.profilePicture}
+                                                size={36}
+                                            />
+                                        </div>
+                                        <div className="search-result-meta">
+                                            <p className="name">{user.name}</p>
+                                            <p className="username">@{user.username}</p>
+                                        </div>
+                                    </li>
+                                ))
+                            ) : (
+                                <li className="search-result-empty">Ничего не найдено</li>
+                            )}
+                        </ul>
+                    </div>
+                )}
                 <div id="contacts">
                     <ul>
-                        {contacts.map((contact) => (
+                        {filteredContacts.map((contact) => (
                             <li
                                 key={contact.id}
                                 onClick={() => {
@@ -263,12 +392,25 @@ const Chat = (props) => {
                             <button className="back-btn" onClick={() => setIsMobileChatOpen(false)}>
                                 ←
                             </button>
-                            <Avatar
-                                name={activeContact.name}
-                                src={activeContact.profilePicture}
-                                size={44}
-                            />
-                            <p>{activeContact.name}</p>
+                            <button
+                                type="button"
+                                className="contact-profile-trigger"
+                                onClick={() => setIsProfileOpen(true)}
+                            >
+                                <Avatar
+                                    name={activeContact.name}
+                                    src={activeContact.profilePicture}
+                                    size={44}
+                                />
+                                <span className="contact-profile-name">{activeContact.name}</span>
+                            </button>
+                            <Button
+                                type="text"
+                                className="view-profile-btn"
+                                onClick={() => setIsProfileOpen(true)}
+                            >
+                                Профиль
+                            </Button>
                         </div>
 
                         <ScrollToBottom key={activeContact.id} className="messages">
@@ -339,6 +481,43 @@ const Chat = (props) => {
                     </div>
                 )}
             </div>
+
+            <Drawer
+                title="Профиль собеседника"
+                placement="right"
+                onClose={() => setIsProfileOpen(false)}
+                visible={isProfileOpen}
+                destroyOnClose
+                className="contact-profile-drawer"
+            >
+                {profileLoading ? (
+                    <div className="contact-profile-loading">
+                        <Spin />
+                    </div>
+                ) : (
+                    <div className="contact-profile-card">
+                        <Avatar
+                            name={profileData?.name || activeContact?.name}
+                            src={profileData?.profilePicture || activeContact?.profilePicture}
+                            size={96}
+                        />
+                        <div className="contact-profile-title">
+                            {profileData?.name || activeContact?.name}
+                        </div>
+                        <div className="contact-profile-username">
+                            @{profileData?.username || activeContact?.username}
+                        </div>
+                        {activeContact?.status && (
+                            <div className={`contact-profile-status ${activeContact.status}`}>
+                                {activeContact.status === "online" && "В сети"}
+                                {activeContact.status === "away" && "Нет на месте"}
+                                {activeContact.status === "busy" && "Занят"}
+                                {activeContact.status === "offline" && "Оффлайн"}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </Drawer>
         </div>
     );
 };

@@ -37,7 +37,7 @@ public class UserService {
     public User registerUser(User user, Role role) {
         log.info("registering user {}", user.getUsername());
 
-        if(userRepository.existsByUsername(user.getUsername())) {
+        if(userRepository.existsByUsernameIgnoreCase(user.getUsername())) {
             log.warn("username {} already exists.", user.getUsername());
 
             throw new UsernameAlreadyExistsException(
@@ -66,7 +66,7 @@ public class UserService {
 
     public Optional<User> findByUsername(String username) {
         log.info("retrieving user {}", username);
-        return userRepository.findByUsername(username);
+        return userRepository.findByUsernameIgnoreCase(username);
     }
 
     public Optional<User> findById(String id) {

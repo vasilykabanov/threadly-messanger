@@ -70,7 +70,7 @@ const Profile = (props) => {
             newPassword: values.newPassword,
         })
             .then((response) => {
-                message.success(response?.message || "Пароль обновлён");
+                message.success("Пароль изменён");
                 passwordForm.resetFields();
             })
             .catch((error) => {

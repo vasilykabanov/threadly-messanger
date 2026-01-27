@@ -463,6 +463,57 @@ span.status-circle:before {
     color: #f5f5f5;
 }
 
+.search-results {
+    border-bottom: 1px solid #32465a;
+    background: #2c3e50;
+    color: #f5f5f5;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.search-results-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 10px 16px 6px;
+    color: #cbd3dc;
+}
+
+.search-results ul {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 8px 0;
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    cursor: pointer;
+}
+
+.search-result-item:hover {
+    background: #32465a;
+}
+
+.search-result-meta .name {
+    margin: 0;
+    font-size: 14px;
+}
+
+.search-result-meta .username {
+    margin: 0;
+    font-size: 12px;
+    color: #cbd3dc;
+}
+
+.search-result-empty {
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #cbd3dc;
+}
+
 #frame #sidepanel #contacts {
     height: calc(100% - 177px);
     overflow-y: auto;
@@ -1070,4 +1121,89 @@ span.status-circle:before {
     #frame #sidepanel #contacts ul li.contact .wrap .meta {
         display: block;
     }
+}
+
+.contact-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.contact-profile-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    color: inherit;
+}
+
+.contact-profile-name {
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.view-profile-btn {
+    margin-left: auto;
+    color: #2c3e50;
+}
+
+.contact-profile-drawer .ant-drawer-body {
+    background: #f7f9fb;
+}
+
+.contact-profile-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 0;
+}
+
+.contact-profile-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 0;
+    text-align: center;
+}
+
+.contact-profile-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.contact-profile-username {
+    color: #6b7c93;
+}
+
+.contact-profile-status {
+    padding: 6px 12px;
+    border-radius: 14px;
+    font-size: 12px;
+    background: #e8edf3;
+    color: #2c3e50;
+}
+
+.contact-profile-status.online {
+    background: rgba(46, 204, 113, 0.15);
+    color: #1e8e57;
+}
+
+.contact-profile-status.away {
+    background: rgba(241, 196, 15, 0.2);
+    color: #b8860b;
+}
+
+.contact-profile-status.busy {
+    background: rgba(231, 76, 60, 0.15);
+    color: #c0392b;
+}
+
+.contact-profile-status.offline {
+    background: rgba(149, 165, 166, 0.2);
+    color: #7f8c8d;
 }

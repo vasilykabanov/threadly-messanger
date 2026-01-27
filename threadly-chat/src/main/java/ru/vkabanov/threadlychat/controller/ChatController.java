@@ -33,4 +33,9 @@ public class ChatController {
     public ResponseEntity<ChatMessage> findMessage(@PathVariable String id) {
         return ResponseEntity.ok(chatMessageService.findById(id));
     }
+
+    @GetMapping(value = "/messages/contacts/{userId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<String>> findChatContacts(@PathVariable String userId) {
+        return ResponseEntity.ok(chatMessageService.findContactIds(userId));
+    }
 }
