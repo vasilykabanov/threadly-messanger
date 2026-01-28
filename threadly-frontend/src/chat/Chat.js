@@ -272,22 +272,29 @@ const Chat = (props) => {
                             countNewMessages(contact.id, currentUser.id),
                             findChatMessages(contact.id, currentUser.id)
                         ]).then(([count, msgs]) => {
-                            contact.newMessages = count;
-                            if (msgs.length > 0) {
-                                setLastMessageByContact((prev) => ({
-                                    ...prev,
-                                    [contact.id]: msgs[msgs.length - 1],
-                                }));
-                            }
-                            return contact;
+                            const lastMessage = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+                            return {
+                                ...contact,
+                                newMessages: count,
+                                lastMessage,
+                            };
                         })
                     )
                 );
             })
             .then((users) => {
+                const lastMessagesMap = users.reduce((acc, contact) => {
+                    if (contact.lastMessage) {
+                        acc[contact.id] = contact.lastMessage;
+                    }
+                    return acc;
+                }, {});
+
+                setLastMessageByContact(lastMessagesMap);
+
                 const sorted = [...users].sort((a, b) => {
-                    const aMsg = lastMessageByContact[a.id];
-                    const bMsg = lastMessageByContact[b.id];
+                    const aMsg = a.lastMessage || lastMessagesMap[a.id];
+                    const bMsg = b.lastMessage || lastMessagesMap[b.id];
                     if (!aMsg && !bMsg) return 0;
                     if (!aMsg) return 1;
                     if (!bMsg) return -1;
@@ -733,6 +740,14 @@ const Chat = (props) => {
                                 {activeContact.status === "offline" && "Оффлайн"}
                             </div>
                         )}
+                        <Button
+                            danger
+                            type="primary"
+                            className="delete-chat-btn"
+                            onClick={() => confirmDeleteChat(activeContact)}
+                        >
+                            Удалить чат
+                        </Button>
                     </div>
                 )}
             </Drawer>

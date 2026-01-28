@@ -25,10 +25,15 @@ const Signup = (props) => {
                 setLoading(false);
             })
             .catch((error) => {
+                const serverMessage =
+                    error?.message ||
+                    error?.error ||
+                    error?.errors?.[0]?.message ||
+                    error?.errors?.[0]?.defaultMessage;
                 notification.error({
                     message: "Ошибка",
                     description:
-                        error.message || "Что-то пошло не так. Пожалуйста, попробуйте еще раз!",
+                        serverMessage || "Что-то пошло не так. Пожалуйста, попробуйте еще раз!",
                 });
                 setLoading(false);
             });

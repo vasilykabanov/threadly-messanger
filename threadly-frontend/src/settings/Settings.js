@@ -188,6 +188,11 @@ const Settings = (props) => {
                         />
                     </div>
                 )}
+
+                <Divider />
+                <Button danger type="primary" block onClick={logout}>
+                    Выйти из аккаунта
+                </Button>
             </Card>
             <div className="mobile-bottom-nav">
                 <button type="button" className="mobile-nav-item" onClick={goToChat}>

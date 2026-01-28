@@ -88,7 +88,7 @@ body.theme-new.theme-new-light .mobile-nav-item.danger {
     }
 
     .profile-container {
-        padding-bottom: 96px;
+        padding-bottom: 140px;
     }
 
     .mobile-back-btn {
@@ -165,7 +165,7 @@ body.theme-new.theme-new-light .mobile-nav-item {
 .settings-nav-left {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 14px;
 }
 
 .desktop-back-row {
