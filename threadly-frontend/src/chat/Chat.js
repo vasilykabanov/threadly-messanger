@@ -17,7 +17,6 @@ import {
     chatMessages,
     uiTheme,
     uiThemeMode,
-    uiTimeLayout,
 } from "../atom/globalState";
 import ScrollToBottom from "react-scroll-to-bottom";
 import "./Chat.css";
@@ -43,7 +42,6 @@ const Chat = (props) => {
     const [messages, setMessages] = useRecoilState(chatMessages);
     const [theme, setTheme] = useRecoilState(uiTheme);
     const [themeMode, setThemeMode] = useRecoilState(uiThemeMode);
-    const [timeLayout] = useRecoilState(uiTimeLayout);
     const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -58,17 +56,10 @@ const Chat = (props) => {
 
     useEffect(() => {
         document.body.classList.add("chat-page");
-        document.body.classList.add(`time-layout-${timeLayout}`);
         return () => {
             document.body.classList.remove("chat-page");
-            document.body.classList.remove("time-layout-overlay", "time-layout-below", "time-layout-inline");
         };
     }, []);
-
-    useEffect(() => {
-        document.body.classList.remove("time-layout-overlay", "time-layout-below", "time-layout-inline");
-        document.body.classList.add(`time-layout-${timeLayout}`);
-    }, [timeLayout]);
 
     useEffect(() => {
         if (localStorage.getItem("accessToken") === null) {

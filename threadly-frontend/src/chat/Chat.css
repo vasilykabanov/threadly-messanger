@@ -1029,8 +1029,8 @@ span.status-circle:before {
 .message-bubble {
     position: relative;
     max-width: 70%;
-    padding-right: 56px;
-    padding-bottom: 22px;
+    padding-right: 12px;
+    padding-bottom: 10px;
 }
 
 .message-bubble .text {
@@ -1039,45 +1039,14 @@ span.status-circle:before {
 }
 
 .message-bubble .time {
-    position: absolute;
-    right: 10px;
-    bottom: 6px;
-    font-size: 11px;
-    color: #999;
-}
-
-body.time-layout-below .message-bubble,
-body.time-layout-inline .message-bubble {
-    padding-right: 12px;
-    padding-bottom: 10px;
-}
-
-body.time-layout-below .sent p.message-bubble,
-body.time-layout-below .replies p.message-bubble,
-body.time-layout-inline .sent p.message-bubble,
-body.time-layout-inline .replies p.message-bubble {
-    padding-right: 12px;
-    padding-bottom: 10px;
-}
-
-body.time-layout-below .message-bubble .time {
     position: static;
     display: block;
     margin-top: 6px;
     text-align: right;
+    font-size: 11px;
+    color: #999;
 }
 
-body.time-layout-inline .message-bubble .text {
-    display: inline;
-}
-
-body.time-layout-inline .message-bubble .time {
-    position: static;
-    display: inline-block;
-    margin-left: 8px;
-    white-space: nowrap;
-    vertical-align: baseline;
-}
 
 .sent p, .replies p {
     background: #e0f7fa;
@@ -1087,8 +1056,8 @@ body.time-layout-inline .message-bubble .time {
 
 .sent p.message-bubble,
 .replies p.message-bubble {
-    padding-right: 56px;
-    padding-bottom: 22px;
+    padding-right: 12px;
+    padding-bottom: 10px;
 }
 
 .date-separator {

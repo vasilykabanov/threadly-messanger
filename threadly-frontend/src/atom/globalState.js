@@ -18,14 +18,6 @@ const getInitialThemeMode = () => {
     }
 };
 
-const getInitialTimeLayout = () => {
-    if (typeof window === "undefined") return "overlay";
-    try {
-        return localStorage.getItem("uiTimeLayout") || "overlay";
-    } catch (error) {
-        return "overlay";
-    }
-};
 
 export const loggedInUser = atom({
     key: "loggedInUser",
@@ -60,7 +52,3 @@ export const uiThemeMode = atom({
     default: getInitialThemeMode(),
 });
 
-export const uiTimeLayout = atom({
-    key: "uiTimeLayout",
-    default: getInitialTimeLayout(),
-});

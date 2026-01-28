@@ -1,15 +1,14 @@
 import React, {useEffect, useState} from "react";
-import {Card, Button, Divider, Form, Input, Switch, message, Radio} from "antd";
+import {Card, Button, Divider, Form, Input, Switch, message} from "antd";
 import {changePassword, getCurrentUser} from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
-import {loggedInUser, uiTheme, uiThemeMode, uiTimeLayout} from "../atom/globalState";
+import {loggedInUser, uiTheme, uiThemeMode} from "../atom/globalState";
 import "../profile/Profile.css";
 
 const Settings = (props) => {
     const [currentUser, setLoggedInUser] = useRecoilState(loggedInUser);
     const [theme, setTheme] = useRecoilState(uiTheme);
     const [themeMode, setThemeMode] = useRecoilState(uiThemeMode);
-    const [timeLayout, setTimeLayout] = useRecoilState(uiTimeLayout);
     const [passwordForm] = Form.useForm();
     const [changingPassword, setChangingPassword] = useState(false);
 
@@ -51,12 +50,6 @@ const Settings = (props) => {
         }
     }, [themeMode]);
 
-    useEffect(() => {
-        try {
-            localStorage.setItem("uiTimeLayout", timeLayout);
-        } catch (error) {
-        }
-    }, [timeLayout]);
 
     const onChangePassword = (values) => {
         setChangingPassword(true);
@@ -196,17 +189,6 @@ const Settings = (props) => {
                         />
                     </div>
                 )}
-
-                <Divider>Отображение времени</Divider>
-                <Radio.Group
-                    value={timeLayout}
-                    onChange={(event) => setTimeLayout(event.target.value)}
-                    className="settings-time-layout"
-                >
-                    <Radio.Button value="overlay">Внутри пузыря справа снизу</Radio.Button>
-                    <Radio.Button value="below">Под сообщением</Radio.Button>
-                    <Radio.Button value="inline">В строке справа</Radio.Button>
-                </Radio.Group>
 
                 <Divider />
                 <Button danger type="primary" block onClick={logout}>
