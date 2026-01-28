@@ -70,6 +70,14 @@ body.theme-new.theme-new-light .mobile-nav-item.active {
     font-size: 18px;
 }
 
+.mobile-nav-item.danger {
+    color: #f87171;
+}
+
+body.theme-new.theme-new-light .mobile-nav-item.danger {
+    color: #dc2626;
+}
+
 @media (max-width: 768px) {
     .profile-container .ant-card-actions {
         display: none;
@@ -164,6 +172,14 @@ body.theme-new.theme-new-light .mobile-nav-item {
     display: flex;
     justify-content: space-between;
     margin-bottom: 12px;
+}
+
+body.theme-new .desktop-back-row .ant-btn-text {
+    color: #e2e8f0;
+}
+
+body.theme-new.theme-new-light .desktop-back-row .ant-btn-text {
+    color: #0f172a;
 }
 
 @media (max-width: 768px) {

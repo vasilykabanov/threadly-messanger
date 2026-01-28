@@ -223,6 +223,20 @@ const Profile = (props) => {
                 </Form>
 
             </Card>
+            <div className="mobile-bottom-nav">
+                <button type="button" className="mobile-nav-item" onClick={goToChat}>
+                    <i className="fa fa-comments" aria-hidden="true"></i>
+                    <span>Чаты</span>
+                </button>
+                <button type="button" className="mobile-nav-item" onClick={goToSettings}>
+                    <i className="fa fa-cog" aria-hidden="true"></i>
+                    <span>Настройки</span>
+                </button>
+                <button type="button" className="mobile-nav-item danger" onClick={logout}>
+                    <i className="fa fa-sign-out" aria-hidden="true"></i>
+                    <span>Выйти</span>
+                </button>
+            </div>
         </div>
     );
 };

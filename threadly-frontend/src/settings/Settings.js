@@ -12,6 +12,21 @@ const Settings = (props) => {
     const [passwordForm] = Form.useForm();
     const [changingPassword, setChangingPassword] = useState(false);
 
+    const clearPersistedState = () => {
+        const persisted = sessionStorage.getItem("recoil-persist");
+        if (!persisted) return;
+
+        try {
+            const data = JSON.parse(persisted);
+            delete data.chatActiveContact;
+            delete data.chatMessages;
+            delete data.loggedInUser;
+            sessionStorage.setItem("recoil-persist", JSON.stringify(data));
+        } catch (e) {
+            sessionStorage.removeItem("recoil-persist");
+        }
+    };
+
     useEffect(() => {
         if (localStorage.getItem("accessToken") === null) {
             props.history.push("/login");
@@ -62,6 +77,12 @@ const Settings = (props) => {
     const goToChat = () => {
         window.scrollTo(0, 0);
         props.history.push("/chat");
+    };
+
+    const logout = () => {
+        clearPersistedState();
+        localStorage.removeItem("accessToken");
+        props.history.push("/login");
     };
 
     return (
@@ -176,6 +197,10 @@ const Settings = (props) => {
                 <button type="button" className="mobile-nav-item active">
                     <i className="fa fa-cog" aria-hidden="true"></i>
                     <span>Настройки</span>
+                </button>
+                <button type="button" className="mobile-nav-item danger" onClick={logout}>
+                    <i className="fa fa-sign-out" aria-hidden="true"></i>
+                    <span>Выйти</span>
                 </button>
             </div>
         </div>

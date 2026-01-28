@@ -44,19 +44,23 @@
 
 @media screen and (max-width: 735px) {
     #frame #sidepanel {
-        width: 58px;
-        min-width: 58px;
-    .menu-trigger {
-        display: none;
-    }
         width: 100%;
-
-#frame.chat-open ~ .mobile-bottom-nav {
-    display: none;
-}
+        min-width: 100%;
         margin: 0 auto;
         padding: 5px 0 0 0;
         background: #32465a;
+    }
+
+    .menu-trigger {
+        display: none;
+    }
+
+    #frame.chat-open ~ .mobile-bottom-nav {
+        display: none;
+    }
+
+    #frame.chat-open .mobile-bottom-nav {
+        display: none;
     }
 
     #frame #sidepanel #profile .wrap {
@@ -685,6 +689,24 @@ span.status-circle:before {
     justify-content: center;
 }
 
+#frame #sidepanel #contacts ul li.contact .wrap .meta .meta-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+#frame #sidepanel #contacts ul li.contact .wrap .meta .meta-header .name {
+    flex: 1;
+    min-width: 0;
+}
+
+#frame #sidepanel #contacts ul li.contact .wrap .meta .last-time {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+
 @media screen and (max-width: 735px) {
     #frame #sidepanel #contacts ul li.contact .wrap .meta {
         display: none;
@@ -1000,7 +1022,11 @@ span.status-circle:before {
 .message-bubble {
     position: relative;
     max-width: 70%;
-    padding-right: 42px;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-right: 12px;
+    padding-bottom: 2px;
 }
 
 .message-bubble .text {
@@ -1009,9 +1035,9 @@ span.status-circle:before {
 }
 
 .message-bubble .time {
-    position: absolute;
-    right: 10px;
-    bottom: 6px;
+    position: static;
+    align-self: flex-end;
+    line-height: 1;
     font-size: 11px;
     color: #999;
 }
@@ -1601,7 +1627,7 @@ body.theme-new.theme-new-light #frame .content {
 }
 
 body.theme-new.theme-new-light #frame .content .messages {
-    background: #f8fafc;
+    background: #ffffff;
 }
 
 body.theme-new.theme-new-light #frame .content .contact-profile {
@@ -1613,6 +1639,10 @@ body.theme-new.theme-new-light #frame .content .messages ul li.replies p {
     background: rgba(255, 255, 255, 0.95);
     color: #0f172a;
     border-color: rgba(148, 163, 184, 0.35);
+}
+
+body.theme-new.theme-new-light .message-bubble .time {
+    color: rgba(15, 23, 42, 0.6);
 }
 
 body.theme-new.theme-new-light #frame .content .message-input {
@@ -1734,6 +1764,19 @@ body.theme-new .chat-menu-drawer .ant-drawer-header {
 body.theme-new .chat-menu-drawer .ant-drawer-title,
 body.theme-new .chat-menu-drawer .ant-drawer-close {
     color: #e2e8f0;
+}
+
+body.theme-new.theme-new-light .chat-menu-drawer .ant-drawer-content,
+body.theme-new.theme-new-light .chat-menu-drawer .ant-drawer-body,
+body.theme-new.theme-new-light .chat-menu-drawer .ant-drawer-header {
+    background: rgba(255, 255, 255, 0.98);
+    color: #0f172a;
+    border-color: rgba(148, 163, 184, 0.35);
+}
+
+body.theme-new.theme-new-light .chat-menu-drawer .ant-drawer-title,
+body.theme-new.theme-new-light .chat-menu-drawer .ant-drawer-close {
+    color: #0f172a;
 }
 
 body.theme-legacy .chat-menu-drawer .ant-drawer-content,
