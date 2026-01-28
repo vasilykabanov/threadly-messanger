@@ -80,28 +80,34 @@ body.theme-new .ant-switch-checked {
 
 /* Light variant for the new design */
 body.theme-new.theme-new-light {
-    background-color: #eef2ff;
+    background-color: #f5f7ff;
     color: #0f172a;
     background-image:
-        radial-gradient(900px circle at 10% 10%, rgba(59, 130, 246, 0.15), transparent 50%),
-        radial-gradient(700px circle at 90% 20%, rgba(168, 85, 247, 0.12), transparent 45%),
-        radial-gradient(600px circle at 50% 100%, rgba(14, 165, 233, 0.1), transparent 40%);
+        radial-gradient(900px circle at 10% 10%, rgba(59, 130, 246, 0.12), transparent 50%),
+        radial-gradient(700px circle at 90% 20%, rgba(168, 85, 247, 0.1), transparent 45%),
+        radial-gradient(600px circle at 50% 100%, rgba(14, 165, 233, 0.08), transparent 40%);
 }
 
 body.theme-new.theme-new-light .ant-card {
-    background: rgba(255, 255, 255, 0.85);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    box-shadow: 0 24px 50px rgba(15, 23, 42, 0.12);
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    box-shadow: 0 24px 50px rgba(15, 23, 42, 0.08);
     color: #0f172a;
 }
 
 body.theme-new.theme-new-light .ant-btn-default {
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.9);
     color: #0f172a;
+    border-color: rgba(148, 163, 184, 0.45);
 }
 
 body.theme-new.theme-new-light .ant-input,
 body.theme-new.theme-new-light .ant-input-password {
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.95);
     color: #0f172a;
+    border-color: rgba(148, 163, 184, 0.45);
+}
+
+body.chat-page {
+    overflow: hidden;
 }

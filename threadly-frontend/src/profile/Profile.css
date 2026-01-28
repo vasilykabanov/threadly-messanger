@@ -8,6 +8,7 @@
     padding: 32px 16px 64px;
     overscroll-behavior: contain;
     box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
 }
 
 .profile-container .ant-card {
@@ -17,8 +18,17 @@
 }
 
 .profile-container .ant-card-actions {
-    position: sticky;
-    bottom: 0;
+    position: static;
+}
+
+.mobile-back-btn {
+    display: none;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    font-size: 16px;
+    margin: 0 0 12px;
+    cursor: pointer;
 }
 
 .mobile-bottom-nav {
@@ -63,6 +73,12 @@
 
     .profile-container {
         padding-bottom: 96px;
+    }
+
+    .mobile-back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
     }
 }
 
@@ -120,8 +136,38 @@ body.theme-new.theme-new-light .mobile-nav-item {
     color: #64748b;
 }
 
+.settings-nav-item {
+    width: 100%;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 15px;
+    color: #1f2937;
+}
+
+.settings-nav-item i {
+    margin-right: 10px;
+}
+
+.settings-nav-item span:first-of-type {
+    margin-left: 6px;
+}
+
+.settings-nav-arrow {
+    color: #94a3b8;
+}
+
 body.theme-new .settings-theme-subtitle {
     color: rgba(226, 232, 240, 0.7);
+}
+
+body.theme-new .settings-nav-item {
+    color: #e2e8f0;
+}
+
+body.theme-new.theme-new-light .settings-nav-item {
+    color: #0f172a;
 }
 
 @media (max-width: 600px) {

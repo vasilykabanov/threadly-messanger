@@ -100,6 +100,9 @@ const Profile = (props) => {
 
     return (
         <div className="profile-container">
+            <button className="mobile-back-btn" onClick={goToSettings}>
+                ← К настройкам
+            </button>
             <Card
                 style={{width: "100%"}}
                 actions={[
@@ -202,16 +205,6 @@ const Profile = (props) => {
                 </Form>
 
             </Card>
-                <div className="mobile-bottom-nav">
-                    <button type="button" className="mobile-nav-item" onClick={goToChat}>
-                        <i className="fa fa-comments" aria-hidden="true"></i>
-                        <span>Чаты</span>
-                    </button>
-                    <button type="button" className="mobile-nav-item" onClick={goToSettings}>
-                        <i className="fa fa-cog" aria-hidden="true"></i>
-                        <span>Настройки</span>
-                    </button>
-                </div>
         </div>
     );
 };

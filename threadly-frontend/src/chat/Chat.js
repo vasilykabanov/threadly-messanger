@@ -47,6 +47,14 @@ const Chat = (props) => {
     const [profileLoading, setProfileLoading] = useState(false);
     const [profileData, setProfileData] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+    useEffect(() => {
+        document.body.classList.add("chat-page");
+        return () => {
+            document.body.classList.remove("chat-page");
+        };
+    }, []);
 
     useEffect(() => {
         if (localStorage.getItem("accessToken") === null) {
@@ -339,14 +347,22 @@ const Chat = (props) => {
                         >
                             ☰
                         </button>
-                        <div className={`avatar-wrapper ${currentUser.status || "online"}`}>
+                        <div
+                            className={`avatar-wrapper ${currentUser.status || "online"}`}
+                            onClick={goToProfile}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(event) => event.key === "Enter" && goToProfile()}
+                        >
                             <Avatar
                                 name={currentUser.name}
                                 src={currentUser.profilePicture}
                                 size={50}
                             />
                         </div>
-                        <p>{currentUser.name}</p>
+                        <p onClick={goToProfile} role="button" tabIndex={0}>
+                            {currentUser.name}
+                        </p>
                         <div id="status-options">
                             <ul>
                                 <li id="status-online" className="active">
@@ -375,9 +391,11 @@ const Chat = (props) => {
                     <input
                         id="contact-search"
                         type="text"
-                        placeholder="Поиск по имени пользователя"
+                        placeholder={isSearchFocused ? "Поиск по имени пользователя" : "Поиск"}
                         value={searchQuery}
                         onChange={(event) => setSearchQuery(event.target.value)}
+                        onFocus={() => setIsSearchFocused(true)}
+                        onBlur={() => setIsSearchFocused(false)}
                     />
                 </div>
                 {searchQuery.trim() && (
@@ -645,14 +663,6 @@ const Chat = (props) => {
             </Drawer>
 
             <div className="mobile-bottom-nav">
-                <button
-                    type="button"
-                    className="mobile-nav-item"
-                    onClick={() => props.history.push("/chat")}
-                >
-                    <i className="fa fa-comments" aria-hidden="true"></i>
-                    <span>Чаты</span>
-                </button>
                 <button
                     type="button"
                     className="mobile-nav-item"

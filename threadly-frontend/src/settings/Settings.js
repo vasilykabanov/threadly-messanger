@@ -75,6 +75,13 @@ const Settings = (props) => {
                     {currentUser?.username ? `@${currentUser.username}` : ""}
                 </div>
 
+                <Divider>Навигация</Divider>
+                <Button type="text" className="settings-nav-item" onClick={goToProfile}>
+                    <i className="fa fa-user" aria-hidden="true"></i>
+                    <span>Мой профиль</span>
+                    <span className="settings-nav-arrow">→</span>
+                </Button>
+
                 <Divider>Смена пароля</Divider>
                 <Form
                     form={passwordForm}
@@ -161,10 +168,6 @@ const Settings = (props) => {
                 <button type="button" className="mobile-nav-item" onClick={goToChat}>
                     <i className="fa fa-comments" aria-hidden="true"></i>
                     <span>Чаты</span>
-                </button>
-                <button type="button" className="mobile-nav-item" onClick={goToProfile}>
-                    <i className="fa fa-user" aria-hidden="true"></i>
-                    <span>Мой профиль</span>
                 </button>
             </div>
         </div>
