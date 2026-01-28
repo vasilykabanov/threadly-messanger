@@ -10,7 +10,10 @@ import ru.vkabanov.threadlychat.model.ChatNotification;
 import ru.vkabanov.threadlychat.model.StatusMessage;
 import ru.vkabanov.threadlychat.service.ChatMessageService;
 import ru.vkabanov.threadlychat.service.ChatRoomService;
+import ru.vkabanov.threadlychat.service.PushNotificationService;
 import ru.vkabanov.threadlychat.service.UserStatusService;
+
+import java.util.Map;
 
 @Controller
 @RequiredArgsConstructor
@@ -24,6 +27,8 @@ public class WsController {
 
     private final ChatMessageService chatMessageService;
 
+    private final PushNotificationService pushNotificationService;
+
     @MessageMapping("/chat")
     public void processMessage(@Payload ChatMessage chatMessage) {
         var chatId = chatRoomService.getChatId(chatMessage.getSenderId(), chatMessage.getRecipientId(), true);
@@ -32,6 +37,18 @@ public class WsController {
         ChatMessage saved = chatMessageService.save(chatMessage);
         messagingTemplate.convertAndSendToUser(chatMessage.getRecipientId(), "/queue/messages",
                 new ChatNotification(saved.getId(), saved.getSenderId(), saved.getSenderName()));
+
+        // Если пользователь не онлайн в вебсокете — шлём web-push
+        if (!"online".equalsIgnoreCase(userStatusService.getStatus(chatMessage.getRecipientId()))) {
+            pushNotificationService.sendToUser(chatMessage.getRecipientId(), Map.of(
+                    "type", "chat_message",
+                    "messageId", saved.getId(),
+                    "senderId", saved.getSenderId(),
+                    "senderName", saved.getSenderName(),
+                    "recipientId", saved.getRecipientId(),
+                    "content", saved.getContent()
+            ));
+        }
     }
 
     public void updateStatus(String userId, String status) {

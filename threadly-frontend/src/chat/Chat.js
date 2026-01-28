@@ -8,6 +8,7 @@ import {
     getUserSummary,
     getChatContacts,
     getCurrentUser,
+    ensurePushSubscribed,
 } from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
 import {
@@ -66,6 +67,9 @@ const Chat = (props) => {
 
         connect();
         loadContacts();
+
+        // Web Push (если пользователь разрешил уведомления)
+        ensurePushSubscribed(currentUser.id).catch(() => {});
     }, [currentUser?.id]);
 
     useEffect(() => {

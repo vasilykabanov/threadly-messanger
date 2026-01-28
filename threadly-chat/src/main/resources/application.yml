@@ -9,3 +9,12 @@ spring:
       authentication-database: admin
 server:
   port: 8080
+
+threadly:
+  push:
+    # Генерируются один раз (VAPID). Пример генерации:
+    # node -e "const webpush=require('web-push');console.log(webpush.generateVAPIDKeys())"
+    vapid:
+      public-key: ${THREADLY_PUSH_VAPID_PUBLIC_KEY:}
+      private-key: ${THREADLY_PUSH_VAPID_PRIVATE_KEY:}
+      subject: ${THREADLY_PUSH_VAPID_SUBJECT:mailto:admin@threadly.local}
