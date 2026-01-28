@@ -13,6 +13,7 @@ const Profile = (props) => {
     const [themeMode, setThemeMode] = useRecoilState(uiThemeMode);
     const [profileForm] = Form.useForm();
     const [savingProfile, setSavingProfile] = useState(false);
+    const [backTarget, setBackTarget] = useState("/chat");
 
     const clearPersistedState = () => {
         const persisted = sessionStorage.getItem("recoil-persist");
@@ -34,6 +35,15 @@ const Profile = (props) => {
             props.history.push("/login");
         }
         loadCurrentUser();
+    }, []);
+
+    useEffect(() => {
+        try {
+            const stored = sessionStorage.getItem("profileBack") || "/chat";
+            setBackTarget(stored);
+        } catch (error) {
+            setBackTarget("/chat");
+        }
     }, []);
 
     useEffect(() => {
@@ -84,6 +94,10 @@ const Profile = (props) => {
         props.history.push("/settings");
     };
 
+    const goBackTarget = () => {
+        props.history.push(backTarget);
+    };
+
     const onUpdateProfile = (values) => {
         setSavingProfile(true);
         updateProfile(values)
@@ -100,8 +114,8 @@ const Profile = (props) => {
 
     return (
         <div className="profile-container">
-            <button className="mobile-back-btn" onClick={goToSettings}>
-                ← К настройкам
+            <button className="mobile-back-btn" onClick={goBackTarget}>
+                {backTarget === "/settings" ? "← К настройкам" : "← К чатам"}
             </button>
             <Card
                 style={{width: "100%"}}

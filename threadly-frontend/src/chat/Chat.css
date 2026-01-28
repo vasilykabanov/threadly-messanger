@@ -46,10 +46,14 @@
     #frame #sidepanel {
         width: 58px;
         min-width: 58px;
+    .menu-trigger {
+        display: none;
     }
-
-    #frame #sidepanel #profile {
         width: 100%;
+
+#frame.chat-open ~ .mobile-bottom-nav {
+    display: none;
+}
         margin: 0 auto;
         padding: 5px 0 0 0;
         background: #32465a;
@@ -1595,6 +1599,12 @@ body.theme-new.theme-new-light .contact-profile-drawer .ant-drawer-body {
     color: #0f172a;
 }
 
+body.theme-new.theme-new-light .contact-profile-title,
+body.theme-new.theme-new-light .contact-profile-username,
+body.theme-new.theme-new-light .contact-profile-status {
+    color: #0f172a;
+}
+
 body.theme-new.theme-new-light .menu-trigger {
     color: #475569;
 }
@@ -1690,4 +1700,12 @@ body.theme-new .chat-menu-drawer .ant-drawer-close {
     width: 100%;
     display: flex !important;
     justify-content: flex-start;
+}
+
+body.theme-new .chat-menu-item {
+    color: #e2e8f0 !important;
+}
+
+body.theme-new.theme-new-light .chat-menu-item {
+    color: #0f172a !important;
 }

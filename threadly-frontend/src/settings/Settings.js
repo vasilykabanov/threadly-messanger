@@ -52,6 +52,10 @@ const Settings = (props) => {
     };
 
     const goToProfile = () => {
+        try {
+            sessionStorage.setItem("profileBack", "/settings");
+        } catch (error) {
+        }
         props.history.push("/");
     };
 
@@ -75,10 +79,11 @@ const Settings = (props) => {
                     {currentUser?.username ? `@${currentUser.username}` : ""}
                 </div>
 
-                <Divider>Навигация</Divider>
                 <Button type="text" className="settings-nav-item" onClick={goToProfile}>
-                    <i className="fa fa-user" aria-hidden="true"></i>
-                    <span>Мой профиль</span>
+                    <span className="settings-nav-left">
+                        <i className="fa fa-user" aria-hidden="true"></i>
+                        <span>Мой профиль</span>
+                    </span>
                     <span className="settings-nav-arrow">→</span>
                 </Button>
 
@@ -168,6 +173,10 @@ const Settings = (props) => {
                 <button type="button" className="mobile-nav-item" onClick={goToChat}>
                     <i className="fa fa-comments" aria-hidden="true"></i>
                     <span>Чаты</span>
+                </button>
+                <button type="button" className="mobile-nav-item active">
+                    <i className="fa fa-cog" aria-hidden="true"></i>
+                    <span>Настройки</span>
                 </button>
             </div>
         </div>

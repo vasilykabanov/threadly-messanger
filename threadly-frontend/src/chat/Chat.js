@@ -268,6 +268,10 @@ const Chat = (props) => {
     };
 
     const goToProfile = () => {
+        try {
+            sessionStorage.setItem("profileBack", "/chat");
+        } catch (error) {
+        }
         props.history.push("/");
     };
 
@@ -663,6 +667,14 @@ const Chat = (props) => {
             </Drawer>
 
             <div className="mobile-bottom-nav">
+                <button
+                    type="button"
+                    className={`mobile-nav-item ${!isMobileChatOpen ? "active" : ""}`}
+                    onClick={() => props.history.push("/chat")}
+                >
+                    <i className="fa fa-comments" aria-hidden="true"></i>
+                    <span>Чаты</span>
+                </button>
                 <button
                     type="button"
                     className="mobile-nav-item"
