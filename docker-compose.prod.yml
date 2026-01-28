@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # ---------------- Mongo для threadly-auth ----------------
   mongo-auth:
@@ -15,7 +13,7 @@ services:
 
   # ---------------- threadly-auth ----------------
   threadly-auth:
-    image: ghcr.io/${GHCR_OWNER:-vkabanov}/threadly-auth:latest
+    image: ghcr.io/${GHCR_OWNER:-vasilykabanov}/threadly-auth:latest
     container_name: threadly-auth
     ports:
       - "8081:8081"
@@ -40,7 +38,7 @@ services:
 
   # ---------------- threadly-chat ----------------
   threadly-chat:
-    image: ghcr.io/${GHCR_OWNER:-vkabanov}/threadly-chat:latest
+    image: ghcr.io/${GHCR_OWNER:-vasilykabanov}/threadly-chat:latest
     container_name: threadly-chat
     ports:
       - "8080:8080"
@@ -55,7 +53,7 @@ services:
 
   # ---------------- threadly-frontend ----------------
   threadly-frontend:
-    image: ghcr.io/${GHCR_OWNER:-vkabanov}/threadly-frontend:latest
+    image: ghcr.io/${GHCR_OWNER:-vasilykabanov}/threadly-frontend:latest
     container_name: threadly-frontend
     ports:
       - "80:80"
