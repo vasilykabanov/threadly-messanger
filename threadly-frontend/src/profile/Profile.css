@@ -165,7 +165,11 @@ body.theme-new.theme-new-light .mobile-nav-item {
 .settings-nav-left {
     display: inline-flex;
     align-items: center;
-    gap: 14px;
+    gap: 18px;
+}
+
+.settings-nav-left i {
+    margin-right: 2px;
 }
 
 .desktop-back-row {

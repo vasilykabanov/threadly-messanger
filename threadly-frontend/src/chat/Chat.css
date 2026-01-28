@@ -1054,8 +1054,8 @@ span.status-circle:before {
 
 .sent p.message-bubble,
 .replies p.message-bubble {
-    padding-right: 46px;
-    padding-bottom: 18px;
+    padding-right: 56px;
+    padding-bottom: 22px;
 }
 
 .date-separator {
