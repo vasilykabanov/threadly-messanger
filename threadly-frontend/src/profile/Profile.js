@@ -87,6 +87,7 @@ const Profile = (props) => {
     };
 
     const goToChat = () => {
+        window.scrollTo(0, 0);
         props.history.push("/chat");
     };
 

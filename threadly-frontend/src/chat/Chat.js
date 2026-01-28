@@ -48,6 +48,7 @@ const Chat = (props) => {
     const [profileData, setProfileData] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearchFocused, setIsSearchFocused] = useState(false);
+    const [lastMessageByContact, setLastMessageByContact] = useState({});
 
     useEffect(() => {
         document.body.classList.add("chat-page");
@@ -121,6 +122,10 @@ const Chat = (props) => {
                     .chatMessages;
                 newMessages.push(message);
                 setMessages(newMessages);
+                setLastMessageByContact((prev) => ({
+                    ...prev,
+                    [message.senderId]: message,
+                }));
             });
         } else {
             // message.info("Received a new message from " + notification.senderName); TODO для чего тут так?
@@ -150,6 +155,10 @@ const Chat = (props) => {
             const newMessages = [...messages];
             newMessages.push(message);
             setMessages(newMessages);
+            setLastMessageByContact((prev) => ({
+                ...prev,
+                [activeContact.id]: message,
+            }));
             if (!contacts.some((contact) => contact.id === activeContact.id)) {
                 setContacts([activeContact, ...contacts]);
             }
@@ -218,7 +227,15 @@ const Chat = (props) => {
         if (!contact?.id) return;
         setMessages([]);
         findChatMessages(contact.id, currentUser.id)
-            .then(setMessages);
+            .then((items) => {
+                setMessages(items);
+                if (items.length > 0) {
+                    setLastMessageByContact((prev) => ({
+                        ...prev,
+                        [contact.id]: items[items.length - 1],
+                    }));
+                }
+            });
     };
 
     const loadContactProfile = (contact) => {
@@ -253,10 +270,18 @@ const Chat = (props) => {
                 );
             })
             .then((users) => {
-                setContacts(users);
-                const activeInList = users.find((contact) => contact.id === activeContact?.id);
+                const sorted = [...users].sort((a, b) => {
+                    const aMsg = lastMessageByContact[a.id];
+                    const bMsg = lastMessageByContact[b.id];
+                    if (!aMsg && !bMsg) return 0;
+                    if (!aMsg) return 1;
+                    if (!bMsg) return -1;
+                    return new Date(bMsg.timestamp).getTime() - new Date(aMsg.timestamp).getTime();
+                });
+                setContacts(sorted);
+                const activeInList = sorted.find((contact) => contact.id === activeContact?.id);
                 if (!activeInList && users.length > 0) {
-                    setActiveContact(users[0]);
+                    setActiveContact(null);
                 }
             });
     };
@@ -331,6 +356,24 @@ const Chat = (props) => {
         });
     };
 
+    const formatShortTime = (isoDate) => {
+        if (!isoDate) return "";
+        const date = new Date(isoDate);
+        return date.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+    };
+
+    const deleteChat = (contactId) => {
+        setContacts((prev) => prev.filter((contact) => contact.id !== contactId));
+        setLastMessageByContact((prev) => {
+            const next = {...prev};
+            delete next[contactId];
+            return next;
+        });
+        if (activeContact?.id === contactId) {
+            closeChat();
+        }
+    };
+
     const isNewDay = (current, previous) => {
         if (!previous) return true;
         const currDate = new Date(current).toDateString();
@@ -365,7 +408,7 @@ const Chat = (props) => {
                             />
                         </div>
                         <p onClick={goToProfile} role="button" tabIndex={0}>
-                            {currentUser.name}
+                            {currentUser.name || currentUser.username || "Профиль"}
                         </p>
                         <div id="status-options">
                             <ul>
@@ -464,15 +507,31 @@ const Chat = (props) => {
                                         />
                                     </div>
                                     <div className="meta">
-                                        <p className="name">
-                                            {contact.name}
+                                        <div className="meta-header">
+                                            <p className="name">{contact.name}</p>
+                                            {lastMessageByContact[contact.id]?.timestamp && (
+                                                <span className="last-time">
+                                                    {formatShortTime(lastMessageByContact[contact.id].timestamp)}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="preview">
+                                            {lastMessageByContact[contact.id]?.content
+                                                ? lastMessageByContact[contact.id].content
+                                                : "Нет сообщений"}
                                         </p>
-                                        {contact.newMessages !== undefined && contact.newMessages > 0 && (
-                                            <p className="preview">
-                                                {contact.newMessages} новых сообщений
-                                            </p>
-                                        )}
                                     </div>
+                                    <button
+                                        type="button"
+                                        className="delete-chat-btn"
+                                        aria-label="Удалить чат"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            deleteChat(contact.id);
+                                        }}
+                                    >
+                                        ×
+                                    </button>
                                 </div>
                             </li>
                         ))}

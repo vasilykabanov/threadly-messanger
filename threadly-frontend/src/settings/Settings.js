@@ -60,18 +60,17 @@ const Settings = (props) => {
     };
 
     const goToChat = () => {
+        window.scrollTo(0, 0);
         props.history.push("/chat");
     };
 
     return (
         <div className="profile-container">
-            <Card
-                style={{width: "100%"}}
-                actions={[
-                    <Button type="default" onClick={goToProfile}>Профиль</Button>,
-                    <Button type="default" onClick={goToChat}>Чаты</Button>
-                ]}
-            >
+            <div className="desktop-back-row">
+                <Button type="text" onClick={goToChat}>← К чатам</Button>
+                <Button type="text" onClick={goToProfile}>← К профилю</Button>
+            </div>
+            <Card style={{width: "100%"}}>
                 <div style={{textAlign: "center", fontWeight: 600}}>
                     Настройки аккаунта
                 </div>

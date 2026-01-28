@@ -70,12 +70,20 @@
     }
 
     #frame #sidepanel #profile .wrap p {
-        display: none;
+        display: block;
     }
 
     #frame #sidepanel #profile .wrap i.expand-button {
         display: none;
     }
+}
+
+@media screen and (max-width: 768px) {
+    #frame #sidepanel {
+        width: 100%;
+        min-width: 100%;
+    }
+}
 
     #frame #sidepanel #profile .wrap #status-options {
         width: 58px;
@@ -1368,13 +1376,13 @@ body.theme-new #frame #sidepanel #search input {
     border: none;
     background: transparent;
     color: var(--color-text-light);
-    transition: all 0.3s ease;
+    width: 96px;
     pointer-events: auto;
 }
 
 body.theme-new #frame #sidepanel #search:focus-within input,
 body.theme-new #frame #sidepanel #search input:not(:placeholder-shown) {
-    width: 180px;
+    width: 240px;
     opacity: 1;
     padding: 6px 6px;
 }
@@ -1688,6 +1696,19 @@ body.theme-new .chat-menu-drawer .ant-drawer-header {
 body.theme-new .chat-menu-drawer .ant-drawer-title,
 body.theme-new .chat-menu-drawer .ant-drawer-close {
     color: #e2e8f0;
+}
+
+body.theme-legacy .chat-menu-drawer .ant-drawer-content,
+body.theme-legacy .chat-menu-drawer .ant-drawer-body,
+body.theme-legacy .chat-menu-drawer .ant-drawer-header {
+    background: #ffffff;
+    color: #1f2937;
+}
+
+body.theme-legacy .chat-menu-drawer .ant-drawer-title,
+body.theme-legacy .chat-menu-drawer .ant-drawer-close,
+body.theme-legacy .chat-menu-item {
+    color: #1f2937 !important;
 }
 
 @media screen and (max-width: 768px) {

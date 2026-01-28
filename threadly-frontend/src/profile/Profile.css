@@ -160,6 +160,18 @@ body.theme-new.theme-new-light .mobile-nav-item {
     gap: 10px;
 }
 
+.desktop-back-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+@media (max-width: 768px) {
+    .desktop-back-row {
+        display: none;
+    }
+}
+
 .settings-nav-arrow {
     color: #94a3b8;
 }
@@ -184,6 +196,10 @@ body.theme-new.theme-new-light .ant-divider-inner-text {
 
 body.theme-new.theme-new-light .settings-theme-subtitle {
     color: rgba(15, 23, 42, 0.7);
+}
+
+body.theme-new.theme-new-light .settings-theme-title {
+    color: #0f172a;
 }
 
 body.theme-new .settings-nav-item {

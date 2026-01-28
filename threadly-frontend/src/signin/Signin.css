@@ -100,6 +100,12 @@ body.theme-new.theme-new-light .auth-card {
     color: #0f172a;
 }
 
+body.theme-new.theme-new-light .auth-title,
+body.theme-new.theme-new-light .auth-subtitle,
+body.theme-new.theme-new-light .auth-footer {
+    color: #0f172a;
+}
+
 body.theme-new.theme-new-light .login-form .ant-input,
 body.theme-new.theme-new-light .login-form .ant-input-password,
 body.theme-new.theme-new-light .login-form .ant-input-affix-wrapper {

@@ -108,6 +108,12 @@ body.theme-new.theme-new-light .ant-input-password {
     border-color: rgba(148, 163, 184, 0.45);
 }
 
+body.theme-new.theme-new-light .ant-input-affix-wrapper {
+    background: rgba(255, 255, 255, 0.95);
+    color: #0f172a;
+    border-color: rgba(148, 163, 184, 0.45);
+}
+
 body.theme-new.theme-new-light .ant-input::placeholder,
 body.theme-new.theme-new-light .ant-input-password input::placeholder {
     color: rgba(15, 23, 42, 0.55);

@@ -73,17 +73,6 @@ const Signup = (props) => {
                 >
                     <Input size="large" type="password" placeholder="Пароль"/>
                 </Form.Item>
-                <Form.Item
-                    name="profilePicUrl"
-                    rules={[
-                        {
-                            required: true,
-                            message: "Введите ссылку на аватар!",
-                        },
-                    ]}
-                >
-                    <Input size="large" placeholder="Ссылка на аватар"/>
-                </Form.Item>
                 <Form.Item>
                     <Button
                         shape="round"

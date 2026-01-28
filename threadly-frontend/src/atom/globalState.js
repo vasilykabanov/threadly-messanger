@@ -3,9 +3,9 @@ import {atom} from "recoil";
 const getInitialTheme = () => {
     if (typeof window === "undefined") return "legacy";
     try {
-        return localStorage.getItem("uiTheme") || "legacy";
+        return localStorage.getItem("uiTheme") || "new";
     } catch (error) {
-        return "legacy";
+        return "new";
     }
 };
 
