@@ -29,6 +29,34 @@
     margin-bottom: 12px;
 }
 
+.settings-theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 4px 4px;
+}
+
+.settings-theme-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.settings-theme-title {
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.settings-theme-subtitle {
+    font-size: 13px;
+    color: #64748b;
+}
+
+body.theme-new .settings-theme-subtitle {
+    color: rgba(226, 232, 240, 0.7);
+}
+
 @media (max-width: 600px) {
     .profile-container {
         padding: 16px;

@@ -59,14 +59,13 @@ const Signin = (props) => {
 
     return (
         <div className="login-container">
-            <img
-                src="/logo50.png" alt="Threadly"
-                style={{
-                    width: 50,
-                    height: 50,
-                    marginBottom: 16
-                }}
-            />
+            <div className="auth-card">
+                <img
+                    src="/logo50.png" alt="Threadly"
+                    className="auth-logo"
+                />
+                <div className="auth-title">Threadly</div>
+                <div className="auth-subtitle">Войдите, чтобы продолжить общение</div>
             <Form
                 name="normal_login"
                 className="login-form"
@@ -115,8 +114,11 @@ const Signin = (props) => {
                         Войти
                     </Button>
                 </Form.Item>
-                Еще нет аккаунта? <a href="/signup">Зарегистрироваться</a>
+                <div className="auth-footer">
+                    Еще нет аккаунта? <a href="/signup">Зарегистрироваться</a>
+                </div>
             </Form>
+            </div>
         </div>
     );
 };

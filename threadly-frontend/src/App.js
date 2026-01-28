@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useEffect} from "react";
 import {BrowserRouter, Redirect, Route, Switch} from "react-router-dom";
 import Signin from "./signin/Signin";
 import Signup from "./signup/Signup";
@@ -7,11 +7,21 @@ import Chat from "./chat/Chat";
 import Settings from "./settings/Settings";
 import "./App.css";
 import PrivateRoute from "./PrivateRoute";
+import {useRecoilValue} from "recoil";
+import {uiTheme} from "./atom/globalState";
 
 export const AppContext = React.createContext();
 const App = (props) => {
+    const theme = useRecoilValue(uiTheme);
+
+    useEffect(() => {
+        const nextTheme = theme === "new" ? "theme-new" : "theme-legacy";
+        document.body.classList.remove("theme-new", "theme-legacy");
+        document.body.classList.add(nextTheme);
+    }, [theme]);
+
     return (
-        <div className="App">
+        <div className={`App ${theme === "new" ? "theme-new" : "theme-legacy"}`}>
             <BrowserRouter>
                 <Switch>
                     <Route exact path="/" render={(props) => <Profile {...props} />}/>

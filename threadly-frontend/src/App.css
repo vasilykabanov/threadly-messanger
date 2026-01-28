@@ -2,4 +2,63 @@
 
 body {
     background-color: #fafafa;
+    color: #1f2937;
+}
+
+body.theme-new {
+    background-color: #0f172a;
+    color: #e2e8f0;
+    background-image:
+        radial-gradient(1200px circle at 10% 10%, rgba(99, 102, 241, 0.2), transparent 50%),
+        radial-gradient(1000px circle at 90% 20%, rgba(168, 85, 247, 0.18), transparent 45%),
+        radial-gradient(800px circle at 50% 100%, rgba(14, 165, 233, 0.12), transparent 40%);
+}
+
+.App {
+    min-height: 100%;
+}
+
+body.theme-new .ant-card {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    box-shadow: 0 24px 60px rgba(2, 6, 23, 0.45);
+    backdrop-filter: blur(18px);
+    color: #e2e8f0;
+}
+
+body.theme-new .ant-card .ant-card-actions {
+    background: rgba(15, 23, 42, 0.4);
+    border-top: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+body.theme-new .ant-btn-primary {
+    background: linear-gradient(135deg, #7c3aed, #6366f1);
+    border: none;
+    box-shadow: 0 12px 20px rgba(99, 102, 241, 0.35);
+}
+
+body.theme-new .ant-btn-default {
+    background: rgba(30, 41, 59, 0.5);
+    border-color: rgba(148, 163, 184, 0.35);
+    color: #e2e8f0;
+}
+
+body.theme-new .ant-input,
+body.theme-new .ant-input-password {
+    background: rgba(30, 41, 59, 0.5);
+    border-color: rgba(148, 163, 184, 0.35);
+    color: #e2e8f0;
+}
+
+body.theme-new .ant-input::placeholder,
+body.theme-new .ant-input-password input::placeholder {
+    color: rgba(226, 232, 240, 0.6);
+}
+
+body.theme-new .ant-divider-inner-text {
+    color: rgba(226, 232, 240, 0.8);
+}
+
+body.theme-new .ant-switch-checked {
+    background: linear-gradient(135deg, #a855f7, #6366f1);
 }

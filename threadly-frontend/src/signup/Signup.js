@@ -1,6 +1,5 @@
 import React, {useEffect, useState} from "react";
 import {Form, Input, Button, notification} from "antd";
-import {DingtalkOutlined} from "@ant-design/icons";
 import {signup} from "../util/ApiUtil";
 import "./Signup.css";
 
@@ -37,14 +36,13 @@ const Signup = (props) => {
 
     return (
         <div className="login-container">
-            <img
-                src="/logo50.png" alt="Threadly"
-                style={{
-                    width: 50,
-                    height: 50,
-                    marginBottom: 16
-                }}
-            />
+            <div className="auth-card">
+                <img
+                    src="/logo50.png" alt="Threadly"
+                    className="auth-logo"
+                />
+                <div className="auth-title">Создайте аккаунт</div>
+                <div className="auth-subtitle">Заполните данные, чтобы начать</div>
             <Form
                 name="normal_login"
                 className="login-form"
@@ -97,8 +95,11 @@ const Signup = (props) => {
                         Зарегистрироваться
                     </Button>
                 </Form.Item>
-                Уже есть аккаунт? <a href="/login">Войти</a>
+                <div className="auth-footer">
+                    Уже есть аккаунт? <a href="/login">Войти</a>
+                </div>
             </Form>
+            </div>
         </div>
     );
 };

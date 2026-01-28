@@ -74,9 +74,9 @@ const Chat = (props) => {
     }, [activeContact?.id]);
 
     useEffect(() => {
-        if (!isProfileOpen || !activeContact?.username) return;
+        if (!activeContact?.username) return;
         loadContactProfile(activeContact);
-    }, [isProfileOpen, activeContact?.username]);
+    }, [activeContact?.username]);
 
     const connect = () => {
         const Stomp = require("stompjs");
@@ -499,6 +499,40 @@ const Chat = (props) => {
                     <div className="no-contact-selected">
                         <p>Выберите контакт для отправки сообщений</p>
                     </div>
+                )}
+            </div>
+
+            <div className={`contact-info-panel ${activeContact ? "visible" : ""}`}>
+                {activeContact ? (
+                    profileLoading ? (
+                        <div className="contact-profile-loading">
+                            <Spin />
+                        </div>
+                    ) : (
+                        <div className="contact-profile-card">
+                            <Avatar
+                                name={profileData?.name || activeContact?.name}
+                                src={profileData?.profilePicture || activeContact?.profilePicture}
+                                size={96}
+                            />
+                            <div className="contact-profile-title">
+                                {profileData?.name || activeContact?.name}
+                            </div>
+                            <div className="contact-profile-username">
+                                @{profileData?.username || activeContact?.username}
+                            </div>
+                            {activeContact?.status && (
+                                <div className={`contact-profile-status ${activeContact.status}`}>
+                                    {activeContact.status === "online" && "В сети"}
+                                    {activeContact.status === "away" && "Нет на месте"}
+                                    {activeContact.status === "busy" && "Занят"}
+                                    {activeContact.status === "offline" && "Оффлайн"}
+                                </div>
+                            )}
+                        </div>
+                    )
+                ) : (
+                    <div className="contact-profile-empty">Выберите диалог</div>
                 )}
             </div>
 

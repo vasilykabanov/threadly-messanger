@@ -1,12 +1,13 @@
 import React, {useEffect, useState} from "react";
-import {Card, Button, Divider, Form, Input, message} from "antd";
+import {Card, Button, Divider, Form, Input, Switch, message} from "antd";
 import {changePassword, getCurrentUser} from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
-import {loggedInUser} from "../atom/globalState";
+import {loggedInUser, uiTheme} from "../atom/globalState";
 import "../profile/Profile.css";
 
 const Settings = (props) => {
     const [currentUser, setLoggedInUser] = useRecoilState(loggedInUser);
+    const [theme, setTheme] = useRecoilState(uiTheme);
     const [passwordForm] = Form.useForm();
     const [changingPassword, setChangingPassword] = useState(false);
 
@@ -18,6 +19,13 @@ const Settings = (props) => {
             .then((response) => setLoggedInUser(response))
             .catch(() => {});
     }, []);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem("uiTheme", theme);
+        } catch (error) {
+        }
+    }, [theme]);
 
     const onChangePassword = (values) => {
         setChangingPassword(true);
@@ -110,6 +118,20 @@ const Settings = (props) => {
                         </Button>
                     </Form.Item>
                 </Form>
+
+                <Divider>Дизайн</Divider>
+                <div className="settings-theme-toggle">
+                    <div className="settings-theme-text">
+                        <div className="settings-theme-title">Новый космический дизайн</div>
+                        <div className="settings-theme-subtitle">
+                            Стеклянные панели, неоновый акцент и крупная типографика
+                        </div>
+                    </div>
+                    <Switch
+                        checked={theme === "new"}
+                        onChange={(checked) => setTheme(checked ? "new" : "legacy")}
+                    />
+                </div>
             </Card>
         </div>
     );
