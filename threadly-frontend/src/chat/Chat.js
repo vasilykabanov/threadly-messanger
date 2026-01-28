@@ -310,7 +310,7 @@ const Chat = (props) => {
                     <input
                         id="contact-search"
                         type="text"
-                        placeholder="Поиск по юзернейму"
+                        placeholder="Поиск по имени пользователя"
                         value={searchQuery}
                         onChange={(event) => setSearchQuery(event.target.value)}
                     />
@@ -431,13 +431,6 @@ const Chat = (props) => {
                                 />
                                 <span className="contact-profile-name">{activeContact.name}</span>
                             </button>
-                            <Button
-                                type="text"
-                                className="view-profile-btn"
-                                onClick={() => setIsProfileOpen(true)}
-                            >
-                                Профиль
-                            </Button>
                         </div>
 
                         <ScrollToBottom key={activeContact.id} className="messages">

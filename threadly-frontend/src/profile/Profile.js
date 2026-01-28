@@ -122,9 +122,9 @@ const Profile = (props) => {
 
                     <Form.Item
                         name="username"
-                        label="Юзернейм"
+                        label="Имя пользователя"
                         rules={[
-                            {required: true, message: "Введите юзернейм"},
+                            {required: true, message: "Введите имя пользователя"},
                             {min: 3, max: 15, message: "От 3 до 15 символов"},
                         ]}
                     >
