@@ -9,13 +9,23 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import ru.vkabanov.threadlyauth.exception.BadRequestException;
+import ru.vkabanov.threadlyauth.exception.EmailAlreadyExistsException;
 import ru.vkabanov.threadlyauth.exception.ResourceNotFoundException;
+import ru.vkabanov.threadlyauth.exception.UsernameAlreadyExistsException;
 import ru.vkabanov.threadlyauth.model.ThreadlyUserDetails;
 import ru.vkabanov.threadlyauth.model.User;
+import ru.vkabanov.threadlyauth.payload.ApiResponse;
+import ru.vkabanov.threadlyauth.payload.ChangePasswordRequest;
+import ru.vkabanov.threadlyauth.payload.UpdateProfileRequest;
 import ru.vkabanov.threadlyauth.payload.UserSummary;
 import ru.vkabanov.threadlyauth.service.UserService;
+
+import javax.validation.Valid;
 
 
 @RestController
@@ -59,13 +69,43 @@ public class UserEndpoint {
     @PreAuthorize("hasRole('USER')")
     @ResponseStatus(HttpStatus.OK)
     public UserSummary getCurrentUser(@AuthenticationPrincipal ThreadlyUserDetails userDetails) {
+        String displayName = userDetails.getUserProfile() != null
+            ? userDetails.getUserProfile().getDisplayName()
+            : null;
+        String profilePicture = userDetails.getUserProfile() != null
+            ? userDetails.getUserProfile().getProfilePictureUrl()
+            : null;
+
         return UserSummary
                 .builder()
                 .id(userDetails.getId())
                 .username(userDetails.getUsername())
-                .name(userDetails.getUserProfile().getDisplayName())
-                .profilePicture(userDetails.getUserProfile().getProfilePictureUrl())
+            .name(displayName)
+                .email(userDetails.getEmail())
+            .profilePicture(profilePicture)
                 .build();
+    }
+
+    @PutMapping(value = "/users/me", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<UserSummary> updateProfile(
+            @AuthenticationPrincipal ThreadlyUserDetails userDetails,
+            @Valid @RequestBody UpdateProfileRequest request) {
+        try {
+            User updatedUser = userService.updateProfile(userDetails.getId(), request);
+            return ResponseEntity.ok(convertTo(updatedUser));
+        } catch (UsernameAlreadyExistsException | EmailAlreadyExistsException e) {
+            throw new BadRequestException(e.getMessage());
+        }
+    }
+
+    @PutMapping(value = "/users/me/password", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<ApiResponse> changePassword(
+            @AuthenticationPrincipal ThreadlyUserDetails userDetails,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        userService.changePassword(userDetails.getId(), request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.ok(new ApiResponse(true, "Пароль изменён"));
     }
 
     @GetMapping(value = "/users/summary/{username}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -79,12 +119,19 @@ public class UserEndpoint {
     }
 
     private UserSummary convertTo(User user) {
+        String displayName = user.getUserProfile() != null
+            ? user.getUserProfile().getDisplayName()
+            : null;
+        String profilePicture = user.getUserProfile() != null
+            ? user.getUserProfile().getProfilePictureUrl()
+            : null;
         return UserSummary
                 .builder()
                 .id(user.getId())
                 .username(user.getUsername())
-                .name(user.getUserProfile().getDisplayName())
-                .profilePicture(user.getUserProfile().getProfilePictureUrl())
+            .name(displayName)
+                .email(user.getEmail())
+            .profilePicture(profilePicture)
                 .build();
     }
 }

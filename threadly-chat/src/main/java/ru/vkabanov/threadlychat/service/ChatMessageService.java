@@ -12,7 +12,9 @@ import ru.vkabanov.threadlychat.model.MessageStatus;
 import ru.vkabanov.threadlychat.repository.ChatMessageRepository;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class ChatMessageService {
@@ -52,6 +54,20 @@ public class ChatMessageService {
                     return repository.save(chatMessage);
                 })
                 .orElseThrow(() -> new ResourceNotFoundException("can't find message (" + id + ")"));
+    }
+
+    public List<String> findContactIds(String userId) {
+        Query query = new Query(new Criteria().orOperator(
+                Criteria.where("senderId").is(userId),
+                Criteria.where("recipientId").is(userId)
+        ));
+
+        Set<String> contacts = new HashSet<>();
+        contacts.addAll(mongoOperations.findDistinct(query, "senderId", ChatMessage.class, String.class));
+        contacts.addAll(mongoOperations.findDistinct(query, "recipientId", ChatMessage.class, String.class));
+        contacts.remove(userId);
+
+        return new ArrayList<>(contacts);
     }
 
     public void updateStatuses(String senderId, String recipientId, MessageStatus status) {

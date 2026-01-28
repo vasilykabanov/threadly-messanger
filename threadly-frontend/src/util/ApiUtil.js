@@ -77,6 +77,17 @@ export function getUsers() {
     });
 }
 
+export function getUserSummary(username) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+
+    return request({
+        url: AUTH_SERVICE + "/users/summary/" + encodeURIComponent(username),
+        method: "GET",
+    });
+}
+
 export function updateProfile(updateProfileRequest) {
     if (!localStorage.getItem("accessToken")) {
         return Promise.reject("No access token set.");
@@ -130,6 +141,17 @@ export function findChatMessage(id) {
 
     return request({
         url: CHAT_SERVICE + "/messages/" + id,
+        method: "GET",
+    });
+}
+
+export function getChatContacts(userId) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+
+    return request({
+        url: CHAT_SERVICE + "/messages/contacts/" + userId,
         method: "GET",
     });
 }

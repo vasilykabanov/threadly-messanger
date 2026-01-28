@@ -8,11 +8,15 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import ru.vkabanov.threadlyauth.exception.BadRequestException;
 import ru.vkabanov.threadlyauth.exception.EmailAlreadyExistsException;
+import ru.vkabanov.threadlyauth.exception.ResourceNotFoundException;
 import ru.vkabanov.threadlyauth.exception.UsernameAlreadyExistsException;
+import ru.vkabanov.threadlyauth.model.Profile;
 import ru.vkabanov.threadlyauth.model.Role;
 import ru.vkabanov.threadlyauth.model.User;
 import ru.vkabanov.threadlyauth.repository.UserRepository;
+import ru.vkabanov.threadlyauth.payload.UpdateProfileRequest;
 
 import java.util.HashSet;
 import java.util.List;
@@ -41,7 +45,7 @@ public class UserService {
     public User registerUser(User user, Role role) {
         log.info("registering user {}", user.getUsername());
 
-        if (userRepository.existsByUsername(user.getUsername())) {
+        if (userRepository.existsByUsernameIgnoreCase(user.getUsername())) {
             log.warn("username {} already exists.", user.getUsername());
             throw new UsernameAlreadyExistsException(String.format("username %s already exists", user.getUsername()));
         }
@@ -66,11 +70,61 @@ public class UserService {
 
     public Optional<User> findByUsername(String username) {
         log.info("retrieving user {}", username);
-        return userRepository.findByUsername(username);
+        return userRepository.findByUsernameIgnoreCase(username);
     }
 
     public Optional<User> findById(String id) {
         log.info("retrieving user {}", id);
         return userRepository.findById(id);
+    }
+
+    public User changePassword(String userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(userId));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new BadRequestException("Неверный текущий пароль");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        return userRepository.save(user);
+    }
+
+    public User updateProfile(String userId, UpdateProfileRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(userId));
+
+        String newUsername = request.getUsername();
+        if (!user.getUsername().equalsIgnoreCase(newUsername)) {
+            userRepository.findByUsernameIgnoreCase(newUsername).ifPresent(existing -> {
+                if (!existing.getId().equals(user.getId())) {
+                    throw new UsernameAlreadyExistsException(
+                            String.format("username %s already exists", newUsername));
+                }
+            });
+        }
+
+        String newEmail = request.getEmail();
+        if (!user.getEmail().equalsIgnoreCase(newEmail)) {
+            userRepository.findByEmail(newEmail).ifPresent(existing -> {
+                if (!existing.getId().equals(user.getId())) {
+                    throw new EmailAlreadyExistsException(
+                            String.format("email %s already exists", newEmail));
+                }
+            });
+        }
+
+        user.setUsername(newUsername);
+        user.setEmail(newEmail);
+
+        Profile profile = user.getUserProfile();
+        if (profile == null) {
+            profile = new Profile();
+        }
+        profile.setDisplayName(request.getName());
+        profile.setProfilePictureUrl(request.getProfilePictureUrl());
+        user.setUserProfile(profile);
+
+        return userRepository.save(user);
     }
 }
