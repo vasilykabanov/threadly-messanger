@@ -165,11 +165,21 @@ body.theme-new.theme-new-light .mobile-nav-item {
 .settings-nav-left {
     display: inline-flex;
     align-items: center;
-    gap: 18px;
+    gap: 22px;
 }
 
 .settings-nav-left i {
     margin-right: 2px;
+}
+
+.settings-nav-left span {
+    padding-left: 6px;
+}
+
+.settings-time-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .desktop-back-row {

@@ -1046,6 +1046,39 @@ span.status-circle:before {
     color: #999;
 }
 
+body.time-layout-below .message-bubble,
+body.time-layout-inline .message-bubble {
+    padding-right: 12px;
+    padding-bottom: 10px;
+}
+
+body.time-layout-below .sent p.message-bubble,
+body.time-layout-below .replies p.message-bubble,
+body.time-layout-inline .sent p.message-bubble,
+body.time-layout-inline .replies p.message-bubble {
+    padding-right: 12px;
+    padding-bottom: 10px;
+}
+
+body.time-layout-below .message-bubble .time {
+    position: static;
+    display: block;
+    margin-top: 6px;
+    text-align: right;
+}
+
+body.time-layout-inline .message-bubble .text {
+    display: inline;
+}
+
+body.time-layout-inline .message-bubble .time {
+    position: static;
+    display: inline-block;
+    margin-left: 8px;
+    white-space: nowrap;
+    vertical-align: baseline;
+}
+
 .sent p, .replies p {
     background: #e0f7fa;
     border-radius: 12px;
