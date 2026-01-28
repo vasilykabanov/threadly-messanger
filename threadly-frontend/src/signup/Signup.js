@@ -26,10 +26,12 @@ const Signup = (props) => {
             })
             .catch((error) => {
                 const serverMessage =
-                    error?.message ||
-                    error?.error ||
+                    error?.errors?.[0]?.defaultMessage ||
                     error?.errors?.[0]?.message ||
-                    error?.errors?.[0]?.defaultMessage;
+                    error?.error ||
+                    (error?.message && !/bad request/i.test(error.message)
+                        ? error.message
+                        : null);
                 notification.error({
                     message: "Ошибка",
                     description:
