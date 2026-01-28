@@ -9,6 +9,15 @@ const getInitialTheme = () => {
     }
 };
 
+const getInitialThemeMode = () => {
+    if (typeof window === "undefined") return "dark";
+    try {
+        return localStorage.getItem("uiThemeMode") || "dark";
+    } catch (error) {
+        return "dark";
+    }
+};
+
 export const loggedInUser = atom({
     key: "loggedInUser",
     default: {},
@@ -35,4 +44,9 @@ export const chatMessages = atom({
 export const uiTheme = atom({
     key: "uiTheme",
     default: getInitialTheme(),
+});
+
+export const uiThemeMode = atom({
+    key: "uiThemeMode",
+    default: getInitialThemeMode(),
 });

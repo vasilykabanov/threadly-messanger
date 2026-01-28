@@ -76,7 +76,39 @@ body.theme-new .login-form .ant-input-password {
     color: #e2e8f0;
 }
 
+body.theme-new .login-form .ant-input-affix-wrapper {
+    background: rgba(30, 41, 59, 0.6);
+    border-color: rgba(148, 163, 184, 0.35);
+    color: #e2e8f0;
+}
+
+body.theme-new .login-form .ant-input-affix-wrapper .anticon {
+    color: rgba(226, 232, 240, 0.7);
+}
+
+body.theme-new .login-form .ant-input-affix-wrapper-focused {
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+}
+
 body.theme-new .login-form .ant-input::placeholder,
 body.theme-new .login-form .ant-input-password input::placeholder {
     color: rgba(226, 232, 240, 0.6);
+}
+
+body.theme-new.theme-new-light .auth-card {
+    background: rgba(255, 255, 255, 0.9);
+    color: #0f172a;
+}
+
+body.theme-new.theme-new-light .login-form .ant-input,
+body.theme-new.theme-new-light .login-form .ant-input-password,
+body.theme-new.theme-new-light .login-form .ant-input-affix-wrapper {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(148, 163, 184, 0.35);
+    color: #0f172a;
+}
+
+body.theme-new.theme-new-light .login-form .ant-input::placeholder,
+body.theme-new.theme-new-light .login-form .ant-input-password input::placeholder {
+    color: rgba(15, 23, 42, 0.5);
 }

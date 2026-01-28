@@ -793,6 +793,7 @@ span.status-circle:before {
     display: flex; /* строка элементов */
     align-items: center; /* вертикальное выравнивание */
     padding: 0 10px; /* отступы слева и справа */
+    gap: 10px;
 }
 
 #frame .content .contact-profile img {
@@ -812,6 +813,21 @@ span.status-circle:before {
     overflow: hidden;
     text-overflow: ellipsis; /* длинные имена обрезаем */
     color: var(--color-panel-alt);
+}
+
+.close-chat-btn {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: 24px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px 8px;
+}
+
+.close-chat-btn:hover {
+    color: var(--color-text-light);
 }
 
 #frame .content .contact-profile .social-media {
@@ -1238,10 +1254,6 @@ span.status-circle:before {
 }
 
 /* ---------- NEW COSMIC THEME OVERRIDES ---------- */
-body.theme-legacy .contact-info-panel {
-    display: none;
-}
-
 body.theme-new {
     --color-bg: #0f172a;
     --color-panel: rgba(15, 23, 42, 0.78);
@@ -1301,6 +1313,7 @@ body.theme-new #frame #sidepanel #search {
     align-items: center;
     gap: 10px;
     transition: all 0.3s ease;
+    cursor: text;
 }
 
 body.theme-new #frame #sidepanel #search label {
@@ -1309,20 +1322,25 @@ body.theme-new #frame #sidepanel #search label {
 }
 
 body.theme-new #frame #sidepanel #search input {
-    width: 0;
-    opacity: 0;
-    padding: 0;
+    width: 40px;
+    opacity: 0.8;
+    padding: 4px;
     border: none;
     background: transparent;
     color: var(--color-text-light);
     transition: all 0.3s ease;
+    pointer-events: auto;
 }
 
 body.theme-new #frame #sidepanel #search:focus-within input,
 body.theme-new #frame #sidepanel #search input:not(:placeholder-shown) {
     width: 180px;
     opacity: 1;
-    padding: 6px 4px;
+    padding: 6px 6px;
+}
+
+body.theme-new #frame #sidepanel #search input::placeholder {
+    color: rgba(226, 232, 240, 0.6);
 }
 
 body.theme-new #frame #sidepanel #contacts ul li.contact {
@@ -1411,6 +1429,8 @@ body.theme-new .message-bubble .time {
 body.theme-new #frame .content .message-input {
     background: rgba(15, 23, 42, 0.7);
     border-top: 1px solid rgba(148, 163, 184, 0.2);
+    z-index: 3;
+    pointer-events: auto;
 }
 
 body.theme-new #frame .content .message-input .wrap {
@@ -1422,30 +1442,18 @@ body.theme-new #frame .content .message-input .wrap {
 
 body.theme-new .chat-input {
     color: #e2e8f0;
+    background: transparent;
+    pointer-events: auto;
 }
 
 body.theme-new .send-btn {
     background: linear-gradient(135deg, #7c3aed, #6366f1) !important;
-    box-shadow: 0 10px 20px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 10px 20px rgba(99, 102, 241, 0.35) !important;
 }
 
-body.theme-new .contact-info-panel {
-    width: 320px;
-    background: rgba(15, 23, 42, 0.7);
-    border-radius: 22px;
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    backdrop-filter: blur(18px);
-    box-shadow: 0 24px 60px rgba(2, 6, 23, 0.45);
-    padding: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #e2e8f0;
-    flex: 0 0 320px;
-}
-
-body.theme-new .contact-info-panel .contact-profile-card {
-    gap: 10px;
+body.theme-new .send-btn.ant-btn {
+    border: none !important;
+    color: #ffffff !important;
 }
 
 body.theme-new .contact-profile-title {
@@ -1461,12 +1469,90 @@ body.theme-new .contact-profile-drawer .ant-drawer-body {
     color: #e2e8f0;
 }
 
+body.theme-new .contact-profile-drawer .ant-drawer-content {
+    background: rgba(15, 23, 42, 0.95);
+}
+
+body.theme-new .contact-profile-drawer .ant-drawer-header {
+    background: rgba(15, 23, 42, 0.95);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+body.theme-new .contact-profile-drawer .ant-drawer-title,
+body.theme-new .contact-profile-drawer .ant-drawer-close {
+    color: #e2e8f0;
+}
+
 body.theme-new .contact-profile-empty {
     color: rgba(226, 232, 240, 0.7);
 }
 
-@media screen and (max-width: 1100px) {
-    body.theme-new .contact-info-panel {
-        display: none;
-    }
+
+.close-chat-btn {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: 24px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px 8px;
+}
+
+.close-chat-btn:hover {
+    color: var(--color-text-light);
+}
+
+body.theme-new .close-chat-btn {
+    color: rgba(226, 232, 240, 0.7);
+}
+
+body.theme-new .close-chat-btn:hover {
+    color: #f8fafc;
+}
+
+body.theme-new.theme-new-light {
+    --color-bg: #eef2ff;
+    --color-panel: rgba(255, 255, 255, 0.9);
+    --color-panel-alt: rgba(255, 255, 255, 0.9);
+    --color-panel-hover: rgba(226, 232, 240, 0.9);
+    --color-panel-active: rgba(226, 232, 240, 0.9);
+    --color-accent: #6366f1;
+    --color-accent-dark: #4f46e5;
+    --color-text-light: #0f172a;
+    --color-text-muted: rgba(15, 23, 42, 0.7);
+    --color-border: rgba(148, 163, 184, 0.25);
+    --color-content-bg: rgba(255, 255, 255, 0.75);
+    --color-scroll-thumb: rgba(15, 23, 42, 0.2);
+}
+
+body.theme-new.theme-new-light #frame #sidepanel #search {
+    background: rgba(255, 255, 255, 0.85);
+}
+
+body.theme-new.theme-new-light #frame #sidepanel #search input {
+    color: #0f172a;
+}
+
+body.theme-new.theme-new-light #frame #sidepanel #search input::placeholder {
+    color: rgba(15, 23, 42, 0.5);
+}
+
+body.theme-new.theme-new-light #frame .content .messages ul li.replies p {
+    background: rgba(255, 255, 255, 0.9);
+    color: #0f172a;
+}
+
+body.theme-new.theme-new-light #frame .content .message-input {
+    background: rgba(255, 255, 255, 0.8);
+}
+
+body.theme-new.theme-new-light .chat-input {
+    color: #0f172a;
+}
+
+body.theme-new.theme-new-light .contact-profile-drawer .ant-drawer-content,
+body.theme-new.theme-new-light .contact-profile-drawer .ant-drawer-body {
+    background: rgba(255, 255, 255, 0.95);
+    color: #0f172a;
 }

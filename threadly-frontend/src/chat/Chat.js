@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {Button, Drawer, message, Spin} from "antd";
+import {Button, Drawer, Switch, message, Spin} from "antd";
 import {
     getUsers,
     countNewMessages,
@@ -14,6 +14,8 @@ import {
     loggedInUser,
     chatActiveContact,
     chatMessages,
+    uiTheme,
+    uiThemeMode,
 } from "../atom/globalState";
 import ScrollToBottom from "react-scroll-to-bottom";
 import "./Chat.css";
@@ -37,8 +39,11 @@ const Chat = (props) => {
     const [allUsers, setAllUsers] = useState([]);
     const [activeContact, setActiveContact] = useRecoilState(chatActiveContact);
     const [messages, setMessages] = useRecoilState(chatMessages);
+    const [theme, setTheme] = useRecoilState(uiTheme);
+    const [themeMode, setThemeMode] = useRecoilState(uiThemeMode);
     const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [profileLoading, setProfileLoading] = useState(false);
     const [profileData, setProfileData] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
@@ -248,6 +253,55 @@ const Chat = (props) => {
             });
     };
 
+    const closeChat = () => {
+        setActiveContact(null);
+        setMessages([]);
+        setIsMobileChatOpen(false);
+    };
+
+    const goToProfile = () => {
+        props.history.push("/");
+    };
+
+    const goToSettings = () => {
+        props.history.push("/settings");
+    };
+
+    const logout = () => {
+        try {
+            const persisted = sessionStorage.getItem("recoil-persist");
+            if (persisted) {
+                const data = JSON.parse(persisted);
+                delete data.chatActiveContact;
+                delete data.chatMessages;
+                delete data.loggedInUser;
+                sessionStorage.setItem("recoil-persist", JSON.stringify(data));
+            }
+        } catch (e) {
+            sessionStorage.removeItem("recoil-persist");
+        }
+        localStorage.removeItem("accessToken");
+        props.history.push("/login");
+    };
+
+    const handleThemeChange = (checked) => {
+        const nextTheme = checked ? "new" : "legacy";
+        setTheme(nextTheme);
+        try {
+            localStorage.setItem("uiTheme", nextTheme);
+        } catch (error) {
+        }
+    };
+
+    const handleModeChange = (checked) => {
+        const nextMode = checked ? "dark" : "light";
+        setThemeMode(nextMode);
+        try {
+            localStorage.setItem("uiThemeMode", nextMode);
+        } catch (error) {
+        }
+    };
+
     const formatTime = (isoDate) => {
         if (!isoDate) return "";
         const date = new Date(isoDate);
@@ -277,6 +331,14 @@ const Chat = (props) => {
             <div id="sidepanel">
                 <div id="profile">
                     <div className="wrap">
+                        <button
+                            type="button"
+                            className="menu-trigger"
+                            aria-label="Открыть меню"
+                            onClick={() => setIsMenuOpen(true)}
+                        >
+                            ☰
+                        </button>
                         <div className={`avatar-wrapper ${currentUser.status || "online"}`}>
                             <Avatar
                                 name={currentUser.name}
@@ -303,7 +365,10 @@ const Chat = (props) => {
                         </div>
                     </div>
                 </div>
-                <div id="search">
+                <div
+                    id="search"
+                    onClick={() => document.getElementById("contact-search")?.focus()}
+                >
                     <label htmlFor="contact-search">
                         <i className="fa fa-search" aria-hidden="true"></i>
                     </label>
@@ -431,6 +496,14 @@ const Chat = (props) => {
                                 />
                                 <span className="contact-profile-name">{activeContact.name}</span>
                             </button>
+                            <button
+                                type="button"
+                                className="close-chat-btn"
+                                onClick={closeChat}
+                                aria-label="Закрыть чат"
+                            >
+                                ×
+                            </button>
                         </div>
 
                         <ScrollToBottom key={activeContact.id} className="messages">
@@ -502,40 +575,6 @@ const Chat = (props) => {
                 )}
             </div>
 
-            <div className={`contact-info-panel ${activeContact ? "visible" : ""}`}>
-                {activeContact ? (
-                    profileLoading ? (
-                        <div className="contact-profile-loading">
-                            <Spin />
-                        </div>
-                    ) : (
-                        <div className="contact-profile-card">
-                            <Avatar
-                                name={profileData?.name || activeContact?.name}
-                                src={profileData?.profilePicture || activeContact?.profilePicture}
-                                size={96}
-                            />
-                            <div className="contact-profile-title">
-                                {profileData?.name || activeContact?.name}
-                            </div>
-                            <div className="contact-profile-username">
-                                @{profileData?.username || activeContact?.username}
-                            </div>
-                            {activeContact?.status && (
-                                <div className={`contact-profile-status ${activeContact.status}`}>
-                                    {activeContact.status === "online" && "В сети"}
-                                    {activeContact.status === "away" && "Нет на месте"}
-                                    {activeContact.status === "busy" && "Занят"}
-                                    {activeContact.status === "offline" && "Оффлайн"}
-                                </div>
-                            )}
-                        </div>
-                    )
-                ) : (
-                    <div className="contact-profile-empty">Выберите диалог</div>
-                )}
-            </div>
-
             <Drawer
                 title="Профиль собеседника"
                 placement="right"
@@ -572,6 +611,57 @@ const Chat = (props) => {
                     </div>
                 )}
             </Drawer>
+
+            <Drawer
+                title="Меню"
+                placement="left"
+                onClose={() => setIsMenuOpen(false)}
+                visible={isMenuOpen}
+                className="chat-menu-drawer"
+            >
+                <div className="chat-menu-section">
+                    <Button type="text" onClick={goToProfile} className="chat-menu-item">
+                        Мой профиль
+                    </Button>
+                    <Button type="text" onClick={goToSettings} className="chat-menu-item">
+                        Настройки
+                    </Button>
+                    <Button type="text" danger onClick={logout} className="chat-menu-item">
+                        Выйти
+                    </Button>
+                </div>
+                <div className="chat-menu-section">
+                    <div className="chat-menu-toggle">
+                        <span>Новый дизайн</span>
+                        <Switch checked={theme === "new"} onChange={handleThemeChange} />
+                    </div>
+                    {theme === "new" && (
+                        <div className="chat-menu-toggle">
+                            <span>{themeMode === "dark" ? "Тёмная тема" : "Светлая тема"}</span>
+                            <Switch checked={themeMode === "dark"} onChange={handleModeChange} />
+                        </div>
+                    )}
+                </div>
+            </Drawer>
+
+            <div className="mobile-bottom-nav">
+                <button
+                    type="button"
+                    className="mobile-nav-item"
+                    onClick={() => props.history.push("/chat")}
+                >
+                    <i className="fa fa-comments" aria-hidden="true"></i>
+                    <span>Чаты</span>
+                </button>
+                <button
+                    type="button"
+                    className="mobile-nav-item"
+                    onClick={() => props.history.push("/settings")}
+                >
+                    <i className="fa fa-cog" aria-hidden="true"></i>
+                    <span>Настройки</span>
+                </button>
+            </div>
         </div>
     );
 };

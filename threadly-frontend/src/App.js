@@ -8,23 +8,33 @@ import Settings from "./settings/Settings";
 import "./App.css";
 import PrivateRoute from "./PrivateRoute";
 import {useRecoilValue} from "recoil";
-import {uiTheme} from "./atom/globalState";
+import {uiTheme, uiThemeMode} from "./atom/globalState";
 
 export const AppContext = React.createContext();
 const App = (props) => {
     const theme = useRecoilValue(uiTheme);
+    const themeMode = useRecoilValue(uiThemeMode);
 
     useEffect(() => {
         const nextTheme = theme === "new" ? "theme-new" : "theme-legacy";
-        document.body.classList.remove("theme-new", "theme-legacy");
+        const nextMode = themeMode === "light" ? "theme-new-light" : "theme-new-dark";
+        document.body.classList.remove(
+            "theme-new",
+            "theme-legacy",
+            "theme-new-light",
+            "theme-new-dark"
+        );
         document.body.classList.add(nextTheme);
-    }, [theme]);
+        if (theme === "new") {
+            document.body.classList.add(nextMode);
+        }
+    }, [theme, themeMode]);
 
     return (
         <div className={`App ${theme === "new" ? "theme-new" : "theme-legacy"}`}>
             <BrowserRouter>
                 <Switch>
-                    <Route exact path="/" render={(props) => <Profile {...props} />}/>
+                    <PrivateRoute exact path="/" component={Profile} />
                     <Route exact path="/login" render={(props) => <Signin {...props} />}/>
                     <Route exact path="/signup" render={(props) => <Signup {...props} />}/>
                     {/*<Route exact path="/chat" render={(props) => <Chat {...props} />}/>*/}

@@ -2,12 +2,13 @@ import React, {useEffect, useState} from "react";
 import {Card, Button, Divider, Form, Input, Switch, message} from "antd";
 import {changePassword, getCurrentUser} from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
-import {loggedInUser, uiTheme} from "../atom/globalState";
+import {loggedInUser, uiTheme, uiThemeMode} from "../atom/globalState";
 import "../profile/Profile.css";
 
 const Settings = (props) => {
     const [currentUser, setLoggedInUser] = useRecoilState(loggedInUser);
     const [theme, setTheme] = useRecoilState(uiTheme);
+    const [themeMode, setThemeMode] = useRecoilState(uiThemeMode);
     const [passwordForm] = Form.useForm();
     const [changingPassword, setChangingPassword] = useState(false);
 
@@ -26,6 +27,13 @@ const Settings = (props) => {
         } catch (error) {
         }
     }, [theme]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem("uiThemeMode", themeMode);
+        } catch (error) {
+        }
+    }, [themeMode]);
 
     const onChangePassword = (values) => {
         setChangingPassword(true);
@@ -54,7 +62,7 @@ const Settings = (props) => {
     return (
         <div className="profile-container">
             <Card
-                style={{width: 520, border: "1px solid #e1e0e0"}}
+                style={{width: "100%"}}
                 actions={[
                     <Button type="default" onClick={goToProfile}>Профиль</Button>,
                     <Button type="default" onClick={goToChat}>Чаты</Button>
@@ -132,7 +140,33 @@ const Settings = (props) => {
                         onChange={(checked) => setTheme(checked ? "new" : "legacy")}
                     />
                 </div>
+                {theme === "new" && (
+                    <div className="settings-theme-toggle">
+                        <div className="settings-theme-text">
+                            <div className="settings-theme-title">Тема</div>
+                            <div className="settings-theme-subtitle">
+                                {themeMode === "dark" ? "Тёмная" : "Светлая"}
+                            </div>
+                        </div>
+                        <Switch
+                            checked={themeMode === "dark"}
+                            checkedChildren="Тёмная"
+                            unCheckedChildren="Светлая"
+                            onChange={(checked) => setThemeMode(checked ? "dark" : "light")}
+                        />
+                    </div>
+                )}
             </Card>
+            <div className="mobile-bottom-nav">
+                <button type="button" className="mobile-nav-item" onClick={goToChat}>
+                    <i className="fa fa-comments" aria-hidden="true"></i>
+                    <span>Чаты</span>
+                </button>
+                <button type="button" className="mobile-nav-item" onClick={goToProfile}>
+                    <i className="fa fa-user" aria-hidden="true"></i>
+                    <span>Мой профиль</span>
+                </button>
+            </div>
         </div>
     );
 };

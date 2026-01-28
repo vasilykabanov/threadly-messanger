@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from "react";
 import {Card, Avatar, Button, Divider, Form, Input, Switch, message} from "antd";
 import {useRecoilState} from "recoil";
-import {loggedInUser, uiTheme} from "../atom/globalState";
+import {loggedInUser, uiTheme, uiThemeMode} from "../atom/globalState";
 import {getCurrentUser, updateProfile} from "../util/ApiUtil";
 import "./Profile.css";
 
@@ -10,6 +10,7 @@ const {Meta} = Card;
 const Profile = (props) => {
     const [currentUser, setLoggedInUser] = useRecoilState(loggedInUser);
     const [theme, setTheme] = useRecoilState(uiTheme);
+    const [themeMode, setThemeMode] = useRecoilState(uiThemeMode);
     const [profileForm] = Form.useForm();
     const [savingProfile, setSavingProfile] = useState(false);
 
@@ -41,6 +42,13 @@ const Profile = (props) => {
         } catch (error) {
         }
     }, [theme]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem("uiThemeMode", themeMode);
+        } catch (error) {
+        }
+    }, [themeMode]);
 
     useEffect(() => {
         if (!currentUser?.username) return;
@@ -93,10 +101,9 @@ const Profile = (props) => {
     return (
         <div className="profile-container">
             <Card
-                style={{width: 520, border: "1px solid #e1e0e0"}}
+                style={{width: "100%"}}
                 actions={[
                     <Button type="primary" danger onClick={logout}>Выйти</Button>,
-                    <Button type="default" onClick={goToChat}>Чаты</Button>,
                     <Button type="default" onClick={goToSettings}>Настройки</Button>
                 ]}
             >
@@ -123,6 +130,22 @@ const Profile = (props) => {
                         onChange={(checked) => setTheme(checked ? "new" : "legacy")}
                     />
                 </div>
+                {theme === "new" && (
+                    <div className="settings-theme-toggle">
+                        <div className="settings-theme-text">
+                            <div className="settings-theme-title">Тема</div>
+                            <div className="settings-theme-subtitle">
+                                {themeMode === "dark" ? "Тёмная" : "Светлая"}
+                            </div>
+                        </div>
+                        <Switch
+                            checked={themeMode === "dark"}
+                            checkedChildren="Тёмная"
+                            unCheckedChildren="Светлая"
+                            onChange={(checked) => setThemeMode(checked ? "dark" : "light")}
+                        />
+                    </div>
+                )}
 
                 <Divider>Профиль</Divider>
                 <Form
@@ -179,6 +202,16 @@ const Profile = (props) => {
                 </Form>
 
             </Card>
+                <div className="mobile-bottom-nav">
+                    <button type="button" className="mobile-nav-item" onClick={goToChat}>
+                        <i className="fa fa-comments" aria-hidden="true"></i>
+                        <span>Чаты</span>
+                    </button>
+                    <button type="button" className="mobile-nav-item" onClick={goToSettings}>
+                        <i className="fa fa-cog" aria-hidden="true"></i>
+                        <span>Настройки</span>
+                    </button>
+                </div>
         </div>
     );
 };
