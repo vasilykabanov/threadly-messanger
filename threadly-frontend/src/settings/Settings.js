@@ -203,10 +203,6 @@ const Settings = (props) => {
                     <i className="fa fa-cog" aria-hidden="true"></i>
                     <span>Настройки</span>
                 </button>
-                <button type="button" className="mobile-nav-item danger" onClick={logout}>
-                    <i className="fa fa-sign-out" aria-hidden="true"></i>
-                    <span>Выйти</span>
-                </button>
             </div>
         </div>
     );

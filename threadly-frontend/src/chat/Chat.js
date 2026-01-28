@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {Button, Drawer, Switch, message, Spin} from "antd";
+import {Button, Drawer, Switch, message, Spin, Modal} from "antd";
 import {
     getUsers,
     countNewMessages,
@@ -50,6 +50,9 @@ const Chat = (props) => {
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [lastMessageByContact, setLastMessageByContact] = useState({});
+    const [isDeleteChatOpen, setIsDeleteChatOpen] = useState(false);
+    const [deleteChatTarget, setDeleteChatTarget] = useState(null);
+    const [deleteChatLoading, setDeleteChatLoading] = useState(false);
 
     useEffect(() => {
         document.body.classList.add("chat-page");
@@ -396,16 +399,27 @@ const Chat = (props) => {
         }
     };
 
-    const confirmDeleteChat = (contact) => {
-        const confirmRemove = window.confirm("Удалить чат?");
-        if (!confirmRemove) return;
+    const openDeleteChat = (contact) => {
+        setDeleteChatTarget(contact);
+        setIsDeleteChatOpen(true);
+    };
 
-        const deleteForAll = window.confirm("Удалить у всех?");
-        const scope = deleteForAll ? "all" : "me";
+    const closeDeleteChat = () => {
+        setIsDeleteChatOpen(false);
+        setDeleteChatTarget(null);
+    };
 
-        deleteChatRequest(currentUser.id, contact.id, currentUser.id, scope)
-            .then(() => deleteChat(contact.id))
-            .catch(() => deleteChat(contact.id));
+    const handleDeleteChat = (scope) => {
+        if (!deleteChatTarget) return;
+        setDeleteChatLoading(true);
+        deleteChatRequest(currentUser.id, deleteChatTarget.id, currentUser.id, scope)
+            .then(() => deleteChat(deleteChatTarget.id))
+            .catch(() => deleteChat(deleteChatTarget.id))
+            .finally(() => {
+                setDeleteChatLoading(false);
+                closeDeleteChat();
+                setIsProfileOpen(false);
+            });
     };
 
     const createLongPressHandlers = (contact) => {
@@ -413,7 +427,7 @@ const Chat = (props) => {
 
         const start = () => {
             timer = setTimeout(() => {
-                confirmDeleteChat(contact);
+                openDeleteChat(contact);
             }, 550);
         };
 
@@ -427,7 +441,7 @@ const Chat = (props) => {
         return {
             onContextMenu: (event) => {
                 event.preventDefault();
-                confirmDeleteChat(contact);
+                openDeleteChat(contact);
             },
             onTouchStart: start,
             onTouchEnd: clear,
@@ -744,13 +758,53 @@ const Chat = (props) => {
                             danger
                             type="primary"
                             className="delete-chat-btn"
-                            onClick={() => confirmDeleteChat(activeContact)}
+                            onClick={() => openDeleteChat(activeContact)}
                         >
                             Удалить чат
                         </Button>
                     </div>
                 )}
             </Drawer>
+
+            <Modal
+                title="Удалить чат"
+                open={isDeleteChatOpen}
+                onCancel={() => {
+                    closeDeleteChat();
+                    setIsProfileOpen(false);
+                }}
+                footer={[
+                    <Button
+                        key="cancel"
+                        onClick={() => {
+                            closeDeleteChat();
+                            setIsProfileOpen(false);
+                        }}
+                    >
+                        Отменить
+                    </Button>,
+                    <Button
+                        key="delete-me"
+                        onClick={() => handleDeleteChat("me")}
+                        loading={deleteChatLoading}
+                    >
+                        Удалить чат у себя
+                    </Button>,
+                    <Button
+                        key="delete-all"
+                        danger
+                        type="primary"
+                        onClick={() => handleDeleteChat("all")}
+                        loading={deleteChatLoading}
+                    >
+                        Удалить чат у обоих
+                    </Button>,
+                ]}
+            >
+                <div>
+                    Переписка с пользователем будет удалена выбранным способом.
+                </div>
+            </Modal>
 
             <Drawer
                 title="Меню"
