@@ -1,6 +1,6 @@
 package ru.vkabanov.threadlyauth.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -8,10 +8,10 @@ import org.springframework.stereotype.Service;
 import ru.vkabanov.threadlyauth.model.ThreadlyUserDetails;
 
 @Service
+@RequiredArgsConstructor
 public class ThreadlyUserDetailsService implements UserDetailsService {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
