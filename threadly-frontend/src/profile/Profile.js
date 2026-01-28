@@ -118,11 +118,14 @@ const Profile = (props) => {
             <button className="mobile-back-btn" onClick={goBackTarget}>
                 {backTarget === "/settings" ? "← К настройкам" : "← К чатам"}
             </button>
+            <div className="desktop-back-row">
+                <Button type="text" onClick={goToChat}>← К чатам</Button>
+                <Button type="text" onClick={goToSettings}>← К настройкам</Button>
+            </div>
             <Card
                 style={{width: "100%"}}
                 actions={[
-                    <Button type="primary" danger onClick={logout}>Выйти</Button>,
-                    <Button type="default" onClick={goToSettings}>Настройки</Button>
+                    <Button type="primary" danger onClick={logout}>Выйти</Button>
                 ]}
             >
                 <Meta

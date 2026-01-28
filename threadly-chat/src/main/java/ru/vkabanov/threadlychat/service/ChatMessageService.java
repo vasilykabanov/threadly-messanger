@@ -33,12 +33,21 @@ public class ChatMessageService {
     }
 
     public long countNewMessages(String senderId, String recipientId) {
-        return repository.countBySenderIdAndRecipientIdAndStatus(senderId, recipientId, MessageStatus.RECEIVED);
+        Query query = new Query(Criteria
+                .where("senderId").is(senderId)
+                .and("recipientId").is(recipientId)
+                .and("status").is(MessageStatus.RECEIVED)
+                .and("deletedFor").ne(recipientId));
+        return mongoOperations.count(query, ChatMessage.class);
     }
 
     public List<ChatMessage> findChatMessages(String senderId, String recipientId) {
         var chatId = chatRoomService.getChatId(senderId, recipientId, false);
         var messages = chatId.map(cId -> repository.findByChatId(cId)).orElse(new ArrayList<>());
+
+        messages = messages.stream()
+            .filter(message -> message.getDeletedFor() == null || !message.getDeletedFor().contains(recipientId))
+            .toList();
 
         if (messages.size() > 0) {
             updateStatuses(senderId, recipientId, MessageStatus.DELIVERED);
@@ -59,8 +68,9 @@ public class ChatMessageService {
     public List<String> findContactIds(String userId) {
         Query query = new Query(new Criteria().orOperator(
                 Criteria.where("senderId").is(userId),
-                Criteria.where("recipientId").is(userId)
+            Criteria.where("recipientId").is(userId)
         ));
+        query.addCriteria(Criteria.where("deletedFor").ne(userId));
 
         Set<String> contacts = new HashSet<>();
         contacts.addAll(mongoOperations.findDistinct(query, "senderId", ChatMessage.class, String.class));
@@ -73,8 +83,27 @@ public class ChatMessageService {
     public void updateStatuses(String senderId, String recipientId, MessageStatus status) {
         Query query = new Query(Criteria
                 .where("senderId").is(senderId)
-                .and("recipientId").is(recipientId));
+                .and("recipientId").is(recipientId)
+                .and("deletedFor").ne(recipientId));
         Update update = Update.update("status", status);
         mongoOperations.updateMulti(query, update, ChatMessage.class);
+    }
+
+    public void deleteChatForUser(String senderId, String recipientId, String userId) {
+        var chatId = chatRoomService.getChatId(senderId, recipientId, false).orElse(null);
+        if (chatId == null) {
+            return;
+        }
+        Query query = new Query(Criteria.where("chatId").is(chatId));
+        Update update = new Update().addToSet("deletedFor", userId);
+        mongoOperations.updateMulti(query, update, ChatMessage.class);
+    }
+
+    public void deleteChatForAll(String senderId, String recipientId) {
+        var chatId = chatRoomService.getChatId(senderId, recipientId, false).orElse(null);
+        if (chatId == null) {
+            return;
+        }
+        repository.deleteByChatId(chatId);
     }
 }

@@ -8,6 +8,7 @@ import {
     getUserSummary,
     getChatContacts,
     getCurrentUser,
+    deleteChat as deleteChatRequest,
 } from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
 import {
@@ -66,6 +67,11 @@ const Chat = (props) => {
                 .then((response) => setLoggedInUser(response))
                 .catch(() => {});
         }
+    }, []);
+
+    useEffect(() => {
+        setActiveContact(null);
+        setMessages([]);
     }, []);
 
     useEffect(() => {
@@ -262,8 +268,17 @@ const Chat = (props) => {
 
                 return Promise.all(
                     contactsWithHistory.map((contact) =>
-                        countNewMessages(contact.id, currentUser.id).then((count) => {
+                        Promise.all([
+                            countNewMessages(contact.id, currentUser.id),
+                            findChatMessages(contact.id, currentUser.id)
+                        ]).then(([count, msgs]) => {
                             contact.newMessages = count;
+                            if (msgs.length > 0) {
+                                setLastMessageByContact((prev) => ({
+                                    ...prev,
+                                    [contact.id]: msgs[msgs.length - 1],
+                                }));
+                            }
                             return contact;
                         })
                     )
@@ -372,6 +387,45 @@ const Chat = (props) => {
         if (activeContact?.id === contactId) {
             closeChat();
         }
+    };
+
+    const confirmDeleteChat = (contact) => {
+        const confirmRemove = window.confirm("Удалить чат?");
+        if (!confirmRemove) return;
+
+        const deleteForAll = window.confirm("Удалить у всех?");
+        const scope = deleteForAll ? "all" : "me";
+
+        deleteChatRequest(currentUser.id, contact.id, currentUser.id, scope)
+            .then(() => deleteChat(contact.id))
+            .catch(() => deleteChat(contact.id));
+    };
+
+    const createLongPressHandlers = (contact) => {
+        let timer = null;
+
+        const start = () => {
+            timer = setTimeout(() => {
+                confirmDeleteChat(contact);
+            }, 550);
+        };
+
+        const clear = () => {
+            if (timer) {
+                clearTimeout(timer);
+                timer = null;
+            }
+        };
+
+        return {
+            onContextMenu: (event) => {
+                event.preventDefault();
+                confirmDeleteChat(contact);
+            },
+            onTouchStart: start,
+            onTouchEnd: clear,
+            onTouchMove: clear,
+        };
     };
 
     const isNewDay = (current, previous) => {
@@ -497,6 +551,7 @@ const Chat = (props) => {
                                         ? "contact active"
                                         : "contact"
                                 }
+                                {...createLongPressHandlers(contact)}
                             >
                                 <div className="wrap">
                                     <div className={`avatar-wrapper ${contact.status}`}>
@@ -521,17 +576,6 @@ const Chat = (props) => {
                                                 : "Нет сообщений"}
                                         </p>
                                     </div>
-                                    <button
-                                        type="button"
-                                        className="delete-chat-btn"
-                                        aria-label="Удалить чат"
-                                        onClick={(event) => {
-                                            event.stopPropagation();
-                                            deleteChat(contact.id);
-                                        }}
-                                    >
-                                        ×
-                                    </button>
                                 </div>
                             </li>
                         ))}
@@ -718,7 +762,7 @@ const Chat = (props) => {
                     </div>
                     {theme === "new" && (
                         <div className="chat-menu-toggle">
-                            <span>{themeMode === "dark" ? "Тёмная тема" : "Светлая тема"}</span>
+                            <span>Тёмная тема</span>
                             <Switch checked={themeMode === "dark"} onChange={handleModeChange} />
                         </div>
                     )}

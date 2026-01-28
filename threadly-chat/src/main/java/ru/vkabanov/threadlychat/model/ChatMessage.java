@@ -8,6 +8,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Date;
+import java.util.Set;
 
 @Data
 @AllArgsConstructor
@@ -25,4 +26,5 @@ public class ChatMessage {
    private String content;
    private Date timestamp;
    private MessageStatus status;
+   private Set<String> deletedFor;
 }
