@@ -7,10 +7,10 @@ threadly-chat.ru {
     # WebSocket и Chat API — всё идёт на chat сервис
     handle_path /api/chat/* {
         reverse_proxy threadly-chat:8080 {
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
+            transport http {
+                versions 1.1
+            }
+            flush_interval -1
         }
     }
 
