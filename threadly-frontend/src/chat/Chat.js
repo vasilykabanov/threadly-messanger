@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {Button, Drawer, Switch, message, Spin, Modal} from "antd";
+import {Button, Drawer, message, Spin, Modal} from "antd";
 import {
     getUsers,
     countNewMessages,
@@ -15,8 +15,6 @@ import {
     loggedInUser,
     chatActiveContact,
     chatMessages,
-    uiTheme,
-    uiThemeMode,
 } from "../atom/globalState";
 import ScrollToBottom from "react-scroll-to-bottom";
 import "./Chat.css";
@@ -40,8 +38,6 @@ const Chat = (props) => {
     const [allUsers, setAllUsers] = useState([]);
     const [activeContact, setActiveContact] = useRecoilState(chatActiveContact);
     const [messages, setMessages] = useRecoilState(chatMessages);
-    const [theme, setTheme] = useRecoilState(uiTheme);
-    const [themeMode, setThemeMode] = useRecoilState(uiThemeMode);
     const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -344,24 +340,6 @@ const Chat = (props) => {
         }
         localStorage.removeItem("accessToken");
         props.history.push("/login");
-    };
-
-    const handleThemeChange = (checked) => {
-        const nextTheme = checked ? "new" : "legacy";
-        setTheme(nextTheme);
-        try {
-            localStorage.setItem("uiTheme", nextTheme);
-        } catch (error) {
-        }
-    };
-
-    const handleModeChange = (checked) => {
-        const nextMode = checked ? "dark" : "light";
-        setThemeMode(nextMode);
-        try {
-            localStorage.setItem("uiThemeMode", nextMode);
-        } catch (error) {
-        }
     };
 
     const formatTime = (isoDate) => {
@@ -823,18 +801,6 @@ const Chat = (props) => {
                     <Button type="text" danger onClick={logout} className="chat-menu-item">
                         Выйти
                     </Button>
-                </div>
-                <div className="chat-menu-section">
-                    <div className="chat-menu-toggle">
-                        <span>Новый дизайн</span>
-                        <Switch checked={theme === "new"} onChange={handleThemeChange} />
-                    </div>
-                    {theme === "new" && (
-                        <div className="chat-menu-toggle">
-                            <span>Тёмная тема</span>
-                            <Switch checked={themeMode === "dark"} onChange={handleModeChange} />
-                        </div>
-                    )}
                 </div>
             </Drawer>
 

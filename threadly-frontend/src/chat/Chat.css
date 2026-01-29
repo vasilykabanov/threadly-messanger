@@ -1,5 +1,6 @@
 :root {
     --vh: 100vh;
+    --mobile-nav-height: 72px;
     --color-bg: #e6eaea;
     --color-panel: #2c3e50;
     --color-panel-alt: #435f7a;
@@ -583,6 +584,7 @@ span.status-circle:before {
         height: calc(100% - 149px);
         overflow-y: scroll;
         overflow-x: hidden;
+        padding-bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
     }
 
     #frame #sidepanel #contacts::-webkit-scrollbar {
@@ -1748,6 +1750,10 @@ body.theme-new.theme-new-light .mobile-nav-item.active {
 
     .menu-trigger {
         display: none;
+    }
+
+    .chat-menu-drawer .ant-drawer-body {
+        padding-bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
     }
 }
 

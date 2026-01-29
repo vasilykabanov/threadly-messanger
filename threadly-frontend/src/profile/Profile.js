@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from "react";
-import {Card, Avatar, Button, Divider, Form, Input, Switch, message} from "antd";
+import {Card, Avatar, Button, Divider, Form, Input, message} from "antd";
 import {useRecoilState} from "recoil";
-import {loggedInUser, uiTheme, uiThemeMode} from "../atom/globalState";
+import {loggedInUser} from "../atom/globalState";
 import {getCurrentUser, updateProfile} from "../util/ApiUtil";
 import "./Profile.css";
 
@@ -9,8 +9,6 @@ const {Meta} = Card;
 
 const Profile = (props) => {
     const [currentUser, setLoggedInUser] = useRecoilState(loggedInUser);
-    const [theme, setTheme] = useRecoilState(uiTheme);
-    const [themeMode, setThemeMode] = useRecoilState(uiThemeMode);
     const [profileForm] = Form.useForm();
     const [savingProfile, setSavingProfile] = useState(false);
     const [backTarget, setBackTarget] = useState("/chat");
@@ -45,20 +43,6 @@ const Profile = (props) => {
             setBackTarget("/chat");
         }
     }, []);
-
-    useEffect(() => {
-        try {
-            localStorage.setItem("uiTheme", theme);
-        } catch (error) {
-        }
-    }, [theme]);
-
-    useEffect(() => {
-        try {
-            localStorage.setItem("uiThemeMode", themeMode);
-        } catch (error) {
-        }
-    }, [themeMode]);
 
     useEffect(() => {
         if (!currentUser?.username) return;
@@ -137,36 +121,6 @@ const Profile = (props) => {
                     title={currentUser.name}
                     description={"@" + currentUser.username}
                 />
-
-                <Divider>Дизайн</Divider>
-                <div className="settings-theme-toggle">
-                    <div className="settings-theme-text">
-                        <div className="settings-theme-title">Новый космический дизайн</div>
-                        <div className="settings-theme-subtitle">
-                            Стеклянные панели, неоновый акцент и крупная типографика
-                        </div>
-                    </div>
-                    <Switch
-                        checked={theme === "new"}
-                        onChange={(checked) => setTheme(checked ? "new" : "legacy")}
-                    />
-                </div>
-                {theme === "new" && (
-                    <div className="settings-theme-toggle">
-                        <div className="settings-theme-text">
-                            <div className="settings-theme-title">Тема</div>
-                            <div className="settings-theme-subtitle">
-                                {themeMode === "dark" ? "Тёмная" : "Светлая"}
-                            </div>
-                        </div>
-                        <Switch
-                            checked={themeMode === "dark"}
-                            checkedChildren="Тёмная"
-                            unCheckedChildren="Светлая"
-                            onChange={(checked) => setThemeMode(checked ? "dark" : "light")}
-                        />
-                    </div>
-                )}
 
                 <Divider>Профиль</Divider>
                 <Form
