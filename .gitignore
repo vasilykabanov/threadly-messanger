@@ -50,6 +50,7 @@ build/
 /build
 
 # misc
+.env
 .env.local
 .env.development.local
 .env.test.local
@@ -64,3 +65,4 @@ HELP.md
 /threadly-frontend/node_modules/
 /threadly-chat/target/
 /threadly-auth/target/
+
