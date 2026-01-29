@@ -1,6 +1,9 @@
-{$DOMAIN} {
-    # WebSocket для чата (должен быть перед /api/chat/*)
-    handle /api/chat/ws* {
+threadly-chat.ru {
+    # WebSocket для чата
+    @websocket {
+        path /api/chat/ws*
+    }
+    handle @websocket {
         uri strip_prefix /api/chat
         reverse_proxy threadly-chat:8080
     }
