@@ -15,6 +15,8 @@ public class SecurityConfig {
         final CorsConfiguration config = new CorsConfiguration();
         config.addAllowedOriginPattern("http://localhost*");
         config.addAllowedOriginPattern("http://127.0.0.1*");
+        config.addAllowedOriginPattern("https://threadly-chat.ru");
+        config.addAllowedOriginPattern("http://threadly-chat.ru");
         config.addAllowedHeader("*"); // Разрешаем все заголовки
         config.addAllowedMethod("*"); // Разрешаем все методы HTTP
         config.setAllowCredentials(true);
