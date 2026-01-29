@@ -87,6 +87,9 @@ jobs:
 
             cd "$DEPLOY_PATH"
 
+            # Подтягиваем свежий docker-compose.prod.yml и другие конфиги
+            git pull --ff-only origin master
+
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
 
             docker compose -f docker-compose.prod.yml pull
