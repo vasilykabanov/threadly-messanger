@@ -21,14 +21,21 @@ import "./Chat.css";
 import Avatar from "../profile/Avatar";
 
 const setVH = () => {
-    document.documentElement.style.setProperty(
-        "--vh",
-        `${window.innerHeight}px`
-    );
+    // Используем visualViewport если доступен (лучше работает с мобильной клавиатурой)
+    const vh = window.visualViewport
+        ? window.visualViewport.height
+        : window.innerHeight;
+    document.documentElement.style.setProperty("--vh", `${vh}px`);
 };
 
 setVH();
 window.addEventListener("resize", setVH);
+
+// Слушаем изменения visualViewport для корректной работы с мобильной клавиатурой
+if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", setVH);
+    window.visualViewport.addEventListener("scroll", setVH);
+}
 
 var stompClient = null;
 const Chat = (props) => {
@@ -52,8 +59,14 @@ const Chat = (props) => {
 
     useEffect(() => {
         document.body.classList.add("chat-page");
+
+        // Очистка обработчиков visualViewport при размонтировании
         return () => {
             document.body.classList.remove("chat-page");
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener("resize", setVH);
+                window.visualViewport.removeEventListener("scroll", setVH);
+            }
         };
     }, []);
 
