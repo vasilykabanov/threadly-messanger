@@ -11,6 +11,7 @@ import nl.martijndwars.webpush.Subscription;
 import nl.martijndwars.webpush.Utils;
 import nl.martijndwars.webpush.WebPushException;
 import org.apache.http.HttpResponse;
+import org.apache.http.util.EntityUtils;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
@@ -147,6 +148,21 @@ public class PushNotificationService {
             HttpResponse response = e.getHttpResponse();
             if (response != null) {
                 int statusCode = response.getStatusLine().getStatusCode();
+                String reason = response.getStatusLine().getReasonPhrase();
+                String body = "";
+                try {
+                    if (response.getEntity() != null) {
+                        body = EntityUtils.toString(response.getEntity());
+                    }
+                } catch (Exception ignored) {
+                }
+
+                log.warn("Push error {} {} for endpoint {}. Body: {}",
+                        statusCode,
+                        reason,
+                        subscription.getEndpoint(),
+                        body);
+
                 if (statusCode == 404 || statusCode == 410) {
                     log.info("Removing expired push subscription: {}", subscription.getEndpoint());
                     repository.deleteByEndpoint(subscription.getEndpoint());

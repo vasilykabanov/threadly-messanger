@@ -12,6 +12,6 @@ server:
 
 push:
   vapid:
-    public-key: ${PUSH_VAPID_PUBLIC_KEY:BDTNP0HsKMQCh2-_pqH7u19OHCEHEjs8yly2Tcj6fEnBXHSBG-cgff4VWyzpwVK2aCN4EqKYiue9jUVupxdvEng}
-    private-key: ${PUSH_VAPID_PRIVATE_KEY:iErgX_vQ0JfOOCYuyS6sAp5VhT5R3cBBeEupHLyIBks}
-    subject: ${PUSH_VAPID_SUBJECT:mailto:admin@example.com}
+    public-key: ${PUSH_VAPID_PUBLIC_KEY:}
+    private-key: ${PUSH_VAPID_PRIVATE_KEY:}
+    subject: ${PUSH_VAPID_SUBJECT:}
