@@ -1,7 +1,23 @@
-// const AUTH_SERVICE = "http://localhost:8081";
-// const CHAT_SERVICE = "http://localhost:8080";
+// const AUTH_SERVICE = "https://localhost:8081";
+// const CHAT_SERVICE = "https://localhost:8080";
 export const AUTH_SERVICE = "/api/auth";
 export const CHAT_SERVICE = "/api/chat";
+
+const ensureHttpsUrl = (url) => {
+    if (url.startsWith("https://")) {
+        return url;
+    }
+
+    if (url.startsWith("http://")) {
+        return url.replace(/^http:\/\//, "https://");
+    }
+
+    if (url.startsWith("/")) {
+        return `https://${window.location.host}${url}`;
+    }
+
+    return `https://${url}`;
+};
 
 const request = (options) => {
     const headers = new Headers();
@@ -19,7 +35,9 @@ const request = (options) => {
     const defaults = {headers: headers};
     options = Object.assign({}, defaults, options);
 
-    return fetch(options.url, options).then(async (response) => {
+    const httpsUrl = ensureHttpsUrl(options.url);
+
+    return fetch(httpsUrl, options).then(async (response) => {
         const json = await response.json().catch(() => ({}));
 
         if (!response.ok) {
