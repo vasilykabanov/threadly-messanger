@@ -141,3 +141,89 @@ body.theme-new.theme-new-light .ant-input-password input::placeholder {
 body.chat-page {
     overflow: hidden;
 }
+
+body.theme-new .ant-modal-content {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    backdrop-filter: blur(20px);
+}
+
+body.theme-new .ant-modal-header {
+    background: transparent;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+body.theme-new .ant-modal-title {
+    color: #e2e8f0;
+}
+
+body.theme-new .ant-modal-close-x {
+    color: #94a3b8;
+}
+
+body.theme-new .ant-modal-body {
+    color: #e2e8f0;
+}
+
+body.theme-new .ant-input-affix-wrapper {
+    background: rgba(30, 41, 59, 0.5);
+    border-color: rgba(148, 163, 184, 0.35);
+}
+
+body.theme-new .ant-input-affix-wrapper input {
+    background: transparent;
+    color: #e2e8f0;
+}
+
+body.theme-new.theme-new-light .ant-modal-content {
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+body.theme-new.theme-new-light .ant-modal-header {
+    background: transparent;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+body.theme-new.theme-new-light .ant-modal-title {
+    color: #0f172a;
+}
+
+body.theme-new.theme-new-light .ant-modal-close-x {
+    color: #64748b;
+}
+
+body.theme-new.theme-new-light .ant-modal-body {
+    color: #0f172a;
+}
+
+.ant-modal-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.ant-modal-footer .ant-btn {
+    margin: 0 !important;
+}
+
+@media (max-width: 480px) {
+    .ant-modal {
+        max-width: calc(100vw - 32px);
+        margin: 16px;
+    }
+
+    .ant-modal-footer {
+        flex-direction: column;
+    }
+
+    .ant-modal-footer .ant-btn {
+        width: 100%;
+    }
+}
+
+body.theme-new.theme-new-light .ant-input-affix-wrapper input {
+    background: transparent;
+    color: #0f172a;
+}

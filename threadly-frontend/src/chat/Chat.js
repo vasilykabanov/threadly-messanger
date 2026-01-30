@@ -289,7 +289,21 @@ const Chat = (props) => {
                     return acc;
                 }, {});
 
-                setLastMessageByContact(lastMessagesMap);
+                setLastMessageByContact((prev) => {
+                    const merged = {...prev};
+                    Object.keys(lastMessagesMap).forEach((contactId) => {
+                        const serverMsg = lastMessagesMap[contactId];
+                        const localMsg = prev[contactId];
+                        if (!localMsg) {
+                            merged[contactId] = serverMsg;
+                        } else {
+                            const serverTime = new Date(serverMsg.timestamp).getTime();
+                            const localTime = new Date(localMsg.timestamp).getTime();
+                            merged[contactId] = serverTime >= localTime ? serverMsg : localMsg;
+                        }
+                    });
+                    return merged;
+                });
 
                 const sorted = [...users].sort((a, b) => {
                     const aMsg = a.lastMessage || lastMessagesMap[a.id];
@@ -439,20 +453,12 @@ const Chat = (props) => {
             <div id="sidepanel">
                 <div id="profile">
                     <div className="wrap">
-                        <button
-                            type="button"
-                            className="menu-trigger"
-                            aria-label="Открыть меню"
-                            onClick={() => setIsMenuOpen(true)}
-                        >
-                            ☰
-                        </button>
                         <div
                             className={`avatar-wrapper ${currentUser.status || "online"}`}
-                            onClick={goToProfile}
+                            onClick={goToSettings}
                             role="button"
                             tabIndex={0}
-                            onKeyDown={(event) => event.key === "Enter" && goToProfile()}
+                            onKeyDown={(event) => event.key === "Enter" && goToSettings()}
                         >
                             <Avatar
                                 name={currentUser.name}
@@ -460,25 +466,9 @@ const Chat = (props) => {
                                 size={50}
                             />
                         </div>
-                        <p onClick={goToProfile} role="button" tabIndex={0}>
+                        <p onClick={goToSettings} role="button" tabIndex={0}>
                             {currentUser.name || currentUser.username || "Профиль"}
                         </p>
-                        <div id="status-options">
-                            <ul>
-                                <li id="status-online" className="active">
-                                    <span className="status-circle"></span> <p>В сети</p>
-                                </li>
-                                <li id="status-away">
-                                    <span className="status-circle"></span> <p>Нет на месте</p>
-                                </li>
-                                <li id="status-busy">
-                                    <span className="status-circle"></span> <p>Занят</p>
-                                </li>
-                                <li id="status-offline">
-                                    <span className="status-circle"></span> <p>Оффлайн</p>
-                                </li>
-                            </ul>
-                        </div>
                     </div>
                 </div>
                 <div
@@ -747,6 +737,7 @@ const Chat = (props) => {
             <Modal
                 title="Удалить чат"
                 open={isDeleteChatOpen}
+                zIndex={1100}
                 onCancel={() => {
                     closeDeleteChat();
                     setIsProfileOpen(false);
