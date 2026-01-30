@@ -981,20 +981,6 @@ span.status-circle:before {
     flex-shrink: 0;
 }
 
-/* Мобильная клавиатура: фиксируем input внизу видимой области */
-@media screen and (max-width: 768px) {
-    #frame .content {
-        height: var(--vh);
-        max-height: var(--vh);
-    }
-
-    #frame .content .message-input {
-        position: sticky;
-        bottom: 0;
-        padding-bottom: max(20px, env(safe-area-inset-bottom));
-    }
-}
-
 #frame .content .message-input .wrap {
     position: relative;
 }
@@ -2062,36 +2048,4 @@ body.theme-new .chat-menu-item {
 
 body.theme-new.theme-new-light .chat-menu-item {
     color: #0f172a !important;
-}
-
-/* ===== MOBILE KEYBOARD FIX ===== */
-@media screen and (max-width: 768px) {
-    /* Чат контейнер должен подстраиваться под видимую область */
-    #frame.chat-open .content {
-        display: flex;
-        flex-direction: column;
-        height: var(--vh);
-        max-height: var(--vh);
-        overflow: hidden;
-    }
-
-    /* Сообщения занимают всё доступное пространство */
-    #frame.chat-open .content .messages {
-        flex: 1;
-        min-height: 0;
-        overflow-y: auto;
-    }
-
-    /* Поле ввода не должно сжиматься и должно быть всегда видно */
-    #frame.chat-open .content .message-input {
-        flex-shrink: 0;
-        position: sticky;
-        bottom: 0;
-        z-index: 100;
-    }
-
-    /* Скрываем bottom nav когда чат открыт (клавиатура активна) */
-    #frame.chat-open ~ .mobile-bottom-nav {
-        display: none !important;
-    }
 }
