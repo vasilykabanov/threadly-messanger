@@ -1,6 +1,13 @@
 import React, {useEffect, useState} from "react";
 import {Card, Button, Modal, Form, Input, Switch, message} from "antd";
-import {changePassword, getCurrentUser, updateProfile} from "../util/ApiUtil";
+import {
+    changePassword,
+    getCurrentUser,
+    updateProfile,
+    getVapidPublicKey,
+    savePushSubscription,
+    removePushSubscription,
+} from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
 import {loggedInUser, uiTheme, uiThemeMode} from "../atom/globalState";
 import Avatar from "../profile/Avatar";
@@ -18,6 +25,11 @@ const Settings = (props) => {
     const [profileModalOpen, setProfileModalOpen] = useState(false);
     const [passwordModalOpen, setPasswordModalOpen] = useState(false);
     const [designModalOpen, setDesignModalOpen] = useState(false);
+    const [pushModalOpen, setPushModalOpen] = useState(false);
+    const [pushSupported, setPushSupported] = useState(false);
+    const [pushEnabled, setPushEnabled] = useState(false);
+    const [pushPermission, setPushPermission] = useState("default");
+    const [pushLoading, setPushLoading] = useState(false);
 
     const clearPersistedState = () => {
         const persisted = sessionStorage.getItem("recoil-persist");
@@ -42,6 +54,10 @@ const Settings = (props) => {
             .then((response) => setLoggedInUser(response))
             .catch(() => {});
     }, []);
+
+    useEffect(() => {
+        refreshPushStatus();
+    }, [currentUser?.id]);
 
     useEffect(() => {
         if (!currentUser?.username) return;
@@ -109,6 +125,118 @@ const Settings = (props) => {
         props.history.push("/login");
     };
 
+    const refreshPushStatus = async () => {
+        const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+        setPushSupported(supported);
+        setPushPermission("Notification" in window ? Notification.permission : "default");
+
+        if (!supported) {
+            setPushEnabled(false);
+            return;
+        }
+
+        try {
+            const registration = await navigator.serviceWorker.getRegistration();
+            const subscription = registration ? await registration.pushManager.getSubscription() : null;
+            setPushEnabled(!!subscription);
+        } catch (e) {
+            setPushEnabled(false);
+        }
+    };
+
+    const urlBase64ToUint8Array = (base64String) => {
+        const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding)
+            .replace(/-/g, "+")
+            .replace(/_/g, "/");
+
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    };
+
+    const enablePush = async () => {
+        if (!currentUser?.id) return;
+
+        if (!pushSupported) {
+            message.error("Браузер не поддерживает пуш-уведомления");
+            return;
+        }
+
+        if (Notification.permission === "denied") {
+            message.error("Уведомления заблокированы в настройках браузера");
+            return;
+        }
+
+        setPushLoading(true);
+        try {
+            const permission = await Notification.requestPermission();
+            setPushPermission(permission);
+            if (permission !== "granted") {
+                message.info("Разрешение на уведомления не выдано");
+                return;
+            }
+
+            const registration = await navigator.serviceWorker.register("/push-sw.js");
+            const existing = await registration.pushManager.getSubscription();
+            const {publicKey} = await getVapidPublicKey();
+            if (!publicKey) {
+                message.error("Пуш-ключ не настроен на сервере");
+                return;
+            }
+
+            const subscription = existing || await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(publicKey),
+            });
+
+            const payload = subscription.toJSON();
+            await savePushSubscription({
+                userId: currentUser.id,
+                endpoint: payload.endpoint,
+                keys: payload.keys,
+                userAgent: navigator.userAgent,
+            });
+            localStorage.setItem("pushEndpoint", payload.endpoint || "");
+            setPushEnabled(true);
+            message.success("Пуш-уведомления включены");
+        } catch (e) {
+            message.error("Не удалось включить пуш-уведомления");
+        } finally {
+            setPushLoading(false);
+        }
+    };
+
+    const disablePush = async () => {
+        if (!pushSupported) return;
+        setPushLoading(true);
+        try {
+            const registration = await navigator.serviceWorker.getRegistration();
+            const subscription = registration ? await registration.pushManager.getSubscription() : null;
+
+            if (subscription) {
+                const endpoint = subscription.endpoint;
+                await subscription.unsubscribe();
+                await removePushSubscription({
+                    userId: currentUser?.id,
+                    endpoint,
+                });
+                localStorage.removeItem("pushEndpoint");
+            }
+
+            setPushEnabled(false);
+            message.success("Пуш-уведомления отключены");
+        } catch (e) {
+            message.error("Не удалось отключить пуш-уведомления");
+        } finally {
+            setPushLoading(false);
+        }
+    };
+
     return (
         <div className="profile-container">
             <div className="desktop-back-row">
@@ -158,6 +286,21 @@ const Settings = (props) => {
                         <span className="settings-menu-left">
                             <i className="fa fa-paint-brush" aria-hidden="true"></i>
                             <span>Дизайн</span>
+                        </span>
+                        <span className="settings-menu-arrow">›</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        className="settings-menu-item"
+                        onClick={() => {
+                            setPushModalOpen(true);
+                            refreshPushStatus();
+                        }}
+                    >
+                        <span className="settings-menu-left">
+                            <i className="fa fa-bell" aria-hidden="true"></i>
+                            <span>Уведомления</span>
                         </span>
                         <span className="settings-menu-arrow">›</span>
                     </button>
@@ -294,6 +437,42 @@ const Settings = (props) => {
                         </Button>
                     </Form.Item>
                 </Form>
+            </Modal>
+
+            {/* Модальное окно: Уведомления */}
+            <Modal
+                title="Пуш-уведомления"
+                open={pushModalOpen}
+                onCancel={() => setPushModalOpen(false)}
+                footer={null}
+                destroyOnClose
+            >
+                <div className="settings-modal-block">
+                    {!pushSupported ? (
+                        <div>Ваш браузер не поддерживает push-уведомления.</div>
+                    ) : (
+                        <>
+                            <div style={{marginBottom: 12}}>
+                                Статус: {pushEnabled ? "включены" : "выключены"}
+                            </div>
+                            <div style={{marginBottom: 12}}>
+                                Разрешение браузера: {pushPermission}
+                            </div>
+                            {pushEnabled ? (
+                                <Button danger onClick={disablePush} loading={pushLoading} block>
+                                    Отключить
+                                </Button>
+                            ) : (
+                                <Button type="primary" onClick={enablePush} loading={pushLoading} block>
+                                    Включить
+                                </Button>
+                            )}
+                            <div className="settings-modal-hint">
+                                Для iPhone/iPad уведомления работают после добавления на экран «Домой».
+                            </div>
+                        </>
+                    )}
+                </div>
             </Modal>
 
             {/* Модальное окно: Дизайн */}

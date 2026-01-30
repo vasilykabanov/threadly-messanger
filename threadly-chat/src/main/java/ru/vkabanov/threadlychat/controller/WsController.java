@@ -10,6 +10,7 @@ import ru.vkabanov.threadlychat.model.ChatNotification;
 import ru.vkabanov.threadlychat.model.StatusMessage;
 import ru.vkabanov.threadlychat.service.ChatMessageService;
 import ru.vkabanov.threadlychat.service.ChatRoomService;
+import ru.vkabanov.threadlychat.service.PushNotificationService;
 import ru.vkabanov.threadlychat.service.UserStatusService;
 
 @Controller
@@ -24,6 +25,8 @@ public class WsController {
 
     private final ChatMessageService chatMessageService;
 
+    private final PushNotificationService pushNotificationService;
+
     @MessageMapping("/chat")
     public void processMessage(@Payload ChatMessage chatMessage) {
         var chatId = chatRoomService.getChatId(chatMessage.getSenderId(), chatMessage.getRecipientId(), true);
@@ -32,6 +35,7 @@ public class WsController {
         ChatMessage saved = chatMessageService.save(chatMessage);
         messagingTemplate.convertAndSendToUser(chatMessage.getRecipientId(), "/queue/messages",
                 new ChatNotification(saved.getId(), saved.getSenderId(), saved.getSenderName()));
+        pushNotificationService.sendNewMessage(saved);
     }
 
     public void updateStatus(String userId, String status) {

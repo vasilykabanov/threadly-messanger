@@ -167,3 +167,27 @@ export function deleteChat(senderId, recipientId, userId, scope = "me") {
         method: "DELETE",
     });
 }
+
+export function getVapidPublicKey() {
+    return request({
+        url: CHAT_SERVICE + "/push/vapid-public-key",
+        method: "GET",
+        setContentType: false,
+    });
+}
+
+export function savePushSubscription(payload) {
+    return request({
+        url: CHAT_SERVICE + "/push/subscribe",
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+}
+
+export function removePushSubscription(payload) {
+    return request({
+        url: CHAT_SERVICE + "/push/unsubscribe",
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+}

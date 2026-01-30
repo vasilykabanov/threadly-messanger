@@ -9,3 +9,9 @@ spring:
       authentication-database: admin
 server:
   port: 8080
+
+push:
+  vapid:
+    public-key: ${PUSH_VAPID_PUBLIC_KEY:}
+    private-key: ${PUSH_VAPID_PRIVATE_KEY:}
+    subject: ${PUSH_VAPID_SUBJECT:mailto:admin@example.com}

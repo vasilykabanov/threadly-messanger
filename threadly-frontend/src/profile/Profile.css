@@ -212,6 +212,34 @@ body.theme-new.theme-new-light .profile-header-username {
     margin-top: 16px;
 }
 
+.settings-modal-block {
+    color: #1f2937;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.settings-modal-hint {
+    margin-top: 12px;
+    font-size: 12px;
+    color: rgba(31, 41, 55, 0.6);
+}
+
+body.theme-new .settings-modal-block {
+    color: #e2e8f0;
+}
+
+body.theme-new .settings-modal-hint {
+    color: rgba(226, 232, 240, 0.6);
+}
+
+body.theme-new.theme-new-light .settings-modal-block {
+    color: #0f172a;
+}
+
+body.theme-new.theme-new-light .settings-modal-hint {
+    color: rgba(15, 23, 42, 0.6);
+}
+
 .settings-menu-item {
     display: flex;
     align-items: center;
