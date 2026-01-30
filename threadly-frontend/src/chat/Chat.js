@@ -669,13 +669,6 @@ const Chat = (props) => {
                                             setText("");
                                         }
                                     }}
-                                    onFocus={(event) => {
-                                        // Скроллим поле ввода в видимую область после появления клавиатуры
-                                        const input = event.target;
-                                        setTimeout(() => {
-                                            input.scrollIntoView({ behavior: "smooth", block: "end" });
-                                        }, 350);
-                                    }}
                                 />
 
                                 <Button

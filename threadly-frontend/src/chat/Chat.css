@@ -2049,32 +2049,3 @@ body.theme-new .chat-menu-item {
 body.theme-new.theme-new-light .chat-menu-item {
     color: #0f172a !important;
 }
-
-/* ===== MOBILE KEYBOARD FIX ===== */
-@media screen and (max-width: 768px) {
-    /* Контейнер чата - flex column для правильного распределения пространства */
-    #frame.chat-open .content {
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-        height: 100dvh; /* динамическая высота, учитывает клавиатуру */
-    }
-
-    /* Сообщения занимают всё доступное пространство */
-    #frame.chat-open .content .messages {
-        flex: 1 1 auto;
-        min-height: 0;
-        overflow-y: auto;
-    }
-
-    /* Поле ввода всегда видно внизу */
-    #frame.chat-open .content .message-input {
-        flex-shrink: 0;
-        padding-bottom: max(12px, env(safe-area-inset-bottom));
-    }
-
-    /* Скрываем bottom nav когда чат открыт */
-    #frame.chat-open ~ .mobile-bottom-nav {
-        display: none !important;
-    }
-}
