@@ -156,6 +156,18 @@ export function getChatContacts(userId) {
     });
 }
 
+export function deleteChat(senderId, recipientId, userId, scope = "me") {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+
+    const params = new URLSearchParams({userId, scope});
+    return request({
+        url: CHAT_SERVICE + "/messages/" + senderId + "/" + recipientId + "?" + params.toString(),
+        method: "DELETE",
+    });
+}
+
 // -------------------------
 // Web Push
 // -------------------------
@@ -193,7 +205,7 @@ const urlBase64ToUint8Array = (base64String) => {
 
 export async function ensurePushSubscribed(userId) {
     console.log("[Push] ensurePushSubscribed called for userId:", userId);
-    
+
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
         console.log("[Push] ServiceWorker or PushManager not supported");
         return;
@@ -208,11 +220,11 @@ export async function ensurePushSubscribed(userId) {
 
     const reg = await navigator.serviceWorker.register("/push-sw.js");
     console.log("[Push] ServiceWorker registered:", reg);
-    
+
     // Ждём пока Service Worker станет готовым
     let registration = await navigator.serviceWorker.ready;
     console.log("[Push] ServiceWorker ready, active:", registration.active);
-    
+
     // Ждём пока состояние станет "activated"
     if (registration.active && registration.active.state !== "activated") {
         console.log("[Push] Waiting for state: activated (current:", registration.active.state + ")");
@@ -226,9 +238,9 @@ export async function ensurePushSubscribed(userId) {
             });
         });
     }
-    
+
     console.log("[Push] ServiceWorker fully activated");
-    
+
     // Получаем публичный ключ с сервера
     const {publicKey} = await getVapidPublicKey();
     console.log("[Push] VAPID public key from server:", publicKey);
@@ -236,23 +248,23 @@ export async function ensurePushSubscribed(userId) {
         console.log("[Push] No public key, aborting");
         return;
     }
-    
+
     // Проверяем существующую подписку
     let subscription = await registration.pushManager.getSubscription();
     console.log("[Push] Existing subscription:", subscription);
-    
+
     // Если подписка существует, но с другим ключом — отписываемся
     if (subscription) {
         const existingKey = subscription.options?.applicationServerKey;
         const existingKeyBase64 = existingKey ? btoa(String.fromCharCode(...new Uint8Array(existingKey))) : null;
         console.log("[Push] Existing subscription key:", existingKeyBase64?.substring(0, 30) + "...");
-        
+
         // Отписываемся от старой подписки чтобы создать новую с правильным ключом
         console.log("[Push] Unsubscribing from old subscription...");
         await subscription.unsubscribe();
         subscription = null;
     }
-    
+
     if (!subscription) {
         console.log("[Push] Creating new subscription...");
         try {
@@ -275,6 +287,6 @@ export async function ensurePushSubscribed(userId) {
         endpoint: json.endpoint,
         keys: json.keys,
     });
-    
+
     console.log("[Push] Subscription synced with server:", json.endpoint.substring(0, 50) + "...");
 }

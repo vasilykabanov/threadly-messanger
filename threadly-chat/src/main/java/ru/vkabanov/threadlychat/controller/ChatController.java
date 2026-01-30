@@ -3,8 +3,10 @@ package ru.vkabanov.threadlychat.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ru.vkabanov.threadlychat.model.ChatMessage;
 import ru.vkabanov.threadlychat.service.ChatMessageService;
@@ -37,5 +39,18 @@ public class ChatController {
     @GetMapping(value = "/messages/contacts/{userId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<String>> findChatContacts(@PathVariable String userId) {
         return ResponseEntity.ok(chatMessageService.findContactIds(userId));
+    }
+
+    @DeleteMapping(value = "/messages/{senderId}/{recipientId}")
+    public ResponseEntity<Void> deleteChat(@PathVariable String senderId,
+                                           @PathVariable String recipientId,
+                                           @RequestParam String userId,
+                                           @RequestParam(defaultValue = "me") String scope) {
+        if ("all".equalsIgnoreCase(scope)) {
+            chatMessageService.deleteChatForAll(senderId, recipientId);
+        } else {
+            chatMessageService.deleteChatForUser(senderId, recipientId, userId);
+        }
+        return ResponseEntity.noContent().build();
     }
 }

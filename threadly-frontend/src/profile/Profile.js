@@ -11,6 +11,7 @@ const Profile = (props) => {
     const [currentUser, setLoggedInUser] = useRecoilState(loggedInUser);
     const [profileForm] = Form.useForm();
     const [savingProfile, setSavingProfile] = useState(false);
+    const [backTarget, setBackTarget] = useState("/chat");
 
     const clearPersistedState = () => {
         const persisted = sessionStorage.getItem("recoil-persist");
@@ -32,6 +33,15 @@ const Profile = (props) => {
             props.history.push("/login");
         }
         loadCurrentUser();
+    }, []);
+
+    useEffect(() => {
+        try {
+            const stored = sessionStorage.getItem("profileBack") || "/chat";
+            setBackTarget(stored);
+        } catch (error) {
+            setBackTarget("/chat");
+        }
     }, []);
 
     useEffect(() => {
@@ -61,11 +71,16 @@ const Profile = (props) => {
     };
 
     const goToChat = () => {
+        window.scrollTo(0, 0);
         props.history.push("/chat");
     };
 
     const goToSettings = () => {
         props.history.push("/settings");
+    };
+
+    const goBackTarget = () => {
+        props.history.push(backTarget);
     };
 
     const onUpdateProfile = (values) => {
@@ -84,12 +99,17 @@ const Profile = (props) => {
 
     return (
         <div className="profile-container">
+            <button className="mobile-back-btn" onClick={goBackTarget}>
+                {backTarget === "/settings" ? "← К настройкам" : "← К чатам"}
+            </button>
+            <div className="desktop-back-row">
+                <Button type="text" onClick={goToChat}>← К чатам</Button>
+                <Button type="text" onClick={goToSettings}>← К настройкам</Button>
+            </div>
             <Card
-                style={{width: 520, border: "1px solid #e1e0e0"}}
+                style={{width: "100%"}}
                 actions={[
-                    <Button type="primary" danger onClick={logout}>Выйти</Button>,
-                    <Button type="default" onClick={goToChat}>Чаты</Button>,
-                    <Button type="default" onClick={goToSettings}>Настройки</Button>
+                    <Button type="primary" danger onClick={logout}>Выйти</Button>
                 ]}
             >
                 <Meta
@@ -157,6 +177,16 @@ const Profile = (props) => {
                 </Form>
 
             </Card>
+            <div className="mobile-bottom-nav">
+                <button type="button" className="mobile-nav-item" onClick={goToChat}>
+                    <i className="fa fa-comments" aria-hidden="true"></i>
+                    <span>Чаты</span>
+                </button>
+                <button type="button" className="mobile-nav-item" onClick={goToSettings}>
+                    <i className="fa fa-cog" aria-hidden="true"></i>
+                    <span>Настройки</span>
+                </button>
+            </div>
         </div>
     );
 };

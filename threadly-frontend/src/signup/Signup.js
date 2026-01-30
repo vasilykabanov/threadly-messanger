@@ -1,6 +1,5 @@
 import React, {useEffect, useState} from "react";
 import {Form, Input, Button, notification} from "antd";
-import {DingtalkOutlined} from "@ant-design/icons";
 import {signup} from "../util/ApiUtil";
 import "./Signup.css";
 
@@ -26,10 +25,16 @@ const Signup = (props) => {
                 setLoading(false);
             })
             .catch((error) => {
+                const serverMessage =
+                    error?.errors?.[0]?.defaultMessage ||
+                    error?.errors?.[0]?.message ||
+                    (error?.message && !/bad request/i.test(error.message)
+                        ? error.message
+                        : null);
                 notification.error({
                     message: "Ошибка",
                     description:
-                        error.message || "Что-то пошло не так. Пожалуйста, попробуйте еще раз!",
+                        serverMessage || "Что-то пошло не так. Пожалуйста, попробуйте еще раз!",
                 });
                 setLoading(false);
             });
@@ -37,14 +42,13 @@ const Signup = (props) => {
 
     return (
         <div className="login-container">
-            <img
-                src="/logo50.png" alt="Threadly"
-                style={{
-                    width: 50,
-                    height: 50,
-                    marginBottom: 16
-                }}
-            />
+            <div className="auth-card">
+                <img
+                    src="/logo50.png" alt="Threadly"
+                    className="auth-logo"
+                />
+                <div className="auth-title">Создайте аккаунт</div>
+                <div className="auth-subtitle">Заполните данные, чтобы начать</div>
             <Form
                 name="normal_login"
                 className="login-form"
@@ -75,17 +79,6 @@ const Signup = (props) => {
                 >
                     <Input size="large" type="password" placeholder="Пароль"/>
                 </Form.Item>
-                <Form.Item
-                    name="profilePicUrl"
-                    rules={[
-                        {
-                            required: true,
-                            message: "Введите ссылку на аватар!",
-                        },
-                    ]}
-                >
-                    <Input size="large" placeholder="Ссылка на аватар"/>
-                </Form.Item>
                 <Form.Item>
                     <Button
                         shape="round"
@@ -97,8 +90,11 @@ const Signup = (props) => {
                         Зарегистрироваться
                     </Button>
                 </Form.Item>
-                Уже есть аккаунт? <a href="/login">Войти</a>
+                <div className="auth-footer">
+                    Уже есть аккаунт? <a href="/login">Войти</a>
+                </div>
             </Form>
+            </div>
         </div>
     );
 };

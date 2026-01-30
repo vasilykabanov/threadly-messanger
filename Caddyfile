@@ -1,0 +1,21 @@
+threadly-chat.ru {
+    # Auth API
+    handle_path /api/auth/* {
+        reverse_proxy threadly-auth:8081
+    }
+
+    # WebSocket и Chat API — всё идёт на chat сервис
+    handle_path /api/chat/* {
+        reverse_proxy threadly-chat:8080 {
+            transport http {
+                versions 1.1
+            }
+            flush_interval -1
+        }
+    }
+
+    # Frontend (всё остальное)
+    handle {
+        reverse_proxy threadly-frontend:80
+    }
+}

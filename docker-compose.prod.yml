@@ -1,4 +1,17 @@
 services:
+  # ---------------- Caddy (reverse proxy + SSL) ----------------
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
   # ---------------- Mongo для threadly-auth ----------------
   mongo-auth:
     image: mongo:4.4
@@ -57,8 +70,6 @@ services:
   threadly-frontend:
     image: ghcr.io/${GHCR_OWNER:-vasilykabanov}/threadly-frontend:latest
     container_name: threadly-frontend
-    ports:
-      - "80:80"
     depends_on:
       - threadly-auth
       - threadly-chat
@@ -67,3 +78,5 @@ services:
 volumes:
   mongo-auth-data:
   mongo-chat-data:
+  caddy-data:
+  caddy-config:
