@@ -1,11 +1,27 @@
 /* global self */
 
+console.log("[push-sw] Service Worker loaded");
+
+// Активируемся сразу при установке
+self.addEventListener("install", (event) => {
+  console.log("[push-sw] Installing...");
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  console.log("[push-sw] Activated!");
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener("push", (event) => {
+  console.log("[push-sw] Push event received!", event);
+  
   let data = {};
   try {
     data = event.data ? event.data.json() : {};
+    console.log("[push-sw] Push data:", data);
   } catch (e) {
-    // ignore
+    console.error("[push-sw] Failed to parse push data:", e);
   }
 
   const senderName = data.senderName || "Threadly";
@@ -22,7 +38,13 @@ self.addEventListener("push", (event) => {
     },
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  console.log("[push-sw] Showing notification:", title, options);
+  
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+      .then(() => console.log("[push-sw] Notification shown successfully"))
+      .catch((err) => console.error("[push-sw] Failed to show notification:", err))
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {

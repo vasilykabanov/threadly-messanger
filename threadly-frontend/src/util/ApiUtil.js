@@ -192,27 +192,89 @@ const urlBase64ToUint8Array = (base64String) => {
 };
 
 export async function ensurePushSubscribed(userId) {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    console.log("[Push] ensurePushSubscribed called for userId:", userId);
+    
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+        console.log("[Push] ServiceWorker or PushManager not supported");
+        return;
+    }
 
     const permission = await Notification.requestPermission();
-    if (permission !== "granted") return;
+    console.log("[Push] Permission:", permission);
+    if (permission !== "granted") {
+        console.log("[Push] Permission not granted, aborting");
+        return;
+    }
 
-    const registration = await navigator.serviceWorker.register("/push-sw.js");
-    const existing = await registration.pushManager.getSubscription();
-    if (existing) return;
-
+    const reg = await navigator.serviceWorker.register("/push-sw.js");
+    console.log("[Push] ServiceWorker registered:", reg);
+    
+    // Ждём пока Service Worker станет готовым
+    let registration = await navigator.serviceWorker.ready;
+    console.log("[Push] ServiceWorker ready, active:", registration.active);
+    
+    // Ждём пока состояние станет "activated"
+    if (registration.active && registration.active.state !== "activated") {
+        console.log("[Push] Waiting for state: activated (current:", registration.active.state + ")");
+        await new Promise((resolve) => {
+            registration.active.addEventListener("statechange", function handler(e) {
+                console.log("[Push] State changed to:", e.target.state);
+                if (e.target.state === "activated") {
+                    registration.active.removeEventListener("statechange", handler);
+                    resolve();
+                }
+            });
+        });
+    }
+    
+    console.log("[Push] ServiceWorker fully activated");
+    
+    // Получаем публичный ключ с сервера
     const {publicKey} = await getVapidPublicKey();
-    if (!publicKey) return;
+    console.log("[Push] VAPID public key from server:", publicKey);
+    if (!publicKey) {
+        console.log("[Push] No public key, aborting");
+        return;
+    }
+    
+    // Проверяем существующую подписку
+    let subscription = await registration.pushManager.getSubscription();
+    console.log("[Push] Existing subscription:", subscription);
+    
+    // Если подписка существует, но с другим ключом — отписываемся
+    if (subscription) {
+        const existingKey = subscription.options?.applicationServerKey;
+        const existingKeyBase64 = existingKey ? btoa(String.fromCharCode(...new Uint8Array(existingKey))) : null;
+        console.log("[Push] Existing subscription key:", existingKeyBase64?.substring(0, 30) + "...");
+        
+        // Отписываемся от старой подписки чтобы создать новую с правильным ключом
+        console.log("[Push] Unsubscribing from old subscription...");
+        await subscription.unsubscribe();
+        subscription = null;
+    }
+    
+    if (!subscription) {
+        console.log("[Push] Creating new subscription...");
+        try {
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(publicKey),
+            });
+            console.log("[Push] New subscription created:", subscription);
+        } catch (err) {
+            console.error("[Push] Failed to create subscription:", err);
+            return;
+        }
+    }
 
-    const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
-    });
-
+    // Всегда синхронизируем подписку с сервером
     const json = subscription.toJSON();
+    console.log("[Push] Syncing subscription with server...");
     await subscribePush({
         userId,
         endpoint: json.endpoint,
         keys: json.keys,
     });
+    
+    console.log("[Push] Subscription synced with server:", json.endpoint.substring(0, 50) + "...");
 }

@@ -1,6 +1,7 @@
 package ru.vkabanov.threadlychat.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -15,6 +16,7 @@ import ru.vkabanov.threadlychat.service.UserStatusService;
 
 import java.util.Map;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class WsController {
@@ -39,7 +41,10 @@ public class WsController {
                 new ChatNotification(saved.getId(), saved.getSenderId(), saved.getSenderName()));
 
         // Если пользователь не онлайн в вебсокете — шлём web-push
-        if (!"online".equalsIgnoreCase(userStatusService.getStatus(chatMessage.getRecipientId()))) {
+        String recipientStatus = userStatusService.getStatus(chatMessage.getRecipientId());
+        log.info("[Push] Recipient {} status: {}", chatMessage.getRecipientId(), recipientStatus);
+        if (!"online".equalsIgnoreCase(recipientStatus)) {
+            log.info("[Push] Sending push notification to {}", chatMessage.getRecipientId());
             pushNotificationService.sendToUser(chatMessage.getRecipientId(), Map.of(
                     "type", "chat_message",
                     "messageId", saved.getId(),

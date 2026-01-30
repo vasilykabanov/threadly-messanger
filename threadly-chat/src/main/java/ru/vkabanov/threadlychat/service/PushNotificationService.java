@@ -42,11 +42,19 @@ public class PushNotificationService {
         subscriptionRepository.deleteByUserIdAndEndpoint(userId, endpoint);
     }
 
+    public void removeAllSubscriptions(String userId) {
+        List<PushSubscriptionEntity> subs = subscriptionRepository.findByUserId(userId);
+        log.info("[Push] Removing all {} subscriptions for userId={}", subs.size(), userId);
+        subscriptionRepository.deleteAll(subs);
+    }
+
     public void sendToUser(String userId, Map<String, Object> payload) {
         if (pushProperties.getVapid().getPublicKey() == null || pushProperties.getVapid().getPublicKey().isBlank()) {
+            log.debug("[Push] VAPID key not configured, skipping");
             return;
         }
         List<PushSubscriptionEntity> subs = subscriptionRepository.findByUserId(userId);
+        log.info("[Push] Sending to userId={}, found {} subscription(s)", userId, subs.size());
         if (subs.isEmpty()) return;
 
         byte[] body;
@@ -59,15 +67,27 @@ public class PushNotificationService {
 
         for (PushSubscriptionEntity sub : subs) {
             try {
-                Notification notification = new Notification(
-                        sub.getEndpoint(),
-                        sub.getP256dh(),
-                        sub.getAuth(),
-                        body
-                );
-                pushService.send(notification);
+                Notification notification = Notification.builder()
+                        .endpoint(sub.getEndpoint())
+                        .userPublicKey(sub.getP256dh())
+                        .userAuth(sub.getAuth())
+                        .payload(body)
+                        .ttl(86400) // 24 часа
+                        .build();
+                var response = pushService.send(notification);
+                int statusCode = response.getStatusLine().getStatusCode();
+                
+                if (statusCode == 201) {
+                    log.info("[Push] Successfully sent (201) to userId={}, endpoint={}", userId, sub.getEndpoint().substring(0, Math.min(50, sub.getEndpoint().length())) + "...");
+                } else if (statusCode == 410) {
+                    // Gone — endpoint устарел, удаляем подписку
+                    log.warn("[Push] Endpoint expired (410), removing subscription for userId={}", userId);
+                    subscriptionRepository.delete(sub);
+                } else {
+                    log.warn("[Push] Unexpected response {} for userId={}, endpoint={}", response, userId, sub.getEndpoint());
+                }
             } catch (Exception e) {
-                log.warn("Failed to send push to userId={}, endpoint={}: {}", userId, sub.getEndpoint(), e.getMessage());
+                log.warn("[Push] Failed to send to userId={}, endpoint={}: {}", userId, sub.getEndpoint(), e.getMessage());
             }
         }
     }

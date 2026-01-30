@@ -46,5 +46,11 @@ public class PushController {
         pushNotificationService.removeSubscription(request.getUserId(), request.getEndpoint());
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping(value = "/push/unsubscribe-all/{userId}")
+    public ResponseEntity<Void> unsubscribeAll(@org.springframework.web.bind.annotation.PathVariable String userId) {
+        pushNotificationService.removeAllSubscriptions(userId);
+        return ResponseEntity.ok().build();
+    }
 }
 

@@ -20,6 +20,8 @@ public class WebSocketEventListener {
         String userId = accessor.getFirstNativeHeader("userId"); // передаем userId при подключении
 
         if (userId != null) {
+            // Сохраняем userId в сессию, чтобы получить его при disconnect
+            accessor.getSessionAttributes().put("userId", userId);
             wsController.updateStatus(userId, "online");
         }
     }
