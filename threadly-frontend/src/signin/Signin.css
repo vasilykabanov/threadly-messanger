@@ -1,14 +1,9 @@
 .login-container {
-    max-width: 420px;
-    margin: 0 auto;
-    margin: 0 auto;
-    margin-top: 40px;
-    padding: 30px 50px 10px 50px;
-    border: 1px solid #e1e0e0;
-    background-color: #fff;
-    font-size: 32px;
-    font-weight: 700;
-    border-radius: 10px;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px 40px;
     text-align: center;
 }
 
@@ -17,4 +12,109 @@
     background-color: rebeccapurple !important;
     color: white !important;
     font-weight: 700 !important;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 32px 32px 24px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid #e1e0e0;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+}
+
+.auth-logo {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 16px;
+}
+
+.auth-title {
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #1f2937;
+}
+
+.auth-subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 24px;
+}
+
+.auth-footer {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+body.theme-new .auth-card {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    box-shadow: 0 30px 60px rgba(2, 6, 23, 0.6);
+    backdrop-filter: blur(18px);
+}
+
+body.theme-new .auth-title {
+    color: #f8fafc;
+}
+
+body.theme-new .auth-subtitle,
+body.theme-new .auth-footer {
+    color: rgba(226, 232, 240, 0.7);
+}
+
+body.theme-new .login-form-button {
+    background: linear-gradient(135deg, #7c3aed, #6366f1) !important;
+    box-shadow: 0 12px 20px rgba(99, 102, 241, 0.35);
+}
+
+body.theme-new .login-form .ant-input,
+body.theme-new .login-form .ant-input-password {
+    background: rgba(30, 41, 59, 0.6);
+    border-color: rgba(148, 163, 184, 0.35);
+    color: #e2e8f0;
+}
+
+body.theme-new .login-form .ant-input-affix-wrapper {
+    background: rgba(30, 41, 59, 0.6);
+    border-color: rgba(148, 163, 184, 0.35);
+    color: #e2e8f0;
+}
+
+body.theme-new .login-form .ant-input-affix-wrapper .anticon {
+    color: rgba(226, 232, 240, 0.7);
+}
+
+body.theme-new .login-form .ant-input-affix-wrapper-focused {
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+}
+
+body.theme-new .login-form .ant-input::placeholder,
+body.theme-new .login-form .ant-input-password input::placeholder {
+    color: rgba(226, 232, 240, 0.6);
+}
+
+body.theme-new.theme-new-light .auth-card {
+    background: rgba(255, 255, 255, 0.9);
+    color: #0f172a;
+}
+
+body.theme-new.theme-new-light .auth-title,
+body.theme-new.theme-new-light .auth-subtitle,
+body.theme-new.theme-new-light .auth-footer {
+    color: #0f172a;
+}
+
+body.theme-new.theme-new-light .login-form .ant-input,
+body.theme-new.theme-new-light .login-form .ant-input-password,
+body.theme-new.theme-new-light .login-form .ant-input-affix-wrapper {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(148, 163, 184, 0.35);
+    color: #0f172a;
+}
+
+body.theme-new.theme-new-light .login-form .ant-input::placeholder,
+body.theme-new.theme-new-light .login-form .ant-input-password input::placeholder {
+    color: rgba(15, 23, 42, 0.5);
 }

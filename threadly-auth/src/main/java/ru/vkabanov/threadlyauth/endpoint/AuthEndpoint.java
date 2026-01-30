@@ -45,7 +45,9 @@ public class AuthEndpoint {
                 .password(payload.getPassword())
                 .userProfile(Profile.builder()
                         .displayName(payload.getName())
-                        .profilePictureUrl(payload.getProfilePicUrl())
+                .profilePictureUrl(payload.getProfilePicUrl() == null || payload.getProfilePicUrl().isBlank()
+                    ? null
+                    : payload.getProfilePicUrl())
                         .build())
                 .build();
 

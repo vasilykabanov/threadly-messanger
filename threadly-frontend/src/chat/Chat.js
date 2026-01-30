@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {Button, Drawer, message, Spin} from "antd";
+import {Button, Drawer, message, Spin, Modal} from "antd";
 import {
     getUsers,
     countNewMessages,
@@ -8,6 +8,7 @@ import {
     getUserSummary,
     getChatContacts,
     getCurrentUser,
+    deleteChat as deleteChatRequest,
 } from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
 import {
@@ -39,9 +40,22 @@ const Chat = (props) => {
     const [messages, setMessages] = useRecoilState(chatMessages);
     const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [profileLoading, setProfileLoading] = useState(false);
     const [profileData, setProfileData] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
+    const [lastMessageByContact, setLastMessageByContact] = useState({});
+    const [isDeleteChatOpen, setIsDeleteChatOpen] = useState(false);
+    const [deleteChatTarget, setDeleteChatTarget] = useState(null);
+    const [deleteChatLoading, setDeleteChatLoading] = useState(false);
+
+    useEffect(() => {
+        document.body.classList.add("chat-page");
+        return () => {
+            document.body.classList.remove("chat-page");
+        };
+    }, []);
 
     useEffect(() => {
         if (localStorage.getItem("accessToken") === null) {
@@ -52,6 +66,11 @@ const Chat = (props) => {
                 .then((response) => setLoggedInUser(response))
                 .catch(() => {});
         }
+    }, []);
+
+    useEffect(() => {
+        setActiveContact(null);
+        setMessages([]);
     }, []);
 
     useEffect(() => {
@@ -74,9 +93,9 @@ const Chat = (props) => {
     }, [activeContact?.id]);
 
     useEffect(() => {
-        if (!isProfileOpen || !activeContact?.username) return;
+        if (!activeContact?.username) return;
         loadContactProfile(activeContact);
-    }, [isProfileOpen, activeContact?.username]);
+    }, [activeContact?.username]);
 
     const connect = () => {
         const Stomp = require("stompjs");
@@ -108,6 +127,10 @@ const Chat = (props) => {
                     .chatMessages;
                 newMessages.push(message);
                 setMessages(newMessages);
+                setLastMessageByContact((prev) => ({
+                    ...prev,
+                    [message.senderId]: message,
+                }));
             });
         } else {
             // message.info("Received a new message from " + notification.senderName); TODO для чего тут так?
@@ -137,6 +160,10 @@ const Chat = (props) => {
             const newMessages = [...messages];
             newMessages.push(message);
             setMessages(newMessages);
+            setLastMessageByContact((prev) => ({
+                ...prev,
+                [activeContact.id]: message,
+            }));
             if (!contacts.some((contact) => contact.id === activeContact.id)) {
                 setContacts([activeContact, ...contacts]);
             }
@@ -205,7 +232,15 @@ const Chat = (props) => {
         if (!contact?.id) return;
         setMessages([]);
         findChatMessages(contact.id, currentUser.id)
-            .then(setMessages);
+            .then((items) => {
+                setMessages(items);
+                if (items.length > 0) {
+                    setLastMessageByContact((prev) => ({
+                        ...prev,
+                        [contact.id]: items[items.length - 1],
+                    }));
+                }
+            });
     };
 
     const loadContactProfile = (contact) => {
@@ -232,20 +267,93 @@ const Chat = (props) => {
 
                 return Promise.all(
                     contactsWithHistory.map((contact) =>
-                        countNewMessages(contact.id, currentUser.id).then((count) => {
-                            contact.newMessages = count;
-                            return contact;
+                        Promise.all([
+                            countNewMessages(contact.id, currentUser.id),
+                            findChatMessages(contact.id, currentUser.id)
+                        ]).then(([count, msgs]) => {
+                            const lastMessage = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+                            return {
+                                ...contact,
+                                newMessages: count,
+                                lastMessage,
+                            };
                         })
                     )
                 );
             })
             .then((users) => {
-                setContacts(users);
-                const activeInList = users.find((contact) => contact.id === activeContact?.id);
+                const lastMessagesMap = users.reduce((acc, contact) => {
+                    if (contact.lastMessage) {
+                        acc[contact.id] = contact.lastMessage;
+                    }
+                    return acc;
+                }, {});
+
+                setLastMessageByContact((prev) => {
+                    const merged = {...prev};
+                    Object.keys(lastMessagesMap).forEach((contactId) => {
+                        const serverMsg = lastMessagesMap[contactId];
+                        const localMsg = prev[contactId];
+                        if (!localMsg) {
+                            merged[contactId] = serverMsg;
+                        } else {
+                            const serverTime = new Date(serverMsg.timestamp).getTime();
+                            const localTime = new Date(localMsg.timestamp).getTime();
+                            merged[contactId] = serverTime >= localTime ? serverMsg : localMsg;
+                        }
+                    });
+                    return merged;
+                });
+
+                const sorted = [...users].sort((a, b) => {
+                    const aMsg = a.lastMessage || lastMessagesMap[a.id];
+                    const bMsg = b.lastMessage || lastMessagesMap[b.id];
+                    if (!aMsg && !bMsg) return 0;
+                    if (!aMsg) return 1;
+                    if (!bMsg) return -1;
+                    return new Date(bMsg.timestamp).getTime() - new Date(aMsg.timestamp).getTime();
+                });
+                setContacts(sorted);
+                const activeInList = sorted.find((contact) => contact.id === activeContact?.id);
                 if (!activeInList && users.length > 0) {
-                    setActiveContact(users[0]);
+                    setActiveContact(null);
                 }
             });
+    };
+
+    const closeChat = () => {
+        setActiveContact(null);
+        setMessages([]);
+        setIsMobileChatOpen(false);
+    };
+
+    const goToProfile = () => {
+        try {
+            sessionStorage.setItem("profileBack", "/chat");
+        } catch (error) {
+        }
+        props.history.push("/");
+    };
+
+    const goToSettings = () => {
+        props.history.push("/settings");
+    };
+
+    const logout = () => {
+        try {
+            const persisted = sessionStorage.getItem("recoil-persist");
+            if (persisted) {
+                const data = JSON.parse(persisted);
+                delete data.chatActiveContact;
+                delete data.chatMessages;
+                delete data.loggedInUser;
+                sessionStorage.setItem("recoil-persist", JSON.stringify(data));
+            }
+        } catch (e) {
+            sessionStorage.removeItem("recoil-persist");
+        }
+        localStorage.removeItem("accessToken");
+        props.history.push("/login");
     };
 
     const formatTime = (isoDate) => {
@@ -265,6 +373,74 @@ const Chat = (props) => {
         });
     };
 
+    const formatShortTime = (isoDate) => {
+        if (!isoDate) return "";
+        const date = new Date(isoDate);
+        return date.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+    };
+
+    const deleteChat = (contactId) => {
+        setContacts((prev) => prev.filter((contact) => contact.id !== contactId));
+        setLastMessageByContact((prev) => {
+            const next = {...prev};
+            delete next[contactId];
+            return next;
+        });
+        if (activeContact?.id === contactId) {
+            closeChat();
+        }
+    };
+
+    const openDeleteChat = (contact) => {
+        setDeleteChatTarget(contact);
+        setIsDeleteChatOpen(true);
+    };
+
+    const closeDeleteChat = () => {
+        setIsDeleteChatOpen(false);
+        setDeleteChatTarget(null);
+    };
+
+    const handleDeleteChat = (scope) => {
+        if (!deleteChatTarget) return;
+        setDeleteChatLoading(true);
+        deleteChatRequest(currentUser.id, deleteChatTarget.id, currentUser.id, scope)
+            .then(() => deleteChat(deleteChatTarget.id))
+            .catch(() => deleteChat(deleteChatTarget.id))
+            .finally(() => {
+                setDeleteChatLoading(false);
+                closeDeleteChat();
+                setIsProfileOpen(false);
+            });
+    };
+
+    const createLongPressHandlers = (contact) => {
+        let timer = null;
+
+        const start = () => {
+            timer = setTimeout(() => {
+                openDeleteChat(contact);
+            }, 550);
+        };
+
+        const clear = () => {
+            if (timer) {
+                clearTimeout(timer);
+                timer = null;
+            }
+        };
+
+        return {
+            onContextMenu: (event) => {
+                event.preventDefault();
+                openDeleteChat(contact);
+            },
+            onTouchStart: start,
+            onTouchEnd: clear,
+            onTouchMove: clear,
+        };
+    };
+
     const isNewDay = (current, previous) => {
         if (!previous) return true;
         const currDate = new Date(current).toDateString();
@@ -277,42 +453,39 @@ const Chat = (props) => {
             <div id="sidepanel">
                 <div id="profile">
                     <div className="wrap">
-                        <div className={`avatar-wrapper ${currentUser.status || "online"}`}>
+                        <div
+                            className={`avatar-wrapper ${currentUser.status || "online"}`}
+                            onClick={goToSettings}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(event) => event.key === "Enter" && goToSettings()}
+                        >
                             <Avatar
                                 name={currentUser.name}
                                 src={currentUser.profilePicture}
                                 size={50}
                             />
                         </div>
-                        <p>{currentUser.name}</p>
-                        <div id="status-options">
-                            <ul>
-                                <li id="status-online" className="active">
-                                    <span className="status-circle"></span> <p>В сети</p>
-                                </li>
-                                <li id="status-away">
-                                    <span className="status-circle"></span> <p>Нет на месте</p>
-                                </li>
-                                <li id="status-busy">
-                                    <span className="status-circle"></span> <p>Занят</p>
-                                </li>
-                                <li id="status-offline">
-                                    <span className="status-circle"></span> <p>Оффлайн</p>
-                                </li>
-                            </ul>
-                        </div>
+                        <p onClick={goToSettings} role="button" tabIndex={0}>
+                            {currentUser.name || currentUser.username || "Профиль"}
+                        </p>
                     </div>
                 </div>
-                <div id="search">
+                <div
+                    id="search"
+                    onClick={() => document.getElementById("contact-search")?.focus()}
+                >
                     <label htmlFor="contact-search">
                         <i className="fa fa-search" aria-hidden="true"></i>
                     </label>
                     <input
                         id="contact-search"
                         type="text"
-                        placeholder="Поиск по имени пользователя"
+                        placeholder={isSearchFocused ? "Поиск по имени пользователя" : "Поиск"}
                         value={searchQuery}
                         onChange={(event) => setSearchQuery(event.target.value)}
+                        onFocus={() => setIsSearchFocused(true)}
+                        onBlur={() => setIsSearchFocused(false)}
                     />
                 </div>
                 {searchQuery.trim() && (
@@ -367,6 +540,7 @@ const Chat = (props) => {
                                         ? "contact active"
                                         : "contact"
                                 }
+                                {...createLongPressHandlers(contact)}
                             >
                                 <div className="wrap">
                                     <div className={`avatar-wrapper ${contact.status}`}>
@@ -377,14 +551,19 @@ const Chat = (props) => {
                                         />
                                     </div>
                                     <div className="meta">
-                                        <p className="name">
-                                            {contact.name}
+                                        <div className="meta-header">
+                                            <p className="name">{contact.name}</p>
+                                            {lastMessageByContact[contact.id]?.timestamp && (
+                                                <span className="last-time">
+                                                    {formatShortTime(lastMessageByContact[contact.id].timestamp)}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="preview">
+                                            {lastMessageByContact[contact.id]?.content
+                                                ? lastMessageByContact[contact.id].content
+                                                : "Нет сообщений"}
                                         </p>
-                                        {contact.newMessages !== undefined && contact.newMessages > 0 && (
-                                            <p className="preview">
-                                                {contact.newMessages} новых сообщений
-                                            </p>
-                                        )}
                                     </div>
                                 </div>
                             </li>
@@ -430,6 +609,14 @@ const Chat = (props) => {
                                     size={44}
                                 />
                                 <span className="contact-profile-name">{activeContact.name}</span>
+                            </button>
+                            <button
+                                type="button"
+                                className="close-chat-btn"
+                                onClick={closeChat}
+                                aria-label="Закрыть чат"
+                            >
+                                ×
                             </button>
                         </div>
 
@@ -535,9 +722,97 @@ const Chat = (props) => {
                                 {activeContact.status === "offline" && "Оффлайн"}
                             </div>
                         )}
+                        <Button
+                            danger
+                            type="primary"
+                            className="delete-chat-btn"
+                            onClick={() => openDeleteChat(activeContact)}
+                        >
+                            Удалить чат
+                        </Button>
                     </div>
                 )}
             </Drawer>
+
+            <Modal
+                title="Удалить чат"
+                open={isDeleteChatOpen}
+                zIndex={1100}
+                onCancel={() => {
+                    closeDeleteChat();
+                    setIsProfileOpen(false);
+                }}
+                footer={[
+                    <Button
+                        key="cancel"
+                        onClick={() => {
+                            closeDeleteChat();
+                            setIsProfileOpen(false);
+                        }}
+                    >
+                        Отменить
+                    </Button>,
+                    <Button
+                        key="delete-me"
+                        onClick={() => handleDeleteChat("me")}
+                        loading={deleteChatLoading}
+                    >
+                        Удалить чат у себя
+                    </Button>,
+                    <Button
+                        key="delete-all"
+                        danger
+                        type="primary"
+                        onClick={() => handleDeleteChat("all")}
+                        loading={deleteChatLoading}
+                    >
+                        Удалить чат у обоих
+                    </Button>,
+                ]}
+            >
+                <div>
+                    Переписка с пользователем будет удалена выбранным способом.
+                </div>
+            </Modal>
+
+            <Drawer
+                title="Меню"
+                placement="left"
+                onClose={() => setIsMenuOpen(false)}
+                visible={isMenuOpen}
+                className="chat-menu-drawer"
+            >
+                <div className="chat-menu-section">
+                    <Button type="text" onClick={goToProfile} className="chat-menu-item">
+                        Мой профиль
+                    </Button>
+                    <Button type="text" onClick={goToSettings} className="chat-menu-item">
+                        Настройки
+                    </Button>
+                    <Button type="text" danger onClick={logout} className="chat-menu-item">
+                        Выйти
+                    </Button>
+                </div>
+            </Drawer>
+
+            <div className="mobile-bottom-nav">
+                <button
+                    type="button"
+                    className={`mobile-nav-item ${!isMobileChatOpen ? "active" : ""}`}
+                    onClick={() => props.history.push("/chat")}
+                >
+                    <i className="fa fa-comments" aria-hidden="true"></i>
+                    <span>Чаты</span>
+                </button>
+                <button
+                    type="button"
+                    className="mobile-nav-item"
+                    onClick={() => props.history.push("/settings")}
+                >
+                    <i className="fa fa-cog" aria-hidden="true"></i>
+                    <span>Настройки</span>
+                </button>
+            </div>
         </div>
     );
 };

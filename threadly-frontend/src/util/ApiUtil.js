@@ -155,3 +155,15 @@ export function getChatContacts(userId) {
         method: "GET",
     });
 }
+
+export function deleteChat(senderId, recipientId, userId, scope = "me") {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+
+    const params = new URLSearchParams({userId, scope});
+    return request({
+        url: CHAT_SERVICE + "/messages/" + senderId + "/" + recipientId + "?" + params.toString(),
+        method: "DELETE",
+    });
+}
