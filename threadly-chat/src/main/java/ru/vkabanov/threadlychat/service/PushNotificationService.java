@@ -50,7 +50,7 @@ public class PushNotificationService {
 
     public void sendToUser(String userId, Map<String, Object> payload) {
         if (pushProperties.getVapid().getPublicKey() == null || pushProperties.getVapid().getPublicKey().isBlank()) {
-            log.debug("[Push] VAPID key not configured, skipping");
+            log.info("[Push] VAPID key not configured, skipping");
             return;
         }
         List<PushSubscriptionEntity> subs = subscriptionRepository.findByUserId(userId);
