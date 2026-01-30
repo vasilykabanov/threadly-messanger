@@ -1,6 +1,7 @@
 package ru.vkabanov.threadlychat.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -10,8 +11,12 @@ import ru.vkabanov.threadlychat.model.ChatNotification;
 import ru.vkabanov.threadlychat.model.StatusMessage;
 import ru.vkabanov.threadlychat.service.ChatMessageService;
 import ru.vkabanov.threadlychat.service.ChatRoomService;
+import ru.vkabanov.threadlychat.service.PushNotificationService;
 import ru.vkabanov.threadlychat.service.UserStatusService;
 
+import java.util.Map;
+
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class WsController {
@@ -24,6 +29,8 @@ public class WsController {
 
     private final ChatMessageService chatMessageService;
 
+    private final PushNotificationService pushNotificationService;
+
     @MessageMapping("/chat")
     public void processMessage(@Payload ChatMessage chatMessage) {
         var chatId = chatRoomService.getChatId(chatMessage.getSenderId(), chatMessage.getRecipientId(), true);
@@ -32,6 +39,21 @@ public class WsController {
         ChatMessage saved = chatMessageService.save(chatMessage);
         messagingTemplate.convertAndSendToUser(chatMessage.getRecipientId(), "/queue/messages",
                 new ChatNotification(saved.getId(), saved.getSenderId(), saved.getSenderName()));
+
+        // Если пользователь не онлайн в вебсокете — шлём web-push
+        String recipientStatus = userStatusService.getStatus(chatMessage.getRecipientId());
+        log.info("[Push] Recipient {} status: {}", chatMessage.getRecipientId(), recipientStatus);
+        if (!"online".equalsIgnoreCase(recipientStatus)) {
+            log.info("[Push] Sending push notification to {}", chatMessage.getRecipientId());
+            pushNotificationService.sendToUser(chatMessage.getRecipientId(), Map.of(
+                    "type", "chat_message",
+                    "messageId", saved.getId(),
+                    "senderId", saved.getSenderId(),
+                    "senderName", saved.getSenderName(),
+                    "recipientId", saved.getRecipientId(),
+                    "content", saved.getContent()
+            ));
+        }
     }
 
     public void updateStatus(String userId, String status) {

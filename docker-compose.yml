@@ -51,6 +51,8 @@ services:
     depends_on:
       - mongo-chat
       - threadly-auth
+    env_file:
+      - .env
     environment:
       SPRING_DATA_MONGODB_HOST: mongo-chat
       SPRING_DATA_MONGODB_PORT: 27017
