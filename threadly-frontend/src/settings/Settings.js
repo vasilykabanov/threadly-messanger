@@ -76,7 +76,11 @@ const Settings = (props) => {
                 setProfileModalOpen(false);
             })
             .catch((error) => {
-                message.error(error?.message || "Не удалось обновить профиль");
+                const errorMessage =
+                    error?.message && !/bad request/i.test(error.message)
+                        ? error.message
+                        : "Не удалось обновить профиль";
+                message.error(errorMessage);
             })
             .finally(() => setSavingProfile(false));
     };
@@ -93,7 +97,11 @@ const Settings = (props) => {
                 setPasswordModalOpen(false);
             })
             .catch((error) => {
-                message.error(error?.message || "Не удалось изменить пароль");
+                const errorMessage =
+                    error?.message && !/bad request/i.test(error.message)
+                        ? error.message
+                        : "Не удалось изменить пароль";
+                message.error(errorMessage);
             })
             .finally(() => setChangingPassword(false));
     };

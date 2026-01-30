@@ -28,7 +28,6 @@ const Signup = (props) => {
                 const serverMessage =
                     error?.errors?.[0]?.defaultMessage ||
                     error?.errors?.[0]?.message ||
-                    error?.error ||
                     (error?.message && !/bad request/i.test(error.message)
                         ? error.message
                         : null);
