@@ -5,11 +5,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.martijndwars.webpush.Notification;
 import nl.martijndwars.webpush.PushService;
+import org.apache.http.util.EntityUtils;
 import org.springframework.stereotype.Service;
 import ru.vkabanov.threadlychat.configuration.PushConfig;
 import ru.vkabanov.threadlychat.model.PushSubscriptionEntity;
 import ru.vkabanov.threadlychat.repository.PushSubscriptionRepository;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -83,8 +85,20 @@ public class PushNotificationService {
                     // Gone — endpoint устарел, удаляем подписку
                     log.warn("[Push] Endpoint expired (410), removing subscription for userId={}", userId);
                     subscriptionRepository.delete(sub);
+                } else if (statusCode == 403) {
+                    // Forbidden — VAPID key mismatch или невалидная подписка
+                    String responseBody = "";
+                    try {
+                        responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+                    } catch (Exception ignored) {}
+                    log.warn("[Push] Forbidden (403), removing subscription for userId={}. Response: {}", userId, responseBody);
+                    subscriptionRepository.delete(sub);
                 } else {
-                    log.warn("[Push] Unexpected response {} for userId={}, endpoint={}", response, userId, sub.getEndpoint());
+                    String responseBody = "";
+                    try {
+                        responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+                    } catch (Exception ignored) {}
+                    log.warn("[Push] Unexpected response {} for userId={}, endpoint={}. Body: {}", statusCode, userId, sub.getEndpoint(), responseBody);
                 }
             } catch (Exception e) {
                 log.warn("[Push] Failed to send to userId={}, endpoint={}: {}", userId, sub.getEndpoint(), e.getMessage());
