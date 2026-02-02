@@ -3,6 +3,7 @@ package ru.vkabanov.threadlychat.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nl.martijndwars.webpush.Encoding;
 import nl.martijndwars.webpush.Notification;
 import nl.martijndwars.webpush.PushService;
 import org.apache.http.util.EntityUtils;
@@ -76,7 +77,7 @@ public class PushNotificationService {
                         .payload(body)
                         .ttl(86400) // 24 часа
                         .build();
-                var response = pushService.send(notification);
+                var response = pushService.send(notification, Encoding.AES128GCM);
                 int statusCode = response.getStatusLine().getStatusCode();
                 
                 if (statusCode == 201) {
