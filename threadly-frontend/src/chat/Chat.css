@@ -1031,6 +1031,17 @@ span.status-circle:before {
     word-break: break-word;
 }
 
+.message-bubble .text a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: rgba(255, 255, 255, 0.6);
+    text-underline-offset: 2px;
+}
+
+.message-bubble .text a:hover {
+    text-decoration-color: currentColor;
+}
+
 .message-bubble .time {
     position: static;
     display: block;

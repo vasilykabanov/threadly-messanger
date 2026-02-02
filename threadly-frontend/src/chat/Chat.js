@@ -260,9 +260,11 @@ const Chat = (props) => {
     const loadContacts = (forceContactId) => {
         Promise.all([getUsers(), getChatContacts(currentUser.id)])
             .then(([users, contactIds]) => {
-                const idsWithForce = forceContactId && !contactIds.includes(forceContactId)
-                    ? [...contactIds, forceContactId]
-                    : contactIds;
+                const idsToForce = [forceContactId, activeContact?.id].filter(Boolean);
+                const idsWithForce = idsToForce.reduce((acc, id) =>
+                    acc.includes(id) ? acc : [...acc, id],
+                    contactIds
+                );
                 const contactsWithHistory = users.filter((contact) =>
                     contact.id !== currentUser.id && idsWithForce.includes(contact.id)
                 );
@@ -319,7 +321,7 @@ const Chat = (props) => {
                 });
                 setContacts(sorted);
                 const activeInList = sorted.find((contact) => contact.id === activeContact?.id);
-                if (!activeInList && users.length > 0) {
+                if (!activeInList && users.length > 0 && !activeContact?.id) {
                     setActiveContact(null);
                 }
             });
@@ -367,6 +369,48 @@ const Chat = (props) => {
             hour: "2-digit",
             minute: "2-digit",
         });
+    };
+
+    const renderMessageContent = (content = "") => {
+        const urlRegex = /((https?:\/\/|www\.)[^\s]+)/gi;
+        const elements = [];
+        let lastIndex = 0;
+        let match;
+
+        while ((match = urlRegex.exec(content)) !== null) {
+            const matchIndex = match.index;
+            if (matchIndex > lastIndex) {
+                elements.push(content.slice(lastIndex, matchIndex));
+            }
+
+            const rawUrl = match[0];
+            const trimmedUrl = rawUrl.replace(/[\]\[(){}.,!?;:]+$/g, "");
+            const trailing = rawUrl.slice(trimmedUrl.length);
+            const href = trimmedUrl.startsWith("http") ? trimmedUrl : `https://${trimmedUrl}`;
+
+            elements.push(
+                <a
+                    key={`${href}-${matchIndex}`}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    {trimmedUrl}
+                </a>
+            );
+
+            if (trailing) {
+                elements.push(trailing);
+            }
+
+            lastIndex = matchIndex + rawUrl.length;
+        }
+
+        if (lastIndex < content.length) {
+            elements.push(content.slice(lastIndex));
+        }
+
+        return elements;
     };
 
     const formatDate = (isoDate) => {
@@ -649,7 +693,7 @@ const Chat = (props) => {
                                                 )}
 
                                                 <p className="message-bubble">
-                                                    <span className="text">{msg.content}</span>
+                                                    <span className="text">{renderMessageContent(msg.content)}</span>
                                                     <span className="time">{formatTime(msg.timestamp)}</span>
                                                 </p>
                                             </li>
