@@ -257,12 +257,16 @@ export async function ensurePushSubscribed(userId) {
     if (subscription) {
         const existingKey = subscription.options?.applicationServerKey;
         const existingKeyBase64 = existingKey ? btoa(String.fromCharCode(...new Uint8Array(existingKey))) : null;
-        console.log("[Push] Existing subscription key:", existingKeyBase64?.substring(0, 30) + "...");
-
-        // Отписываемся от старой подписки чтобы создать новую с правильным ключом
-        console.log("[Push] Unsubscribing from old subscription...");
-        await subscription.unsubscribe();
-        subscription = null;
+        // Приводим серверный ключ к такому же формату для сравнения
+        const serverKeyBase64 = btoa(String.fromCharCode(...urlBase64ToUint8Array(publicKey)));
+        
+        if (existingKeyBase64 === serverKeyBase64) {
+            console.log("[Push] Existing subscription key matches server, reusing");
+        } else {
+            console.log("[Push] Key mismatch, unsubscribing from old subscription...");
+            await subscription.unsubscribe();
+            subscription = null;
+        }
     }
 
     if (!subscription) {
@@ -274,7 +278,7 @@ export async function ensurePushSubscribed(userId) {
             });
             console.log("[Push] New subscription created:", subscription);
         } catch (err) {
-            console.error("[Push] Failed to create subscription:", err);
+            console.error("[Push] Failed to create subscription:", err.name, err.message);
             return;
         }
     }
