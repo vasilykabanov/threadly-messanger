@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {Card, Button, Modal, Form, Input, Switch, message} from "antd";
-import {changePassword, getCurrentUser, updateProfile} from "../util/ApiUtil";
+import {changePassword, getCurrentUser, updateProfile, ensurePushSubscribed} from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
 import {loggedInUser, uiTheme, uiThemeMode} from "../atom/globalState";
 import Avatar from "../profile/Avatar";
@@ -18,6 +18,8 @@ const Settings = (props) => {
     const [profileModalOpen, setProfileModalOpen] = useState(false);
     const [passwordModalOpen, setPasswordModalOpen] = useState(false);
     const [designModalOpen, setDesignModalOpen] = useState(false);
+    const [pushEnabled, setPushEnabled] = useState(false);
+    const [pushLoading, setPushLoading] = useState(false);
 
     const clearPersistedState = () => {
         const persisted = sessionStorage.getItem("recoil-persist");
@@ -41,7 +43,47 @@ const Settings = (props) => {
         getCurrentUser()
             .then((response) => setLoggedInUser(response))
             .catch(() => {});
+        
+        // Проверяем статус push-уведомлений
+        checkPushStatus();
     }, []);
+
+    const checkPushStatus = async () => {
+        if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+            return;
+        }
+        try {
+            const permission = Notification.permission;
+            if (permission === "granted") {
+                const registration = await navigator.serviceWorker.getRegistration("/push-sw.js");
+                if (registration) {
+                    const subscription = await registration.pushManager.getSubscription();
+                    setPushEnabled(!!subscription);
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to check push status:", e);
+        }
+    };
+
+    const handlePushToggle = async () => {
+        if (!currentUser?.id) {
+            message.error("Сначала войдите в аккаунт");
+            return;
+        }
+        
+        setPushLoading(true);
+        try {
+            await ensurePushSubscribed(currentUser.id);
+            setPushEnabled(true);
+            message.success("Уведомления включены");
+        } catch (e) {
+            console.error("Failed to enable push:", e);
+            message.error("Не удалось включить уведомления");
+        } finally {
+            setPushLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (!currentUser?.username) return;
@@ -169,6 +211,25 @@ const Settings = (props) => {
                         </span>
                         <span className="settings-menu-arrow">›</span>
                     </button>
+
+                    {"serviceWorker" in navigator && "PushManager" in window && (
+                        <button
+                            type="button"
+                            className="settings-menu-item"
+                            onClick={handlePushToggle}
+                            disabled={pushLoading || pushEnabled}
+                        >
+                            <span className="settings-menu-left">
+                                <i className="fa fa-bell" aria-hidden="true"></i>
+                                <span>
+                                    {pushLoading ? "Включение..." : pushEnabled ? "Уведомления включены" : "Включить уведомления"}
+                                </span>
+                            </span>
+                            <span className="settings-menu-arrow">
+                                {pushEnabled ? "✓" : "›"}
+                            </span>
+                        </button>
+                    )}
                 </div>
 
                 <Button
