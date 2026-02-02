@@ -139,7 +139,7 @@ const Chat = (props) => {
         } else {
             // message.info("Received a new message from " + notification.senderName); TODO для чего тут так?
         }
-        loadContacts();
+        loadContacts(active?.id);
     };
 
     const onStatusReceived = (msg) => {
@@ -318,8 +318,9 @@ const Chat = (props) => {
                     return new Date(bMsg.timestamp).getTime() - new Date(aMsg.timestamp).getTime();
                 });
                 setContacts(sorted);
-                const activeInList = sorted.find((contact) => contact.id === activeContact?.id);
-                if (!activeInList && users.length > 0) {
+                const activeIdToCheck = forceContactId ?? activeContact?.id;
+                const activeInList = sorted.find((contact) => contact.id === activeIdToCheck);
+                if (!activeInList && users.length > 0 && !forceContactId) {
                     setActiveContact(null);
                 }
             });
