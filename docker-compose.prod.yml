@@ -35,6 +35,13 @@ services:
     environment:
       SPRING_DATA_MONGODB_HOST: mongo-auth
       SPRING_DATA_MONGODB_PORT: 27017
+      # Email settings (Mail.ru SMTP)
+      MAIL_HOST: ${MAIL_HOST:-smtp.mail.ru}
+      MAIL_PORT: ${MAIL_PORT:-465}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM}
+      FRONTEND_URL: ${FRONTEND_URL:-https://threadly-chat.ru}
     restart: unless-stopped
 
   # ---------------- Mongo для threadly-chat ----------------

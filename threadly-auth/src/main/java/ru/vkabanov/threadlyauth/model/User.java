@@ -71,4 +71,13 @@ public class User {
     private boolean active;
     private Profile userProfile;
     private Set<Role> roles;
+    private boolean emailVerified;
+    private String emailVerificationToken;
+
+    /** Время последней отправки письма подтверждения (для лимита повторов) */
+    private Instant lastVerificationEmailSentAt;
+    /** Количество повторных отправок в текущем 24-часовом окне */
+    private Integer verificationResendCount;
+    /** Начало 24-часового окна для подсчёта повторов */
+    private Instant verificationResendPeriodStart;
 }

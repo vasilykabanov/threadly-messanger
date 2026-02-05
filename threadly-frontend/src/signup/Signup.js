@@ -19,9 +19,9 @@ const Signup = (props) => {
                 notification.success({
                     message: "Успешно",
                     description:
-                        "Спасибо! Регистрация прошла успешно. Войдите, чтобы продолжить!",
+                        "Регистрация прошла успешно! Проверьте почту для подтверждения.",
                 });
-                props.history.push("/login");
+                props.history.push("/check-email?email=" + encodeURIComponent(values.email));
                 setLoading(false);
             })
             .catch((error) => {
@@ -91,7 +91,7 @@ const Signup = (props) => {
                     </Button>
                 </Form.Item>
                 <div className="auth-footer">
-                    Уже есть аккаунт? <a href="/login">Войти</a>
+                    Уже есть аккаунт? <a href="/login" className="auth-link">Войти</a>
                 </div>
             </Form>
             </div>

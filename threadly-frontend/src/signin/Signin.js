@@ -46,6 +46,13 @@ const Signin = (props) => {
                         message: "Ошибка",
                         description: "Неверный логин или пароль. Попробуйте еще раз!",
                     });
+                } else if (error.message && error.message.includes("не подтверждён")) {
+                    notification.warning({
+                        message: "Email не подтверждён",
+                        description: "Проверьте почту или отправьте письмо снова.",
+                        duration: 6,
+                    });
+                    props.history.push("/check-email");
                 } else {
                     notification.error({
                         message: "Ошибка",
@@ -115,7 +122,7 @@ const Signin = (props) => {
                     </Button>
                 </Form.Item>
                 <div className="auth-footer">
-                    Еще нет аккаунта? <a href="/signup">Зарегистрироваться</a>
+                    Еще нет аккаунта? <a href="/signup" className="auth-link">Зарегистрироваться</a>
                 </div>
             </Form>
             </div>
