@@ -224,6 +224,37 @@ const Chat = (props) => {
         return distance <= maxDistance;
     };
 
+    const linkRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+
+    const renderMessageText = (content = "") => {
+        if (!content) return null;
+
+        const parts = content.split(linkRegex);
+        return parts.map((part, index) => {
+            if (!part) return null;
+            linkRegex.lastIndex = 0;
+            const isLink = linkRegex.test(part);
+            linkRegex.lastIndex = 0;
+
+            if (!isLink) {
+                return <React.Fragment key={`text-${index}`}>{part}</React.Fragment>;
+            }
+
+            const href = part.startsWith("http") ? part : `https://${part}`;
+            return (
+                <a
+                    key={`link-${index}`}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="message-link"
+                >
+                    {part}
+                </a>
+            );
+        });
+    };
+
     const filteredContacts = contacts.filter((contact) =>
         isFuzzyMatch(searchQuery, contact.username || contact.name)
     );
@@ -650,7 +681,7 @@ const Chat = (props) => {
                                                 )}
 
                                                 <p className="message-bubble">
-                                                    <span className="text">{msg.content}</span>
+                                                    <span className="text">{renderMessageText(msg.content)}</span>
                                                     <span className="time">{formatTime(msg.timestamp)}</span>
                                                 </p>
                                             </li>
