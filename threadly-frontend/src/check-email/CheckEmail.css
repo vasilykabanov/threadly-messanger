@@ -43,6 +43,18 @@
     line-height: 1.5;
 }
 
+.check-email-message a {
+    color: rebeccapurple;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.check-email-link {
+    color: rebeccapurple !important;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
 .check-email-address {
     font-weight: 600;
     color: #1f2937;

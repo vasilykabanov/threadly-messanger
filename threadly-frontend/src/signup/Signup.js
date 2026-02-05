@@ -91,7 +91,7 @@ const Signup = (props) => {
                     </Button>
                 </Form.Item>
                 <div className="auth-footer">
-                    Уже есть аккаунт? <a href="/login">Войти</a>
+                    Уже есть аккаунт? <a href="/login" className="auth-link">Войти</a>
                 </div>
             </Form>
             </div>

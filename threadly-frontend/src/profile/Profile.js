@@ -88,7 +88,11 @@ const Profile = (props) => {
         updateProfile(values)
             .then((response) => {
                 setLoggedInUser(response);
-                message.success("Профиль обновлён");
+                if (values.email !== currentUser.email) {
+                    message.success("Профиль обновлён. Мы отправили письмо для подтверждения нового email.");
+                } else {
+                    message.success("Профиль обновлён");
+                }
             })
             .catch((error) => {
                 message.error(error?.message || "Не удалось обновить профиль");

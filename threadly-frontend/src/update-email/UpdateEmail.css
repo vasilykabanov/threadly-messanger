@@ -1,0 +1,18 @@
+.update-email-container {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px 40px;
+    text-align: center;
+}
+
+/* Остальные стили переиспользуются из общих auth-стилей (Signin/Signup) */
+
+.auth-footer a,
+.auth-link {
+    color: rebeccapurple !important;
+    cursor: pointer;
+    text-decoration: underline !important;
+}
+

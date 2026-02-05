@@ -122,7 +122,7 @@ const Signin = (props) => {
                     </Button>
                 </Form.Item>
                 <div className="auth-footer">
-                    Еще нет аккаунта? <a href="/signup">Зарегистрироваться</a>
+                    Еще нет аккаунта? <a href="/signup" className="auth-link">Зарегистрироваться</a>
                 </div>
             </Form>
             </div>

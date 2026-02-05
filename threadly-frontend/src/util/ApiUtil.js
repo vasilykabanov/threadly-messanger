@@ -71,6 +71,15 @@ export function resendVerification(email) {
     });
 }
 
+export function updateEmailBeforeVerification(payload) {
+    return request({
+        url: AUTH_SERVICE + "/update-email-before-verification",
+        method: "POST",
+        body: JSON.stringify(payload),
+        skipAuthRedirect: true,
+    });
+}
+
 export function getCurrentUser() {
     if (!localStorage.getItem("accessToken")) {
         return Promise.reject("No access token set.");

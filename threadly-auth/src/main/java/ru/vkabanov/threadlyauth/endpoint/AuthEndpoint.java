@@ -75,4 +75,11 @@ public class AuthEndpoint {
         userService.resendVerificationEmail(email);
         return ResponseEntity.ok(new ApiResponse(true, "Verification email sent"));
     }
+
+    @PostMapping("/update-email-before-verification")
+    public ResponseEntity<?> updateEmailBeforeVerification(
+            @Valid @RequestBody UpdateEmailBeforeVerificationRequest request) {
+        userService.updateEmailBeforeVerification(request);
+        return ResponseEntity.ok(new ApiResponse(true, "Email updated. Please check your new email to verify your account."));
+    }
 }

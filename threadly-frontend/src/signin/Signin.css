@@ -48,6 +48,18 @@
     color: #6b7280;
 }
 
+.auth-footer a {
+    color: rebeccapurple;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.auth-link {
+    color: rebeccapurple;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
 body.theme-new .auth-card {
     background: rgba(15, 23, 42, 0.75);
     border: 1px solid rgba(148, 163, 184, 0.2);

@@ -16,8 +16,11 @@ import ru.vkabanov.threadlyauth.model.Profile;
 import ru.vkabanov.threadlyauth.model.Role;
 import ru.vkabanov.threadlyauth.model.User;
 import ru.vkabanov.threadlyauth.repository.UserRepository;
+import ru.vkabanov.threadlyauth.payload.UpdateEmailBeforeVerificationRequest;
 import ru.vkabanov.threadlyauth.payload.UpdateProfileRequest;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -54,6 +57,51 @@ public class UserService {
         }
     }
 
+    /**
+     * Обновление email до верификации.
+     * Пользователь вводит username, пароль и новый email.
+     * Если email ещё не подтверждён, обновляем и отправляем новое письмо.
+     */
+    public void updateEmailBeforeVerification(UpdateEmailBeforeVerificationRequest request) {
+        String username = request.getUsername();
+        String password = request.getPassword();
+        String newEmail = request.getNewEmail();
+
+        try {
+            AuthenticationManager authenticationManager = authenticationConfiguration.getAuthenticationManager();
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
+        } catch (Exception e) {
+            throw new BadRequestException("Неверный логин или пароль");
+        }
+
+        User user = userRepository.findByUsernameIgnoreCase(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
+
+        if (user.isEmailVerified()) {
+            throw new BadRequestException("Email уже подтверждён. Изменить email можно в настройках профиля.");
+        }
+
+        if (user.getEmail().equalsIgnoreCase(newEmail)) {
+            throw new BadRequestException("Новый email совпадает с текущим");
+        }
+
+        userRepository.findByEmail(newEmail).ifPresent(existing -> {
+            if (!existing.getId().equals(user.getId())) {
+                throw new EmailAlreadyExistsException(
+                        String.format("email %s уже используется", newEmail));
+            }
+        });
+
+        user.setEmail(newEmail);
+        user.setEmailVerified(false);
+        user.setEmailVerificationToken(UUID.randomUUID().toString());
+
+        checkAndUpdateVerificationEmailLimit(user);
+        User saved = userRepository.save(user);
+        emailService.sendVerificationEmail(saved);
+        log.info("Email before verification updated for user {}, new email {}", username, newEmail);
+    }
+
     public User registerUser(User user, Role role) {
         log.info("registering user {}", user.getUsername());
 
@@ -75,12 +123,16 @@ public class UserService {
         // Email verification
         user.setEmailVerified(false);
         user.setEmailVerificationToken(UUID.randomUUID().toString());
+        Instant now = Instant.now();
+        user.setLastVerificationEmailSentAt(now);
+        user.setVerificationResendPeriodStart(now);
+        user.setVerificationResendCount(1);
 
         User savedUser = userRepository.save(user);
-        
+
         // Send verification email asynchronously
         emailService.sendVerificationEmail(savedUser);
-        
+
         return savedUser;
     }
     
@@ -99,17 +151,58 @@ public class UserService {
         return userRepository.save(user);
     }
     
+    private static final int MIN_RESEND_INTERVAL_MINUTES = 2;
+    private static final int MAX_RESENDS_PER_24H = 5;
+    private static final int RESEND_WINDOW_HOURS = 24;
+
+    /**
+     * Проверяет лимиты отправки писем подтверждения и обновляет счётчики на пользователе.
+     * @throws BadRequestException если превышен лимит или нужно подождать
+     */
+    private void checkAndUpdateVerificationEmailLimit(User user) {
+        Instant now = Instant.now();
+
+        if (user.getLastVerificationEmailSentAt() != null) {
+            Duration sinceLast = Duration.between(user.getLastVerificationEmailSentAt(), now);
+            if (sinceLast.toMinutes() < MIN_RESEND_INTERVAL_MINUTES) {
+                long waitMin = MIN_RESEND_INTERVAL_MINUTES - sinceLast.toMinutes();
+                throw new BadRequestException(
+                        "Подождите " + waitMin + " мин. перед повторной отправкой.");
+            }
+        }
+
+        Instant periodStart = user.getVerificationResendPeriodStart();
+        int count = user.getVerificationResendCount() != null ? user.getVerificationResendCount() : 0;
+        if (periodStart != null && Duration.between(periodStart, now).toHours() >= RESEND_WINDOW_HOURS) {
+            periodStart = now;
+            count = 0;
+        }
+        if (periodStart == null) {
+            periodStart = now;
+            count = 0;
+        }
+        if (count >= MAX_RESENDS_PER_24H) {
+            throw new BadRequestException(
+                    "Превышен лимит отправки писем. Попробуйте завтра.");
+        }
+
+        user.setLastVerificationEmailSentAt(now);
+        user.setVerificationResendPeriodStart(periodStart);
+        user.setVerificationResendCount(count + 1);
+    }
+
     public void resendVerificationEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
-        
+
         if (user.isEmailVerified()) {
             throw new BadRequestException("Email уже подтверждён");
         }
-        
+
+        checkAndUpdateVerificationEmailLimit(user);
         user.setEmailVerificationToken(UUID.randomUUID().toString());
         userRepository.save(user);
-        
+
         emailService.sendVerificationEmail(user);
         log.info("Verification email resent to {}", email);
     }
@@ -156,7 +249,8 @@ public class UserService {
         }
 
         String newEmail = request.getEmail();
-        if (!user.getEmail().equalsIgnoreCase(newEmail)) {
+        boolean emailChanged = !user.getEmail().equalsIgnoreCase(newEmail);
+        if (emailChanged) {
             userRepository.findByEmail(newEmail).ifPresent(existing -> {
                 if (!existing.getId().equals(user.getId())) {
                     throw new EmailAlreadyExistsException(
@@ -176,6 +270,17 @@ public class UserService {
         profile.setProfilePictureUrl(request.getProfilePictureUrl());
         user.setUserProfile(profile);
 
-        return userRepository.save(user);
+        if (emailChanged) {
+            user.setEmailVerified(false);
+            user.setEmailVerificationToken(UUID.randomUUID().toString());
+        }
+
+        User saved = userRepository.save(user);
+
+        if (emailChanged) {
+            emailService.sendVerificationEmail(saved);
+        }
+
+        return saved;
     }
 }

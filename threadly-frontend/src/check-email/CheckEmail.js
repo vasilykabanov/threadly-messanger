@@ -76,6 +76,14 @@ const CheckEmail = (props) => {
                     <>
                         <div className="check-email-message">
                             Введите email вашего аккаунта — мы отправим ссылку для подтверждения.
+                            <br />
+                            Если при регистрации указали неверный email, вы можете{" "}
+                            <a
+                                className="check-email-link"
+                                onClick={() => props.history.push("/update-email")}
+                            >
+                                обновить email здесь
+                            </a>.
                         </div>
                         <Input
                             size="large"
