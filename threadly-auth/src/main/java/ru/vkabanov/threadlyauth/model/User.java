@@ -71,4 +71,6 @@ public class User {
     private boolean active;
     private Profile userProfile;
     private Set<Role> roles;
+    private boolean emailVerified;
+    private String emailVerificationToken;
 }

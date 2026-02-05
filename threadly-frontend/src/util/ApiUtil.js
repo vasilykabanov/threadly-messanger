@@ -55,6 +55,22 @@ export function signup(signupRequest) {
     });
 }
 
+export function verifyEmail(token) {
+    return request({
+        url: AUTH_SERVICE + "/verify-email?token=" + encodeURIComponent(token),
+        method: "GET",
+        skipAuthRedirect: true,
+    });
+}
+
+export function resendVerification(email) {
+    return request({
+        url: AUTH_SERVICE + "/resend-verification?email=" + encodeURIComponent(email),
+        method: "POST",
+        skipAuthRedirect: true,
+    });
+}
+
 export function getCurrentUser() {
     if (!localStorage.getItem("accessToken")) {
         return Promise.reject("No access token set.");

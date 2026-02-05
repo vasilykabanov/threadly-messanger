@@ -1,0 +1,144 @@
+.check-email-container {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px 40px;
+    text-align: center;
+}
+
+.check-email-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 40px 32px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid #e1e0e0;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+}
+
+.check-email-logo {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 16px;
+}
+
+.check-email-icon {
+    font-size: 64px;
+    color: rebeccapurple;
+    margin-bottom: 16px;
+}
+
+.check-email-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: #1f2937;
+}
+
+.check-email-message {
+    font-size: 15px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.check-email-address {
+    font-weight: 600;
+    color: #1f2937;
+    margin-top: 8px;
+}
+
+.check-email-hint {
+    font-size: 13px;
+    color: #9ca3af;
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+.check-email-input {
+    margin-bottom: 28px;
+}
+
+.check-email-resend {
+    width: 100%;
+    margin-top: 8px;
+    margin-bottom: 16px;
+}
+
+.check-email-footer {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.check-email-footer a {
+    color: rebeccapurple;
+    cursor: pointer;
+}
+
+/* Theme: new dark */
+body.theme-new .check-email-card {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    box-shadow: 0 30px 60px rgba(2, 6, 23, 0.6);
+    backdrop-filter: blur(18px);
+}
+
+body.theme-new .check-email-icon {
+    color: #a78bfa;
+}
+
+body.theme-new .check-email-title {
+    color: #f8fafc;
+}
+
+body.theme-new .check-email-message {
+    color: rgba(226, 232, 240, 0.7);
+}
+
+body.theme-new .check-email-address {
+    color: #f8fafc;
+}
+
+body.theme-new .check-email-hint {
+    color: rgba(226, 232, 240, 0.5);
+}
+
+body.theme-new .check-email-footer {
+    color: rgba(226, 232, 240, 0.7);
+}
+
+body.theme-new .check-email-footer a {
+    color: #a78bfa;
+}
+
+body.theme-new .check-email-resend {
+    background: rgba(30, 41, 59, 0.6);
+    border-color: rgba(148, 163, 184, 0.35);
+    color: #e2e8f0;
+}
+
+/* Theme: new light */
+body.theme-new.theme-new-light .check-email-card {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+body.theme-new.theme-new-light .check-email-title,
+body.theme-new.theme-new-light .check-email-address {
+    color: #0f172a;
+}
+
+body.theme-new.theme-new-light .check-email-message,
+body.theme-new.theme-new-light .check-email-footer {
+    color: #475569;
+}
+
+body.theme-new.theme-new-light .check-email-hint {
+    color: #64748b;
+}
+
+body.theme-new.theme-new-light .check-email-resend {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(148, 163, 184, 0.35);
+    color: #0f172a;
+}

@@ -21,6 +21,7 @@ import ru.vkabanov.threadlyauth.payload.UpdateProfileRequest;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -31,12 +32,23 @@ public class UserService {
     private final UserRepository userRepository;
     private final JwtTokenProvider tokenProvider;
     private final AuthenticationConfiguration authenticationConfiguration;
+    private final EmailService emailService;
 
     public String loginUser(String username, String password) {
         try {
+            // Check if email is verified before allowing login
+            User user = userRepository.findByUsernameIgnoreCase(username)
+                    .orElseThrow(() -> new BadRequestException("Неверный логин или пароль"));
+            
+            if (!user.isEmailVerified()) {
+                throw new BadRequestException("Email не подтверждён. Проверьте почту для активации аккаунта.");
+            }
+            
             AuthenticationManager authenticationManager = authenticationConfiguration.getAuthenticationManager();
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
             return tokenProvider.generateToken(authentication);
+        } catch (BadRequestException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -60,7 +72,46 @@ public class UserService {
             add(role);
         }});
 
+        // Email verification
+        user.setEmailVerified(false);
+        user.setEmailVerificationToken(UUID.randomUUID().toString());
+
+        User savedUser = userRepository.save(user);
+        
+        // Send verification email asynchronously
+        emailService.sendVerificationEmail(savedUser);
+        
+        return savedUser;
+    }
+    
+    public User verifyEmail(String token) {
+        User user = userRepository.findByEmailVerificationToken(token)
+                .orElseThrow(() -> new BadRequestException("Недействительный токен подтверждения"));
+        
+        if (user.isEmailVerified()) {
+            throw new BadRequestException("Email уже подтверждён");
+        }
+        
+        user.setEmailVerified(true);
+        user.setEmailVerificationToken(null);
+        
+        log.info("Email verified for user {}", user.getUsername());
         return userRepository.save(user);
+    }
+    
+    public void resendVerificationEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
+        
+        if (user.isEmailVerified()) {
+            throw new BadRequestException("Email уже подтверждён");
+        }
+        
+        user.setEmailVerificationToken(UUID.randomUUID().toString());
+        userRepository.save(user);
+        
+        emailService.sendVerificationEmail(user);
+        log.info("Verification email resent to {}", email);
     }
 
     public List<User> findAll() {

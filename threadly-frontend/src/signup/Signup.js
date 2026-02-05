@@ -19,9 +19,9 @@ const Signup = (props) => {
                 notification.success({
                     message: "Успешно",
                     description:
-                        "Спасибо! Регистрация прошла успешно. Войдите, чтобы продолжить!",
+                        "Регистрация прошла успешно! Проверьте почту для подтверждения.",
                 });
-                props.history.push("/login");
+                props.history.push("/check-email?email=" + encodeURIComponent(values.email));
                 setLoading(false);
             })
             .catch((error) => {
