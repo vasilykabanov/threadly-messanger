@@ -656,7 +656,12 @@ const Chat = (props) => {
                             </button>
                         </div>
 
-                        <ScrollToBottom key={activeContact.id} className="messages">
+                        <ScrollToBottom
+                            key={activeContact.id}
+                            className="messages"
+                            initialScrollBehavior="auto"
+                            scrollBehavior="auto"
+                        >
                             <ul>
                                 {messages.map((msg, index) => {
                                     const showDate = isNewDay(msg.timestamp, messages[index - 1]?.timestamp);
