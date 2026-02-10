@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useState, useRef} from "react";
 import {Button, Drawer, message, Spin, Modal} from "antd";
 import {
     getUsers,
@@ -50,6 +50,8 @@ const Chat = (props) => {
     const [isDeleteChatOpen, setIsDeleteChatOpen] = useState(false);
     const [deleteChatTarget, setDeleteChatTarget] = useState(null);
     const [deleteChatLoading, setDeleteChatLoading] = useState(false);
+    const [isConnected, setIsConnected] = useState(false);
+    const messagesEndRef = useRef(null);
 
     useEffect(() => {
         document.body.classList.add("chat-page");
@@ -89,6 +91,18 @@ const Chat = (props) => {
 
         // Web Push (если пользователь разрешил уведомления)
         ensurePushSubscribed(currentUser.id).catch(() => {});
+
+        return () => {
+            // Отключаемся при размонтировании/смене пользователя,
+            // чтобы не плодить несколько stomp-подключений и подписок
+            if (stompClient && stompClient.connected) {
+                stompClient.disconnect(() => {
+                    console.log("stomp disconnected");
+                });
+            }
+            stompClient = null;
+            setIsConnected(false);
+        };
     }, [currentUser?.id]);
 
     useEffect(() => {
@@ -97,13 +111,34 @@ const Chat = (props) => {
     }, [activeContact?.id]);
 
     useEffect(() => {
+        // Автопрокрутка к последнему сообщению при изменении списка сообщений
+        // или при смене активного контакта.
+        if (messagesEndRef.current) {
+            try {
+                messagesEndRef.current.scrollIntoView({
+                    behavior: "smooth",
+                    block: "end",
+                });
+            } catch (e) {
+                // На случай, если браузер не поддерживает smooth
+                messagesEndRef.current.scrollIntoView();
+            }
+        }
+    }, [messages.length, activeContact?.id]);
+
+    useEffect(() => {
         if (!activeContact?.username) return;
         loadContactProfile(activeContact);
     }, [activeContact?.username]);
 
     const connect = () => {
+        // Не создаём новое подключение, если уже есть активное
+        if (stompClient && stompClient.connected) {
+            return;
+        }
+
         const Stomp = require("stompjs");
-        var SockJS = require("sockjs-client");
+        let SockJS = require("sockjs-client");
         SockJS = new SockJS("/api/chat/ws");
         stompClient = Stomp.over(SockJS);
         stompClient.connect({userId: currentUser.id}, onConnected, onError);
@@ -112,7 +147,24 @@ const Chat = (props) => {
     const onConnected = () => {
         console.log("connected");
         console.log(currentUser);
-        stompClient.subscribe("/user/" + currentUser.id + "/queue/messages", onMessageReceived);
+        setIsConnected(true);
+
+        // На всякий случай отпишемся от старых подписок, если они были
+        // (stompjs сам переиспользует клиент, поэтому важно не дублировать subscribe)
+        try {
+            if (stompClient && stompClient.subscriptions) {
+                Object.keys(stompClient.subscriptions).forEach((id) => {
+                    stompClient.unsubscribe(id);
+                });
+            }
+        } catch (e) {
+            console.warn("failed to cleanup old stomp subscriptions", e);
+        }
+
+        stompClient.subscribe(
+            "/user/" + currentUser.id + "/queue/messages",
+            onMessageReceived
+        );
         stompClient.subscribe("/topic/status", onStatusReceived);
     };
 
@@ -122,13 +174,21 @@ const Chat = (props) => {
 
     const onMessageReceived = (msg) => {
         const notification = JSON.parse(msg.body);
-        const active = JSON.parse(sessionStorage.getItem("recoil-persist"))
-            .chatActiveContact;
+        const recoilPersist = JSON.parse(sessionStorage.getItem("recoil-persist") || "{}");
+        const active = recoilPersist.chatActiveContact;
+
+        // Если это сообщение, отправленное текущим пользователем,
+        // мы уже добавили его оптимистически в sendMessage.
+        // Здесь только обновляем контакты/счётчики, чтобы не плодить дубли.
+        if (notification.senderId === currentUser.id) {
+            loadContacts(active?.id);
+            return;
+        }
 
         if (active && active.id === notification.senderId) {
             findChatMessage(notification.id).then((message) => {
-                const newMessages = JSON.parse(sessionStorage.getItem("recoil-persist"))
-                    .chatMessages;
+                const newMessages = (JSON.parse(sessionStorage.getItem("recoil-persist") || "{}")
+                    .chatMessages) || [];
                 newMessages.push(message);
                 setMessages(newMessages);
                 setLastMessageByContact((prev) => ({
@@ -150,28 +210,34 @@ const Chat = (props) => {
     };
 
     const sendMessage = (msg) => {
-        if (msg.trim() !== "") {
-            const message = {
-                senderId: currentUser.id,
-                recipientId: activeContact.id,
-                senderName: currentUser.name,
-                recipientName: activeContact.name,
-                content: msg,
-                timestamp: new Date(),
-            };
-            stompClient.send("/app/chat", {}, JSON.stringify(message));
+        const trimmed = msg.trim();
+        if (!trimmed || !activeContact?.id || !currentUser?.id) {
+            return;
+        }
 
-            const newMessages = [...messages];
-            newMessages.push(message);
-            setMessages(newMessages);
-            setLastMessageByContact((prev) => ({
-                ...prev,
-                [activeContact.id]: message,
-            }));
-            if (!contacts.some((contact) => contact.id === activeContact.id)) {
-                setContacts([activeContact, ...contacts]);
-            }
-            loadContacts(activeContact?.id);
+        const message = {
+            senderId: currentUser.id,
+            recipientId: activeContact.id,
+            senderName: currentUser.name,
+            recipientName: activeContact.name,
+            content: trimmed,
+            timestamp: new Date(),
+        };
+
+        // Оптимистически добавляем сообщение отправителю,
+        // чтобы оно сразу появилось в чате.
+        const newMessages = [...messages, message];
+        setMessages(newMessages);
+        setLastMessageByContact((prev) => ({
+            ...prev,
+            [activeContact.id]: message,
+        }));
+        if (!contacts.some((contact) => contact.id === activeContact.id)) {
+            setContacts([activeContact, ...contacts]);
+        }
+
+        if (stompClient && stompClient.connected) {
+            stompClient.send("/app/chat", {}, JSON.stringify(message));
         }
     };
 
@@ -693,6 +759,7 @@ const Chat = (props) => {
                                         </React.Fragment>
                                     );
                                 })}
+                                <li ref={messagesEndRef} />
                             </ul>
                         </ScrollToBottom>
 
