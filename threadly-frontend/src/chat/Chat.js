@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {Button, Drawer, message, Spin, Modal} from "antd";
 import {
     getUsers,
@@ -17,7 +17,6 @@ import {
     chatActiveContact,
     chatMessages,
 } from "../atom/globalState";
-import ScrollToBottom from "react-scroll-to-bottom";
 import "./Chat.css";
 import Avatar from "../profile/Avatar";
 
@@ -50,6 +49,12 @@ const Chat = (props) => {
     const [isDeleteChatOpen, setIsDeleteChatOpen] = useState(false);
     const [deleteChatTarget, setDeleteChatTarget] = useState(null);
     const [deleteChatLoading, setDeleteChatLoading] = useState(false);
+    const [isAtBottom, setIsAtBottom] = useState(true);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    const messagesRef = useRef(null);
+    const prevMessageCountRef = useRef(0);
+    const suppressNextAutoScrollRef = useRef(false);
 
     useEffect(() => {
         document.body.classList.add("chat-page");
@@ -100,6 +105,76 @@ const Chat = (props) => {
         if (!activeContact?.username) return;
         loadContactProfile(activeContact);
     }, [activeContact?.username]);
+
+    useEffect(() => {
+        const container = messagesRef.current;
+        if (!container) return;
+
+        const scrollToBottom = (behavior = "auto") => {
+            if (!messagesRef.current) return;
+            if (behavior === "auto") {
+                messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+                return;
+            }
+            messagesRef.current.scrollTo({
+                top: messagesRef.current.scrollHeight,
+                behavior,
+            });
+        };
+
+        const isNearBottom = () => {
+            if (!messagesRef.current) return true;
+            const threshold = 80;
+            const {scrollTop, scrollHeight, clientHeight} = messagesRef.current;
+            return scrollHeight - scrollTop - clientHeight <= threshold;
+        };
+
+        if (suppressNextAutoScrollRef.current) {
+            suppressNextAutoScrollRef.current = false;
+            requestAnimationFrame(() => scrollToBottom("auto"));
+            setIsAtBottom(true);
+            setUnreadCount(0);
+        } else if (messages.length > prevMessageCountRef.current) {
+            const lastMessage = messages[messages.length - 1];
+            const fromOtherUser = lastMessage?.senderId && lastMessage.senderId !== currentUser?.id;
+            const atBottomNow = isNearBottom();
+
+            if (fromOtherUser) {
+                if (atBottomNow) {
+                    scrollToBottom("smooth");
+                    setIsAtBottom(true);
+                } else {
+                    setUnreadCount((count) => count + 1);
+                }
+            } else {
+                scrollToBottom("smooth");
+                setIsAtBottom(true);
+            }
+        }
+
+        prevMessageCountRef.current = messages.length;
+    }, [messages, currentUser?.id]);
+
+    const handleMessagesScroll = () => {
+        if (!messagesRef.current) return;
+        const threshold = 80;
+        const {scrollTop, scrollHeight, clientHeight} = messagesRef.current;
+        const atBottom = scrollHeight - scrollTop - clientHeight <= threshold;
+        setIsAtBottom(atBottom);
+        if (atBottom) {
+            setUnreadCount(0);
+        }
+    };
+
+    const scrollToBottom = () => {
+        if (!messagesRef.current) return;
+        messagesRef.current.scrollTo({
+            top: messagesRef.current.scrollHeight,
+            behavior: "smooth",
+        });
+        setUnreadCount(0);
+        setIsAtBottom(true);
+    };
 
     const connect = () => {
         const Stomp = require("stompjs");
@@ -265,9 +340,13 @@ const Chat = (props) => {
 
     const loadChatForContact = (contact) => {
         if (!contact?.id) return;
+        prevMessageCountRef.current = 0;
+        setUnreadCount(0);
+        setIsAtBottom(true);
         setMessages([]);
         findChatMessages(contact.id, currentUser.id)
             .then((items) => {
+                suppressNextAutoScrollRef.current = true;
                 setMessages(items);
                 if (items.length > 0) {
                     setLastMessageByContact((prev) => ({
@@ -656,11 +735,11 @@ const Chat = (props) => {
                             </button>
                         </div>
 
-                        <ScrollToBottom
+                        <div
                             key={activeContact.id}
                             className="messages"
-                            initialScrollBehavior="auto"
-                            scrollBehavior="auto"
+                            ref={messagesRef}
+                            onScroll={handleMessagesScroll}
                         >
                             <ul>
                                 {messages.map((msg, index) => {
@@ -694,7 +773,21 @@ const Chat = (props) => {
                                     );
                                 })}
                             </ul>
-                        </ScrollToBottom>
+                        </div>
+
+                        {(!isAtBottom || unreadCount > 0) && (
+                            <button
+                                type="button"
+                                className="scroll-to-bottom-btn"
+                                onClick={scrollToBottom}
+                                aria-label="Прокрутить к последним сообщениям"
+                            >
+                                <span className="scroll-to-bottom-icon">↓</span>
+                                {unreadCount > 0 && (
+                                    <span className="scroll-to-bottom-count">{unreadCount}</span>
+                                )}
+                            </button>
+                        )}
 
                         <div className="message-input">
                             <div className="wrap">

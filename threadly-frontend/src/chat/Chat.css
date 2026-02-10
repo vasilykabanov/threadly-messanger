@@ -967,6 +967,60 @@ span.status-circle:before {
     font-size: 16px;
 }
 
+.scroll-to-bottom-btn {
+    position: absolute;
+    right: 18px;
+    bottom: 88px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: var(--color-panel-alt);
+    color: var(--color-text-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+}
+
+.scroll-to-bottom-btn:hover {
+    background: var(--color-panel-hover);
+}
+
+.scroll-to-bottom-icon {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.scroll-to-bottom-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 12px;
+    background: #e74c3c;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+@media screen and (max-width: 735px) {
+    .scroll-to-bottom-btn {
+        right: 12px;
+        bottom: 84px;
+        width: 40px;
+        height: 40px;
+    }
+}
+
 @media screen and (min-width: 735px) {
     #frame .content .messages ul li p {
         max-width: 300px;
