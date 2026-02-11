@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef} from "react";
+import React, {useEffect, useLayoutEffect, useRef, useState} from "react";
 import {Button, Drawer, message, Spin, Modal} from "antd";
 import {
     getUsers,
@@ -17,7 +17,6 @@ import {
     chatActiveContact,
     chatMessages,
 } from "../atom/globalState";
-import ScrollToBottom from "react-scroll-to-bottom";
 import "./Chat.css";
 import Avatar from "../profile/Avatar";
 
@@ -39,7 +38,6 @@ const Chat = (props) => {
     const [allUsers, setAllUsers] = useState([]);
     const [activeContact, setActiveContact] = useRecoilState(chatActiveContact);
     const [messages, setMessages] = useRecoilState(chatMessages);
-    const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [profileLoading, setProfileLoading] = useState(false);
@@ -51,13 +49,26 @@ const Chat = (props) => {
     const [deleteChatTarget, setDeleteChatTarget] = useState(null);
     const [deleteChatLoading, setDeleteChatLoading] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
-    const messagesEndRef = useRef(null);
+    const messagesContainerRef = useRef(null);
+    const [isUserNearBottom, setIsUserNearBottom] = useState(true);
+    const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
         document.body.classList.add("chat-page");
         return () => {
             document.body.classList.remove("chat-page");
         };
+    }, []);
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (typeof window === "undefined") return;
+            setIsMobile(window.innerWidth <= 768);
+        };
+
+        handleResize();
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
     }, []);
 
     useEffect(() => {
@@ -107,24 +118,26 @@ const Chat = (props) => {
 
     useEffect(() => {
         if (!activeContact?.id) return;
+
+        // При переключении на другого собеседника считаем, что пользователь "у низа",
+        // и сразу показываем конец нового чата.
+        setIsUserNearBottom(true);
         loadChatForContact(activeContact);
     }, [activeContact?.id]);
 
-    useEffect(() => {
-        // Автопрокрутка к последнему сообщению при изменении списка сообщений
-        // или при смене активного контакта.
-        if (messagesEndRef.current) {
-            try {
-                messagesEndRef.current.scrollIntoView({
-                    behavior: "smooth",
-                    block: "end",
-                });
-            } catch (e) {
-                // На случай, если браузер не поддерживает smooth
-                messagesEndRef.current.scrollIntoView();
-            }
-        }
-    }, [messages.length, activeContact?.id]);
+    useLayoutEffect(() => {
+        // Держим видимыми последние сообщения:
+        // - при первом открытии длинного чата сразу показываем низ без анимации;
+        // - при новых сообщениях скроллим вниз только если пользователь и так был рядом с концом;
+        // - если пользователь пролистал вверх, позицию не трогаем.
+        const container = messagesContainerRef.current;
+        if (!container) return;
+        if (!activeContact?.id) return;
+        if (!messages.length) return;
+        if (!isUserNearBottom) return;
+
+        container.scrollTop = container.scrollHeight;
+    }, [messages.length, activeContact?.id, isUserNearBottom]);
 
     useEffect(() => {
         if (!activeContact?.username) return;
@@ -426,7 +439,6 @@ const Chat = (props) => {
     const closeChat = () => {
         setActiveContact(null);
         setMessages([]);
-        setIsMobileChatOpen(false);
     };
 
     const goToProfile = () => {
@@ -550,6 +562,19 @@ const Chat = (props) => {
         return currDate !== prevDate;
     };
 
+    const handleMessagesScroll = () => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        const distanceFromBottom =
+            container.scrollHeight - container.scrollTop - container.clientHeight;
+
+        // Считаем, что пользователь "у низа", если он ближе 64px к концу.
+        setIsUserNearBottom(distanceFromBottom < 64);
+    };
+
+    const isMobileChatOpen = isMobile && !!activeContact;
+
     return (
         <div id="frame" className={isMobileChatOpen ? "chat-open" : ""}>
             <div id="sidepanel">
@@ -600,7 +625,6 @@ const Chat = (props) => {
                                         key={user.id}
                                         className="search-result-item"
                                         onClick={() => {
-                                            setIsMobileChatOpen(true);
                                             setActiveContact(user);
                                             setSearchQuery("");
                                         }}
@@ -630,7 +654,6 @@ const Chat = (props) => {
                             <li
                                 key={contact.id}
                                 onClick={() => {
-                                    setIsMobileChatOpen(true);
                                     if (activeContact?.id !== contact.id) {
                                         setActiveContact(contact);
                                     } else {
@@ -697,7 +720,7 @@ const Chat = (props) => {
                 {activeContact ? (
                     <>
                         <div className="contact-profile">
-                            <button className="back-btn" onClick={() => setIsMobileChatOpen(false)}>
+                            <button className="back-btn" onClick={() => setActiveContact(null)}>
                                 ←
                             </button>
                             <button
@@ -722,11 +745,11 @@ const Chat = (props) => {
                             </button>
                         </div>
 
-                        <ScrollToBottom
+                        <div
                             key={activeContact.id}
                             className="messages"
-                            initialScrollBehavior="auto"
-                            scrollBehavior="auto"
+                            ref={messagesContainerRef}
+                            onScroll={handleMessagesScroll}
                         >
                             <ul>
                                 {messages.map((msg, index) => {
@@ -759,9 +782,8 @@ const Chat = (props) => {
                                         </React.Fragment>
                                     );
                                 })}
-                                <li ref={messagesEndRef} />
                             </ul>
-                        </ScrollToBottom>
+                        </div>
 
                         <div className="message-input">
                             <div className="wrap">
