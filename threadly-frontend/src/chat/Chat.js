@@ -51,6 +51,8 @@ const Chat = (props) => {
     const [isConnected, setIsConnected] = useState(false);
     const messagesContainerRef = useRef(null);
     const [isUserNearBottom, setIsUserNearBottom] = useState(true);
+    const [visibleDayCount, setVisibleDayCount] = useState(1);
+    const prevScrollHeightRef = useRef(null);
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
@@ -122,8 +124,21 @@ const Chat = (props) => {
         // При переключении на другого собеседника считаем, что пользователь "у низа",
         // и сразу показываем конец нового чата.
         setIsUserNearBottom(true);
+        setVisibleDayCount(1);
         loadChatForContact(activeContact);
     }, [activeContact?.id]);
+
+    useLayoutEffect(() => {
+        // Если добавили более старые сообщения сверху — компенсируем рост высоты,
+        // чтобы видимая область не "прыгала".
+        const container = messagesContainerRef.current;
+        if (!container) return;
+        if (prevScrollHeightRef.current != null) {
+            const diff = container.scrollHeight - prevScrollHeightRef.current;
+            container.scrollTop = diff;
+            prevScrollHeightRef.current = null;
+        }
+    }, [visibleDayCount]);
 
     useLayoutEffect(() => {
         // Держим видимыми последние сообщения:
@@ -348,6 +363,7 @@ const Chat = (props) => {
         findChatMessages(contact.id, currentUser.id)
             .then((items) => {
                 setMessages(items);
+                setVisibleDayCount(1);
                 if (items.length > 0) {
                     setLastMessageByContact((prev) => ({
                         ...prev,
@@ -571,7 +587,41 @@ const Chat = (props) => {
 
         // Считаем, что пользователь "у низа", если он ближе 64px к концу.
         setIsUserNearBottom(distanceFromBottom < 64);
+
+        // Если пользователь доскроллил почти до верха — раскрываем ещё один день истории.
+        const distanceFromTop = container.scrollTop;
+        if (distanceFromTop < 80 && messages.length > 0) {
+            // Собираем уникальные дни по порядку от старых к новым.
+            const dayKeysOrdered = [];
+            const seen = new Set();
+            messages.forEach((m) => {
+                const key = new Date(m.timestamp).toDateString();
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    dayKeysOrdered.push(key);
+                }
+            });
+            const totalDays = dayKeysOrdered.length;
+            if (visibleDayCount < totalDays) {
+                prevScrollHeightRef.current = container.scrollHeight;
+                setVisibleDayCount((prev) => Math.min(prev + 1, totalDays));
+            }
+        }
     };
+
+    // Считаем, какие дни сейчас должны быть видны (последние visibleDayCount дней).
+    const dayKeysOrdered = [];
+    const seenDayKeys = new Set();
+    messages.forEach((m) => {
+        const key = new Date(m.timestamp).toDateString();
+        if (!seenDayKeys.has(key)) {
+            seenDayKeys.add(key);
+            dayKeysOrdered.push(key);
+        }
+    });
+    const visibleDayKeysSet = new Set(
+        dayKeysOrdered.slice(Math.max(dayKeysOrdered.length - visibleDayCount, 0))
+    );
 
     const isMobileChatOpen = isMobile && !!activeContact;
 
@@ -751,9 +801,18 @@ const Chat = (props) => {
                             ref={messagesContainerRef}
                             onScroll={handleMessagesScroll}
                         >
-                            <ul>
+                             <ul>
                                 {messages.map((msg, index) => {
-                                    const showDate = isNewDay(msg.timestamp, messages[index - 1]?.timestamp);
+                                    const dayKey = new Date(msg.timestamp).toDateString();
+                                    if (!visibleDayKeysSet.has(dayKey)) {
+                                        return null;
+                                    }
+
+                                    const prevMsg = messages[index - 1];
+                                    const showDate =
+                                        !prevMsg ||
+                                        (isNewDay(msg.timestamp, prevMsg.timestamp) &&
+                                            visibleDayKeysSet.has(dayKey));
 
                                     return (
                                         <React.Fragment
