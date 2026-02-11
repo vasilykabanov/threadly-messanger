@@ -129,16 +129,29 @@ const Chat = (props) => {
     }, [activeContact?.id]);
 
     useLayoutEffect(() => {
-        // Если добавили более старые сообщения сверху — компенсируем рост высоты,
-        // чтобы видимая область не "прыгала".
         const container = messagesContainerRef.current;
         if (!container) return;
+
+        // Если мы раскрыли ещё один день по скроллу вверх —
+        // компенсируем рост высоты, чтобы содержимое не "прыгало".
         if (prevScrollHeightRef.current != null) {
             const diff = container.scrollHeight - prevScrollHeightRef.current;
             container.scrollTop = diff;
             prevScrollHeightRef.current = null;
+            return;
         }
-    }, [visibleDayCount]);
+
+        // Если видимого дня(дней) мало и контейнер не скроллится,
+        // автоматически подгружаем ещё дни, пока либо не будет скролла,
+        // либо не закончатся дни.
+        const totalDays = dayKeysOrdered.length;
+        if (
+            container.scrollHeight <= container.clientHeight + 4 &&
+            visibleDayCount < totalDays
+        ) {
+            setVisibleDayCount((prev) => Math.min(prev + 1, totalDays));
+        }
+    }, [visibleDayCount, dayKeysOrdered.length]);
 
     useLayoutEffect(() => {
         // Держим видимыми последние сообщения:
