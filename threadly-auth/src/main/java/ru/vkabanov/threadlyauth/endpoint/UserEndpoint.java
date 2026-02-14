@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import ru.vkabanov.threadlyauth.exception.BadRequestException;
@@ -39,29 +40,34 @@ public class UserEndpoint {
     public ResponseEntity<?> findUser(@PathVariable("username") String username) {
         log.info("retrieving user {}", username);
 
-        return  userService
-                .findByUsername(username)
-                .map(user -> ResponseEntity.ok(user))
+        return userService.findByUsername(username)
+                .map(ResponseEntity::ok)
                 .orElseThrow(() -> new ResourceNotFoundException(username));
     }
 
     @GetMapping(value = "/users", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> findAll() {
         log.info("retrieving all users");
-
-        return ResponseEntity
-                .ok(userService.findAll());
+        return ResponseEntity.ok(userService.findAll());
     }
 
     @GetMapping(value = "/users/summaries", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> findAllUserSummaries(
-            @AuthenticationPrincipal ThreadlyUserDetails userDetails) {
-        log.info("retrieving all users summaries");
+    public ResponseEntity<?> findAllUserSummaries(@AuthenticationPrincipal ThreadlyUserDetails userDetails) {
+        log.info("retrieving user summaries (only with conversation)");
 
         return ResponseEntity.ok(userService
-                .findAll()
+                .findUsersWithConversation(userDetails.getId())
                 .stream()
                 .filter(user -> !user.getUsername().equals(userDetails.getUsername()))
+                .map(this::convertTo));
+    }
+
+    @GetMapping(value = "/users/search", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> searchUsers(@RequestParam("q") String query,
+                                         @AuthenticationPrincipal ThreadlyUserDetails userDetails) {
+        return ResponseEntity.ok(userService
+                .searchUsers(query, userDetails.getId())
+                .stream()
                 .map(this::convertTo));
     }
 
@@ -70,19 +76,19 @@ public class UserEndpoint {
     @ResponseStatus(HttpStatus.OK)
     public UserSummary getCurrentUser(@AuthenticationPrincipal ThreadlyUserDetails userDetails) {
         String displayName = userDetails.getUserProfile() != null
-            ? userDetails.getUserProfile().getDisplayName()
-            : null;
+                ? userDetails.getUserProfile().getDisplayName()
+                : null;
         String profilePicture = userDetails.getUserProfile() != null
-            ? userDetails.getUserProfile().getProfilePictureUrl()
-            : null;
+                ? userDetails.getUserProfile().getProfilePictureUrl()
+                : null;
 
         return UserSummary
                 .builder()
                 .id(userDetails.getId())
                 .username(userDetails.getUsername())
-            .name(displayName)
+                .name(displayName)
                 .email(userDetails.getEmail())
-            .profilePicture(profilePicture)
+                .profilePicture(profilePicture)
                 .build();
     }
 
@@ -112,26 +118,25 @@ public class UserEndpoint {
     public ResponseEntity<?> getUserSummary(@PathVariable("username") String username) {
         log.info("retrieving user {}", username);
 
-        return  userService
-                .findByUsername(username)
+        return userService.findByUsername(username)
                 .map(user -> ResponseEntity.ok(convertTo(user)))
                 .orElseThrow(() -> new ResourceNotFoundException(username));
     }
 
     private UserSummary convertTo(User user) {
         String displayName = user.getUserProfile() != null
-            ? user.getUserProfile().getDisplayName()
-            : null;
+                ? user.getUserProfile().getDisplayName()
+                : null;
         String profilePicture = user.getUserProfile() != null
-            ? user.getUserProfile().getProfilePictureUrl()
-            : null;
+                ? user.getUserProfile().getProfilePictureUrl()
+                : null;
         return UserSummary
                 .builder()
                 .id(user.getId())
                 .username(user.getUsername())
-            .name(displayName)
+                .name(displayName)
                 .email(user.getEmail())
-            .profilePicture(profilePicture)
+                .profilePicture(profilePicture)
                 .build();
     }
 }

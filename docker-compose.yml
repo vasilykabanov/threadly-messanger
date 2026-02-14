@@ -28,6 +28,7 @@ services:
     environment:
       SPRING_DATA_MONGODB_HOST: mongo-auth
       SPRING_DATA_MONGODB_PORT: 27017
+      CHAT_SERVICE_URL: http://threadly-chat:8080
     restart: unless-stopped
 
   # ---------------- Mongo для threadly-chat ----------------

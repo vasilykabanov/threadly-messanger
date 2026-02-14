@@ -15,16 +15,22 @@ import ru.vkabanov.threadlyauth.exception.UsernameAlreadyExistsException;
 import ru.vkabanov.threadlyauth.model.Profile;
 import ru.vkabanov.threadlyauth.model.Role;
 import ru.vkabanov.threadlyauth.model.User;
+import ru.vkabanov.threadlyauth.client.ChatContactsClient;
 import ru.vkabanov.threadlyauth.repository.UserRepository;
 import ru.vkabanov.threadlyauth.payload.UpdateEmailBeforeVerificationRequest;
 import ru.vkabanov.threadlyauth.payload.UpdateProfileRequest;
 
+import org.springframework.data.domain.PageRequest;
+
 import java.time.Duration;
+import java.util.ArrayList;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @Service
 @Slf4j
@@ -36,6 +42,9 @@ public class UserService {
     private final JwtTokenProvider tokenProvider;
     private final AuthenticationConfiguration authenticationConfiguration;
     private final EmailService emailService;
+    private final ChatContactsClient chatContactsClient;
+
+    private static final int SEARCH_MAX_RESULTS = 20;
 
     public String loginUser(String username, String password) {
         try {
@@ -210,6 +219,36 @@ public class UserService {
     public List<User> findAll() {
         log.info("retrieving all users");
         return userRepository.findAll();
+    }
+
+    /**
+     * Возвращает пользователей, с которыми у currentUserId есть переписка (для /users/summaries).
+     */
+    public List<User> findUsersWithConversation(String currentUserId) {
+        List<String> contactIds = chatContactsClient.getContactIds(currentUserId);
+        if (contactIds == null || contactIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return StreamSupport.stream(userRepository.findAllById(contactIds).spliterator(), false)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Поиск пользователей по username или displayName (для поиска контакта / начала чата).
+     */
+    public List<User> searchUsers(String query, String excludeUserId) {
+        if (query == null || query.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        String sanitized = query.trim();
+        if (sanitized.length() > 50) {
+            sanitized = sanitized.substring(0, 50);
+        }
+        String regex = ".*" + sanitized.replaceAll("([\\\\*+?^$\\[\\](){}.|])", "\\\\$1") + ".*";
+        return userRepository.searchByUsernameOrDisplayName(regex, PageRequest.of(0, SEARCH_MAX_RESULTS))
+                .stream()
+                .filter(user -> !user.getId().equals(excludeUserId))
+                .collect(Collectors.toList());
     }
 
     public Optional<User> findByUsername(String username) {
