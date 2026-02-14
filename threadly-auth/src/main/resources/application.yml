@@ -26,6 +26,7 @@ app:
     from: ${MAIL_FROM:}
     from-name: Threadly
   frontend-url: ${FRONTEND_URL:http://localhost}
+  chat-service-url: ${CHAT_SERVICE_URL:http://localhost:8080}
       
 security:
   basic:

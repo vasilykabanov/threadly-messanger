@@ -10,6 +10,7 @@ import {
     getCurrentUser,
     deleteChat as deleteChatRequest,
     ensurePushSubscribed,
+    searchUsers,
 } from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
 import {
@@ -44,6 +45,8 @@ const Chat = (props) => {
     const [profileData, setProfileData] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearchFocused, setIsSearchFocused] = useState(false);
+    const [searchResults, setSearchResults] = useState([]);
+    const [searchLoading, setSearchLoading] = useState(false);
     const [lastMessageByContact, setLastMessageByContact] = useState({});
     const [isDeleteChatOpen, setIsDeleteChatOpen] = useState(false);
     const [deleteChatTarget, setDeleteChatTarget] = useState(null);
@@ -86,6 +89,22 @@ const Chat = (props) => {
         setActiveContact(null);
         setMessages([]);
     }, []);
+
+    useEffect(() => {
+        if (!searchQuery.trim()) {
+            setSearchResults([]);
+            setSearchLoading(false);
+            return;
+        }
+        setSearchLoading(true);
+        const t = setTimeout(() => {
+            searchUsers(searchQuery)
+                .then((list) => setSearchResults(list || []))
+                .catch(() => setSearchResults([]))
+                .finally(() => setSearchLoading(false));
+        }, 300);
+        return () => clearTimeout(t);
+    }, [searchQuery]);
 
     useEffect(() => {
         if (!currentUser?.id) return;
@@ -337,10 +356,6 @@ const Chat = (props) => {
     const filteredContacts = contacts.filter((contact) =>
         isFuzzyMatch(searchQuery, contact.username || contact.name)
     );
-
-    const searchResults = searchQuery.trim()
-        ? allUsers.filter((user) => isFuzzyMatch(searchQuery, user.username || user.name))
-        : [];
 
     const loadChatForContact = (contact) => {
         if (!contact?.id) return;
@@ -619,7 +634,9 @@ const Chat = (props) => {
                     <div className="search-results">
                         <div className="search-results-title">Результаты поиска</div>
                         <ul>
-                            {searchResults.length > 0 ? (
+                            {searchLoading ? (
+                                <li className="search-result-empty">Загрузка…</li>
+                            ) : searchResults.length > 0 ? (
                                 searchResults.map((user) => (
                                     <li
                                         key={user.id}
@@ -627,6 +644,12 @@ const Chat = (props) => {
                                         onClick={() => {
                                             setActiveContact(user);
                                             setSearchQuery("");
+                                            setSearchResults([]);
+                                            setContacts((prev) =>
+                                                prev.some((c) => c.id === user.id)
+                                                    ? prev
+                                                    : [user, ...prev]
+                                            );
                                         }}
                                     >
                                         <div className="avatar-wrapper">

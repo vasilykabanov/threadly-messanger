@@ -113,6 +113,19 @@ export function getUserSummary(username) {
     });
 }
 
+export function searchUsers(query) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    if (!query || !query.trim()) {
+        return Promise.resolve([]);
+    }
+    return request({
+        url: AUTH_SERVICE + "/users/search?q=" + encodeURIComponent(query.trim()),
+        method: "GET",
+    });
+}
+
 export function updateProfile(updateProfileRequest) {
     if (!localStorage.getItem("accessToken")) {
         return Promise.reject("No access token set.");
