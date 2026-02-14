@@ -10,6 +10,12 @@ spring:
 server:
   port: 8080
 
+security:
+  jwt:
+    header: Authorization
+    prefix: "Bearer "
+    secret: ${JWT_SECRET:}
+
 threadly:
   push:
     # Генерируются один раз (VAPID). Пример генерации:

@@ -223,9 +223,10 @@ public class UserService {
 
     /**
      * Возвращает пользователей, с которыми у currentUserId есть переписка (для /users/summaries).
+     * authorization — заголовок Authorization для вызова chat (JWT клиента).
      */
-    public List<User> findUsersWithConversation(String currentUserId) {
-        List<String> contactIds = chatContactsClient.getContactIds(currentUserId);
+    public List<User> findUsersWithConversation(String currentUserId, String authorization) {
+        List<String> contactIds = chatContactsClient.getContactIds(currentUserId, authorization);
         if (contactIds == null || contactIds.isEmpty()) {
             return new ArrayList<>();
         }
