@@ -36,4 +36,4 @@ security:
     header: Authorization
     prefix: Bearer
     expiration: 604800
-    secret: JwtSecretKey
+    secret: ${JWT_SECRET:}

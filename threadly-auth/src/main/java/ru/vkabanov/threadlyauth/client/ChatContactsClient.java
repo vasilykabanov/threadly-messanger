@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -13,6 +15,7 @@ import java.util.List;
 
 /**
  * Клиент к chat-сервису для получения списка ID пользователей, с которыми у пользователя есть переписка.
+ * Chat требует JWT — передаём заголовок Authorization от клиента.
  */
 @Component
 @Slf4j
@@ -26,12 +29,18 @@ public class ChatContactsClient {
 
     /**
      * Возвращает список ID пользователей, с которыми у userId есть переписка.
-     * При ошибке (chat недоступен и т.д.) возвращает пустой список.
+     * authorization — заголовок Authorization от запроса клиента (Bearer token), чтобы chat принял вызов.
+     * При ошибке (chat недоступен, 401 и т.д.) возвращает пустой список.
      */
-    public List<String> getContactIds(String userId) {
+    public List<String> getContactIds(String userId, String authorization) {
         String url = chatServiceUrl + "/messages/contacts/" + userId;
         try {
-            return restTemplate.exchange(url, HttpMethod.GET, null, new ParameterizedTypeReference<List<String>>() {})
+            HttpHeaders headers = new HttpHeaders();
+            if (authorization != null && !authorization.isBlank()) {
+                headers.set("Authorization", authorization);
+            }
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            return restTemplate.exchange(url, HttpMethod.GET, entity, new ParameterizedTypeReference<List<String>>() {})
                     .getBody();
         } catch (Exception e) {
             log.warn("Failed to fetch contact ids from chat service for user {}: {}", userId, e.getMessage());
