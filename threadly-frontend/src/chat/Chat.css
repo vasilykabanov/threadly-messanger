@@ -561,6 +561,43 @@ span.status-circle:before {
     height: calc(100% - 177px);
     overflow-y: auto;
     overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+#frame #sidepanel #contacts .contacts-pull-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    overflow: hidden;
+    transition: height 0.2s ease;
+    flex-shrink: 0;
+}
+
+#frame #sidepanel #contacts .contacts-pull-text {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+
+#frame #sidepanel #contacts .contacts-pull-spinner {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--color-scroll-thumb);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: contacts-pull-spin 0.8s linear infinite;
+}
+
+@keyframes contacts-pull-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 #frame #sidepanel #contacts ul {
