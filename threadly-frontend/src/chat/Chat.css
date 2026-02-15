@@ -946,6 +946,7 @@ span.status-circle:before {
     overflow-y: auto;
     overflow-x: hidden;
     width: 100%;
+    scroll-behavior: auto; /* мгновенный скролл при открытии чата, без анимации */
 }
 
 #frame .content .messages::-webkit-scrollbar {

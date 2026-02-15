@@ -158,7 +158,10 @@ const Chat = (props) => {
         if (!messages.length) return;
         if (!isUserNearBottom) return;
 
-        container.scrollTop = container.scrollHeight;
+        container.scrollTo({
+            top: container.scrollHeight,
+            behavior: "auto",
+        });
     }, [messages.length, activeContact?.id, isUserNearBottom]);
 
     useEffect(() => {
