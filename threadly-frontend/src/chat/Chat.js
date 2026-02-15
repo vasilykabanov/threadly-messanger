@@ -20,6 +20,7 @@ import {
 } from "../atom/globalState";
 import "./Chat.css";
 import Avatar from "../profile/Avatar";
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
 
 const setVH = () => {
     document.documentElement.style.setProperty(
@@ -58,8 +59,10 @@ const Chat = (props) => {
 
     useEffect(() => {
         document.body.classList.add("chat-page");
+        document.documentElement.classList.add("chat-page");
         return () => {
             document.body.classList.remove("chat-page");
+            document.documentElement.classList.remove("chat-page");
         };
     }, []);
 
@@ -570,6 +573,9 @@ const Chat = (props) => {
         };
     };
 
+    const { scrollRef: contactsScrollRef, pullDistance, isRefreshing: isContactsRefreshing } =
+        usePullToRefresh({ onRefresh: loadContacts, threshold: 60 });
+
     const isNewDay = (current, previous) => {
         if (!previous) return true;
         const currDate = new Date(current).toDateString();
@@ -671,7 +677,23 @@ const Chat = (props) => {
                         </ul>
                     </div>
                 )}
-                <div id="contacts">
+                <div
+                    id="contacts"
+                    ref={contactsScrollRef}
+                >
+                    <div
+                        className="contacts-pull-indicator"
+                        style={{ height: pullDistance || (isContactsRefreshing ? 52 : 0) }}
+                        aria-hidden={!pullDistance && !isContactsRefreshing}
+                    >
+                        {isContactsRefreshing ? (
+                            <span className="contacts-pull-spinner" />
+                        ) : pullDistance > 0 ? (
+                            <span className="contacts-pull-text">
+                                {pullDistance >= 60 ? "Отпустите для обновления" : "Потяните для обновления"}
+                            </span>
+                        ) : null}
+                    </div>
                     <ul>
                         {filteredContacts.map((contact) => (
                             <li
