@@ -549,33 +549,6 @@ const Chat = (props) => {
             });
     };
 
-    const createLongPressHandlers = (contact) => {
-        let timer = null;
-
-        const start = () => {
-            timer = setTimeout(() => {
-                openDeleteChat(contact);
-            }, 550);
-        };
-
-        const clear = () => {
-            if (timer) {
-                clearTimeout(timer);
-                timer = null;
-            }
-        };
-
-        return {
-            onContextMenu: (event) => {
-                event.preventDefault();
-                openDeleteChat(contact);
-            },
-            onTouchStart: start,
-            onTouchEnd: clear,
-            onTouchMove: clear,
-        };
-    };
-
     const { scrollRef: contactsScrollRef, pullDistance, isRefreshing: isContactsRefreshing } =
         usePullToRefresh({ onRefresh: loadContacts, threshold: 60 });
 
@@ -682,6 +655,7 @@ const Chat = (props) => {
                 )}
                 <div
                     id="contacts"
+                    className="contacts-list"
                     ref={contactsScrollRef}
                 >
                     <div
@@ -713,7 +687,6 @@ const Chat = (props) => {
                                         ? "contact active"
                                         : "contact"
                                 }
-                                {...createLongPressHandlers(contact)}
                             >
                                 <div className="wrap">
                                     <div className={`avatar-wrapper ${contact.status}`}>

@@ -557,7 +557,7 @@ span.status-circle:before {
     color: #cbd3dc;
 }
 
-#frame #sidepanel #contacts {
+#frame #sidepanel #contacts.contacts-list {
     height: calc(100% - 177px);
     overflow-y: auto;
     overflow-x: hidden;
@@ -566,6 +566,22 @@ span.status-circle:before {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: pan-y;
+}
+
+#frame #sidepanel #contacts.contacts-list.pulling * {
+    pointer-events: none;
+}
+
+#frame #sidepanel #contacts.contacts-list.pulling,
+#frame #sidepanel #contacts.contacts-list.pulling * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 #frame #sidepanel #contacts .contacts-pull-indicator {
