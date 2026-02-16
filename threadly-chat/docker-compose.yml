@@ -4,7 +4,9 @@ services:
       image: mongo:4.4
       container_name: mongo-chat
       restart: always
+      env_file:
+        - .env
       environment:
-        MONGODB_CHAT_DATABASE: threadly_chat_db
+        MONGODB_CHAT_DATABASE: ${MONGODB_CHAT_DATABASE}
       ports:
         - "27018:27017"
