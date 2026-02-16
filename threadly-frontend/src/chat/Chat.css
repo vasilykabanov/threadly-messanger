@@ -735,6 +735,7 @@ span.status-circle:before {
     column-gap: 8px;
     row-gap: 4px;
     align-items: start;
+    min-width: 0;
 }
 
 #frame #sidepanel #contacts ul li.contact .wrap .meta .meta-header {
@@ -748,14 +749,21 @@ span.status-circle:before {
     margin: 0;
 }
 
-#frame #sidepanel #contacts ul li.contact .wrap .meta .last-time {
+#frame #sidepanel #contacts ul li.contact .wrap .meta .meta-header .meta-right {
     grid-column: 2;
     grid-row: 1;
-    text-align: right;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 0;
     padding-right: 10px;
+}
+
+#frame #sidepanel #contacts ul li.contact .wrap .meta .last-time {
     font-size: 11px;
     color: var(--color-text-muted);
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 @media screen and (max-width: 735px) {
@@ -774,10 +782,11 @@ span.status-circle:before {
 }
 
 #frame #sidepanel #contacts ul li.contact .wrap .meta .preview {
-    grid-column: 1 / -1;
+    grid-column: 1;
     grid-row: 2;
     margin: 0;
     padding: 0 0 1px;
+    min-width: 0;
     font-weight: 400;
     line-height: 1.2;
     white-space: nowrap;
@@ -790,6 +799,17 @@ span.status-circle:before {
     color: #8b9198;
 }
 
+#frame #sidepanel #contacts ul li.contact .wrap .meta .meta-badge-cell {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    align-self: end;
+    min-width: 0;
+    padding-right: 10px;
+}
+
 #frame #sidepanel #contacts ul li.contact .wrap .meta .preview span {
     position: initial;
     border-radius: initial;
@@ -798,6 +818,22 @@ span.status-circle:before {
     padding: 0 2px 0 0;
     margin: 0 0 0 1px;
     opacity: 0.5;
+}
+
+#frame #sidepanel #contacts ul li.contact .unread-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: var(--color-accent, #4f8cff);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    flex-shrink: 0;
 }
 
 #frame #sidepanel #bottom-bar {
@@ -902,6 +938,10 @@ span.status-circle:before {
     align-items: center; /* вертикальное выравнивание */
     padding: 0 10px; /* отступы слева и справа */
     gap: 10px;
+}
+
+#frame .content .contact-profile .avatar-wrapper {
+    flex-shrink: 0;
 }
 
 #frame .content .contact-profile img {
@@ -1100,10 +1140,35 @@ span.status-circle:before {
     text-decoration: none;
 }
 
+.message-bubble .message-bubble-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.message-bubble .read-indicator {
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    line-height: 1;
+    color: inherit;
+}
+
+.message-bubble .read-indicator .read-icon {
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+.message-bubble .read-indicator .read-icon.unread {
+    opacity: 0.6;
+}
+
 .message-bubble .time {
     position: static;
     display: block;
-    margin-top: 6px;
+    margin-top: 0;
     text-align: right;
     font-size: 11px;
     color: #999;
@@ -1300,7 +1365,7 @@ body.theme-new.theme-new-light .date-separator span {
     }
 
     #frame #sidepanel #contacts ul li.contact {
-        padding: 12px 0 12px 12px;
+        padding: 12px 10px 12px 12px;
     }
 
     #frame #sidepanel #contacts ul li.contact .wrap {
@@ -1322,6 +1387,11 @@ body.theme-new.theme-new-light .date-separator span {
         column-gap: 8px;
         row-gap: 4px;
         align-items: start;
+    }
+
+    #frame #sidepanel #contacts ul li.contact .wrap .meta .meta-header .meta-right,
+    #frame #sidepanel #contacts ul li.contact .wrap .meta .meta-badge-cell {
+        padding-right: 10px;
     }
 }
 
