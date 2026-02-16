@@ -24,6 +24,7 @@ import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import MessageContextMenu from "./MessageContextMenu";
 import MessageBubble from "./MessageBubble";
 import { copyToClipboard } from "../util/clipboardUtil";
+import { formatLastMessageDate } from "../util/dateFormatterUtil";
 
 const setVH = () => {
     document.documentElement.style.setProperty(
@@ -516,12 +517,6 @@ const Chat = (props) => {
         });
     };
 
-    const formatShortTime = (isoDate) => {
-        if (!isoDate) return "";
-        const date = new Date(isoDate);
-        return date.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
-    };
-
     const deleteChat = (contactId) => {
         setContacts((prev) => prev.filter((contact) => contact.id !== contactId));
         setLastMessageByContact((prev) => {
@@ -739,7 +734,7 @@ const Chat = (props) => {
                                             <p className="name">{contact.name}</p>
                                             {lastMessageByContact[contact.id]?.timestamp && (
                                                 <span className="last-time">
-                                                    {formatShortTime(lastMessageByContact[contact.id].timestamp)}
+                                                    {formatLastMessageDate(lastMessageByContact[contact.id].timestamp)}
                                                 </span>
                                             )}
                                         </div>
