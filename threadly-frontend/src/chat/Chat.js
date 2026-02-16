@@ -2,11 +2,11 @@ import React, {useEffect, useLayoutEffect, useRef, useState} from "react";
 import {Button, Drawer, message, Spin, Modal} from "antd";
 import {
     getUsers,
-    countNewMessages,
     findChatMessages,
     findChatMessage,
     getUserSummary,
     getChatContacts,
+    getUnreadCounts,
     getCurrentUser,
     deleteChat as deleteChatRequest,
     ensurePushSubscribed,
@@ -212,11 +212,29 @@ const Chat = (props) => {
             "/user/" + currentUser.id + "/queue/messages",
             onMessageReceived
         );
+        stompClient.subscribe(
+            "/user/" + currentUser.id + "/queue/read-receipts",
+            onReadReceiptReceived
+        );
         stompClient.subscribe("/topic/status", onStatusReceived);
     };
 
     const onError = (err) => {
         console.log(err);
+    };
+
+    const onReadReceiptReceived = (msg) => {
+        const data = JSON.parse(msg.body);
+        const readerId = data.readerId;
+        const recoilPersist = JSON.parse(sessionStorage.getItem("recoil-persist") || "{}");
+        const active = recoilPersist.chatActiveContact;
+        if (active && active.id === readerId) {
+            setMessages((prev) =>
+                prev.map((m) =>
+                    m.senderId === currentUser.id ? { ...m, status: "DELIVERED" } : m
+                )
+            );
+        }
     };
 
     const onMessageReceived = (msg) => {
@@ -269,6 +287,7 @@ const Chat = (props) => {
             recipientName: activeContact.name,
             content: trimmed,
             timestamp: new Date(),
+            status: "RECEIVED",
         };
 
         // Оптимистически добавляем сообщение отправителю,
@@ -384,6 +403,9 @@ const Chat = (props) => {
                         [contact.id]: items[items.length - 1],
                     }));
                 }
+                setContacts((prev) =>
+                    prev.map((c) => (c.id === contact.id ? { ...c, newMessages: 0 } : c))
+                );
             });
     };
 
@@ -398,8 +420,12 @@ const Chat = (props) => {
     };
 
     const loadContacts = (forceContactId) => {
-        Promise.all([getUsers(), getChatContacts(currentUser.id)])
-            .then(([users, contactIds]) => {
+        Promise.all([
+            getUsers(),
+            getChatContacts(currentUser.id),
+            getUnreadCounts(currentUser.id),
+        ])
+            .then(([users, contactIds, unreadCounts]) => {
                 const idsWithForce = forceContactId && !contactIds.includes(forceContactId)
                     ? [...contactIds, forceContactId]
                     : contactIds;
@@ -411,14 +437,12 @@ const Chat = (props) => {
 
                 return Promise.all(
                     contactsWithHistory.map((contact) =>
-                        Promise.all([
-                            countNewMessages(contact.id, currentUser.id),
-                            findChatMessages(contact.id, currentUser.id)
-                        ]).then(([count, msgs]) => {
+                        findChatMessages(contact.id, currentUser.id).then((msgs) => {
                             const lastMessage = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+                            const newMessages = Number(unreadCounts[contact.id]) || 0;
                             return {
                                 ...contact,
-                                newMessages: count,
+                                newMessages,
                                 lastMessage,
                             };
                         })
@@ -732,17 +756,26 @@ const Chat = (props) => {
                                     <div className="meta">
                                         <div className="meta-header">
                                             <p className="name">{contact.name}</p>
-                                            {lastMessageByContact[contact.id]?.timestamp && (
-                                                <span className="last-time">
-                                                    {formatLastMessageDate(lastMessageByContact[contact.id].timestamp)}
-                                                </span>
-                                            )}
+                                            <span className="meta-right">
+                                                {lastMessageByContact[contact.id]?.timestamp && (
+                                                    <span className="last-time">
+                                                        {formatLastMessageDate(lastMessageByContact[contact.id].timestamp)}
+                                                    </span>
+                                                )}
+                                            </span>
                                         </div>
                                         <p className="preview">
                                             {lastMessageByContact[contact.id]?.content
                                                 ? lastMessageByContact[contact.id].content
                                                 : "Нет сообщений"}
                                         </p>
+                                        <span className="meta-badge-cell">
+                                            {contact.newMessages > 0 && (
+                                                <span className="unread-badge" aria-label={`Непрочитанных: ${contact.newMessages}`}>
+                                                    {contact.newMessages > 99 ? "99+" : contact.newMessages}
+                                                </span>
+                                            )}
+                                        </span>
                                     </div>
                                 </div>
                             </li>
@@ -782,11 +815,13 @@ const Chat = (props) => {
                                 className="contact-profile-trigger"
                                 onClick={() => setIsProfileOpen(true)}
                             >
-                                <Avatar
-                                    name={activeContact.name}
-                                    src={activeContact.profilePicture}
-                                    size={44}
-                                />
+                                <div className={`avatar-wrapper ${activeContact.status || "offline"}`}>
+                                    <Avatar
+                                        name={activeContact.name}
+                                        src={activeContact.profilePicture}
+                                        size={44}
+                                    />
+                                </div>
                                 <span className="contact-profile-name">{activeContact.name}</span>
                             </button>
                             <button
@@ -835,6 +870,8 @@ const Chat = (props) => {
                                                     isPullGestureRef={isPullGestureRef}
                                                     renderMessageText={renderMessageText}
                                                     formatTime={formatTime}
+                                                    isOwn={msg.senderId === currentUser.id}
+                                                    status={msg.status}
                                                 />
                                             </li>
                                         </React.Fragment>

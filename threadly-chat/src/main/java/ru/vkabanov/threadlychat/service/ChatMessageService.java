@@ -2,18 +2,24 @@ package ru.vkabanov.threadlychat.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoOperations;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import ru.vkabanov.threadlychat.exception.ResourceNotFoundException;
 import ru.vkabanov.threadlychat.model.ChatMessage;
 import ru.vkabanov.threadlychat.model.MessageStatus;
+import ru.vkabanov.threadlychat.model.ReadReceiptPayload;
 import ru.vkabanov.threadlychat.repository.ChatMessageRepository;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -25,6 +31,8 @@ public class ChatMessageService {
     private ChatRoomService chatRoomService;
     @Autowired
     private MongoOperations mongoOperations;
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     public ChatMessage save(ChatMessage chatMessage) {
         chatMessage.setStatus(MessageStatus.RECEIVED);
@@ -46,11 +54,15 @@ public class ChatMessageService {
         var messages = chatId.map(cId -> repository.findByChatId(cId)).orElse(new ArrayList<>());
 
         messages = messages.stream()
-            .filter(message -> message.getDeletedFor() == null || !message.getDeletedFor().contains(recipientId))
-            .toList();
+                .filter(message -> message.getDeletedFor() == null || !message.getDeletedFor().contains(recipientId))
+                .toList();
 
         if (messages.size() > 0) {
-            updateStatuses(senderId, recipientId, MessageStatus.DELIVERED);
+            long modified = updateStatuses(senderId, recipientId, MessageStatus.DELIVERED);
+
+            if (modified > 0) {
+                messagingTemplate.convertAndSendToUser(senderId, "/queue/read-receipts", new ReadReceiptPayload(recipientId));
+            }
         }
 
         return messages;
@@ -68,7 +80,7 @@ public class ChatMessageService {
     public List<String> findContactIds(String userId) {
         Query query = new Query(new Criteria().orOperator(
                 Criteria.where("senderId").is(userId),
-            Criteria.where("recipientId").is(userId)
+                Criteria.where("recipientId").is(userId)
         ));
         query.addCriteria(Criteria.where("deletedFor").ne(userId));
 
@@ -80,13 +92,48 @@ public class ChatMessageService {
         return new ArrayList<>(contacts);
     }
 
-    public void updateStatuses(String senderId, String recipientId, MessageStatus status) {
+    /**
+     * Количество непрочитанных сообщений по каждому контакту (от контакта текущему пользователю).
+     * Один запрос агрегации — без N+1 и без загрузки всех документов в память.
+     */
+    public Map<String, Long> getUnreadCountsByContact(String recipientId) {
+        Aggregation aggregation = Aggregation.newAggregation(
+                Aggregation.match(Criteria
+                        .where("recipientId").is(recipientId)
+                        .and("status").is(MessageStatus.RECEIVED)
+                        .and("deletedFor").ne(recipientId)),
+                Aggregation.group("senderId").count().as("count"),
+                Aggregation.project("count").and("_id").as("senderId")
+        );
+
+        AggregationResults<Map> results = mongoOperations.aggregate(aggregation, ChatMessage.class, Map.class);
+        Map<String, Long> counts = new HashMap<>();
+
+        for (Map doc : results.getMappedResults()) {
+            String senderId = (String) doc.get("senderId");
+            Number count = (Number) doc.get("count");
+            if (senderId != null && count != null) {
+                counts.put(senderId, count.longValue());
+            }
+        }
+
+        return counts;
+    }
+
+    /**
+     * Обновляет статус сообщений (например, на DELIVERED при прочтении).
+     * Обновляются только сообщения со статусом RECEIVED, чтобы избежать лишних записей и дублирования read-receipt.
+     *
+     * @return количество обновлённых документов
+     */
+    public long updateStatuses(String senderId, String recipientId, MessageStatus status) {
         Query query = new Query(Criteria
                 .where("senderId").is(senderId)
                 .and("recipientId").is(recipientId)
+                .and("status").is(MessageStatus.RECEIVED)
                 .and("deletedFor").ne(recipientId));
         Update update = Update.update("status", status);
-        mongoOperations.updateMulti(query, update, ChatMessage.class);
+        return mongoOperations.updateMulti(query, update, ChatMessage.class).getModifiedCount();
     }
 
     public void deleteChatForUser(String senderId, String recipientId, String userId) {

@@ -194,6 +194,21 @@ export function getChatContacts(userId) {
     });
 }
 
+/**
+ * Количество непрочитанных сообщений по контактам (от контакта текущему пользователю).
+ * Возвращает объект { [contactId]: number }.
+ */
+export function getUnreadCounts(userId) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+
+    return request({
+        url: CHAT_SERVICE + "/messages/unread-counts/" + userId,
+        method: "GET",
+    });
+}
+
 export function deleteChat(senderId, recipientId, userId, scope = "me") {
     if (!localStorage.getItem("accessToken")) {
         return Promise.reject("No access token set.");

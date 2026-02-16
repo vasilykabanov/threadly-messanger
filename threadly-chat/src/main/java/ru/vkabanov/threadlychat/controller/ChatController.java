@@ -15,6 +15,7 @@ import ru.vkabanov.threadlychat.security.CurrentUser;
 import ru.vkabanov.threadlychat.service.ChatMessageService;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -52,6 +53,15 @@ public class ChatController {
             throw new ForbiddenException("Access denied to another user's contacts");
         }
         return ResponseEntity.ok(chatMessageService.findContactIds(userId));
+    }
+
+    @GetMapping(value = "/messages/unread-counts/{userId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Long>> getUnreadCounts(@PathVariable String userId,
+                                                             @AuthenticationPrincipal CurrentUser currentUser) {
+        if (!currentUser.getUserId().equals(userId)) {
+            throw new ForbiddenException("Access denied to another user's unread counts");
+        }
+        return ResponseEntity.ok(chatMessageService.getUnreadCountsByContact(userId));
     }
 
     @DeleteMapping(value = "/messages/{senderId}/{recipientId}")
