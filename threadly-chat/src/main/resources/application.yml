@@ -3,9 +3,9 @@ spring:
     name: threadly-chat
   data:
     mongodb:
-      database: ${MONGODB_CHAT_DATABASE:}
-      host: ${MONGODB_CHAT_HOST:localhost}
-      port: ${MONGODB_CHAT_PORT:27017}
+      database: ${MONGODB_CHAT_DATABASE}
+      host: ${MONGODB_CHAT_HOST}
+      port: ${MONGODB_CHAT_PORT}
       authentication-database: admin
 server:
   port: 8080
