@@ -1,7 +1,7 @@
 spring:
   data:
     mongodb:
-      database: ${MONGODB_AUTH_DATABASE:threadly_auth_db}
+      database: ${MONGODB_AUTH_DATABASE:}
       host: ${MONGODB_AUTH_HOST:localhost}
       port: ${MONGODB_AUTH_PORT:27017}
       authentication-database: admin
