@@ -135,9 +135,17 @@ export function usePullToRefresh({ onRefresh, threshold = DEFAULT_THRESHOLD }) {
         };
 
         const handleClick = (e) => {
+            // Блокируем клик только если был pull-жест и он только что закончился
+            // НО: не блокируем клики на дочерних элементах (контактах), так как они не являются частью pull-жеста
             if (pullJustEndedRef.current) {
-                e.preventDefault();
-                e.stopPropagation();
+                // Блокируем только если клик произошел непосредственно на контейнере (не на дочерних элементах)
+                // Это предотвращает случайные клики на контейнере после pull-to-refresh
+                // но позволяет кликам на контактах работать нормально
+                if (e.target === el) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                // Сбрасываем флаг после обработки
                 pullJustEndedRef.current = false;
             }
         };

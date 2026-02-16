@@ -21,6 +21,9 @@ import {
 import "./Chat.css";
 import Avatar from "../profile/Avatar";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
+import MessageContextMenu from "./MessageContextMenu";
+import MessageBubble from "./MessageBubble";
+import { copyToClipboard } from "../util/clipboardUtil";
 
 const setVH = () => {
     document.documentElement.style.setProperty(
@@ -56,6 +59,11 @@ const Chat = (props) => {
     const messagesContainerRef = useRef(null);
     const [isUserNearBottom, setIsUserNearBottom] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
+    const [contextMenu, setContextMenu] = useState({
+        visible: false,
+        position: { x: 0, y: 0 },
+        messageContent: "",
+    });
 
     useEffect(() => {
         document.body.classList.add("chat-page");
@@ -549,7 +557,7 @@ const Chat = (props) => {
             });
     };
 
-    const { scrollRef: contactsScrollRef, pullDistance, isRefreshing: isContactsRefreshing } =
+    const { scrollRef: contactsScrollRef, pullDistance, isRefreshing: isContactsRefreshing, isPullGestureRef } =
         usePullToRefresh({ onRefresh: loadContacts, threshold: 60 });
 
     const isNewDay = (current, previous) => {
@@ -568,6 +576,36 @@ const Chat = (props) => {
 
         // Считаем, что пользователь "у низа", если он ближе 64px к концу.
         setIsUserNearBottom(distanceFromBottom < 64);
+    };
+
+    const openContextMenu = (e, position, messageContent) => {
+        // Используем переданную позицию или получаем из события
+        const pos = position || (() => {
+            const touch = e.touches?.[0] || e.changedTouches?.[0];
+            return touch
+                ? { x: touch.clientX, y: touch.clientY }
+                : { x: e.clientX || 0, y: e.clientY || 0 };
+        })();
+
+        setContextMenu({
+            visible: true,
+            position: pos,
+            messageContent,
+        });
+    };
+
+    const closeContextMenu = () => {
+        setContextMenu((prev) => ({ ...prev, visible: false }));
+    };
+
+    const handleCopyMessage = async (messageContent) => {
+        try {
+            await copyToClipboard(messageContent);
+            message.success("Сообщение скопировано", 2);
+        } catch (error) {
+            console.error("Failed to copy message:", error);
+            message.error("Не удалось скопировать сообщение", 2);
+        }
     };
 
     const isMobileChatOpen = isMobile && !!activeContact;
@@ -795,10 +833,14 @@ const Chat = (props) => {
                                                     />
                                                 )}
 
-                                                <p className="message-bubble">
-                                                    <span className="text">{renderMessageText(msg.content)}</span>
-                                                    <span className="time">{formatTime(msg.timestamp)}</span>
-                                                </p>
+                                                <MessageBubble
+                                                    content={msg.content}
+                                                    timestamp={msg.timestamp}
+                                                    onLongPress={(e, position) => openContextMenu(e, position, msg.content)}
+                                                    isPullGestureRef={isPullGestureRef}
+                                                    renderMessageText={renderMessageText}
+                                                    formatTime={formatTime}
+                                                />
                                             </li>
                                         </React.Fragment>
                                     );
@@ -964,6 +1006,14 @@ const Chat = (props) => {
                     <span>Настройки</span>
                 </button>
             </div>
+
+            <MessageContextMenu
+                visible={contextMenu.visible}
+                position={contextMenu.position}
+                onClose={closeContextMenu}
+                onCopy={handleCopyMessage}
+                messageContent={contextMenu.messageContent}
+            />
         </div>
     );
 };

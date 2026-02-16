@@ -1,0 +1,98 @@
+.message-context-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    background: transparent;
+}
+
+.message-context-menu {
+    position: fixed;
+    background: var(--color-panel, #2c3e50);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    min-width: 180px;
+    padding: 8px 0;
+    z-index: 1001;
+    animation: contextMenuFadeIn 0.15s ease-out;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@keyframes contextMenuFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.message-context-menu-item {
+    width: 100%;
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    color: var(--color-text-light, #f5f5f5);
+    font-size: 15px;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background-color 0.15s ease;
+}
+
+.message-context-menu-item:hover {
+    background: var(--color-panel-hover, #32465a);
+}
+
+.message-context-menu-item:active {
+    background: var(--color-panel-active, #32465a);
+}
+
+.message-context-menu-item i {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+}
+
+.message-context-menu-item span {
+    flex: 1;
+}
+
+/* Темная тема */
+body.theme-new .message-context-menu {
+    background: rgba(30, 41, 59, 0.95);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 8px 32px rgba(2, 6, 23, 0.4);
+}
+
+body.theme-new .message-context-menu-item {
+    color: #e2e8f0;
+}
+
+body.theme-new .message-context-menu-item:hover {
+    background: rgba(51, 65, 85, 0.6);
+}
+
+body.theme-new .message-context-menu-item:active {
+    background: rgba(51, 65, 85, 0.8);
+}
+
+/* Мобильные устройства */
+@media screen and (max-width: 735px) {
+    .message-context-menu {
+        min-width: 160px;
+        padding: 6px 0;
+    }
+
+    .message-context-menu-item {
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+}
