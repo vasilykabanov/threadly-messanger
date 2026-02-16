@@ -4,7 +4,9 @@ services:
       image: mongo:4.4
       container_name: mongo-auth
       restart: always
+      env_file:
+        - .env
       environment:
-        MONGODB_AUTH_DATABASE: threadly_auth_db
+        MONGODB_AUTH_DATABASE: ${MONGODB_AUTH_DATABASE}
       ports:
         - "27017:27017"
