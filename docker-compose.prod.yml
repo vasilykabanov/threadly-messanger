@@ -17,8 +17,10 @@ services:
     image: mongo:4.4
     container_name: mongo-auth
     restart: always
+    env_file:
+      - .env
     environment:
-      MONGO_INITDB_DATABASE: threadly_auth_db
+      MONGODB_AUTH_DATABASE: ${MONGODB_AUTH_DATABASE}
     ports:
       - "27017:27017"
     volumes:
@@ -33,16 +35,16 @@ services:
     depends_on:
       - mongo-auth
     environment:
-      SPRING_DATA_MONGODB_HOST: mongo-auth
-      SPRING_DATA_MONGODB_PORT: 27017
-      CHAT_SERVICE_URL: http://threadly-chat:8080
-      # Email settings (Mail.ru SMTP)
-      MAIL_HOST: ${MAIL_HOST:-smtp.mail.ru}
-      MAIL_PORT: ${MAIL_PORT:-587}
+      MONGODB_AUTH_HOST: ${MONGODB_AUTH_HOST}
+      MONGODB_AUTH_PORT: ${MONGODB_AUTH_PORT}
+      CHAT_SERVICE_URL: ${CHAT_SERVICE_URL}
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_FROM: ${MAIL_FROM}
-      FRONTEND_URL: ${FRONTEND_URL:-https://threadly-chat.ru}
+      FRONTEND_URL: ${FRONTEND_URL}
+      JWT_SECRET: ${JWT_SECRET}
     restart: unless-stopped
 
   # ---------------- Mongo для threadly-chat ----------------
@@ -50,8 +52,10 @@ services:
     image: mongo:4.4
     container_name: mongo-chat
     restart: always
+    env_file:
+      - .env
     environment:
-      MONGO_INITDB_DATABASE: threadly_chat_db
+      MONGODB_CHAT_DATABASE: ${MONGODB_CHAT_DATABASE}
     ports:
       - "27018:27017"
     volumes:
@@ -69,9 +73,10 @@ services:
     env_file:
       - .env
     environment:
-      SPRING_DATA_MONGODB_HOST: mongo-chat
-      SPRING_DATA_MONGODB_PORT: 27017
-      THREDLY_AUTH_URL: http://threadly-auth:8081
+      MONGODB_CHAT_HOST: ${MONGODB_CHAT_HOST}
+      MONGODB_CHAT_PORT: ${MONGODB_CHAT_PORT}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
+      JWT_SECRET: ${JWT_SECRET}
     restart: unless-stopped
 
   # ---------------- threadly-frontend ----------------

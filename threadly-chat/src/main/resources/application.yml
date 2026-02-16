@@ -3,19 +3,17 @@ spring:
     name: threadly-chat
   data:
     mongodb:
-      database: threadly_chat_db
-      host: ${SPRING_DATA_MONGODB_HOST:localhost}
-      port: ${SPRING_DATA_MONGODB_PORT:27017}
+      database: ${MONGODB_CHAT_DATABASE:threadly_chat_db}
+      host: ${MONGODB_CHAT_HOST:localhost}
+      port: ${MONGODB_CHAT_PORT:27017}
       authentication-database: admin
 server:
   port: 8080
-
 security:
   jwt:
     header: Authorization
     prefix: "Bearer "
     secret: ${JWT_SECRET:}
-
 threadly:
   push:
     # Генерируются один раз (VAPID). Пример генерации:

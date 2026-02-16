@@ -5,6 +5,6 @@ services:
       container_name: mongo-chat
       restart: always
       environment:
-        MONGO_INITDB_DATABASE: threadly_chat_db
+        MONGODB_CHAT_DATABASE: threadly_chat_db
       ports:
         - "27018:27017"

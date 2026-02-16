@@ -1,13 +1,13 @@
 spring:
   data:
     mongodb:
-      database: threadly_auth
-      host: ${SPRING_DATA_MONGODB_HOST:localhost}
-      port: ${SPRING_DATA_MONGODB_PORT:27017}
+      database: ${MONGODB_AUTH_DATABASE:threadly_auth_db}
+      host: ${MONGODB_AUTH_HOST:localhost}
+      port: ${MONGODB_AUTH_PORT:27017}
       authentication-database: admin
   mail:
-    host: ${MAIL_HOST:smtp.mail.ru}
-    port: ${MAIL_PORT:587}
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:}
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
     properties:
@@ -17,10 +17,8 @@ spring:
           starttls:
             enable: true
             required: true
-
 server:
   port: 8081
-
 app:
   mail:
     from: ${MAIL_FROM:}
