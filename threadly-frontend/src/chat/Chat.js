@@ -7,6 +7,7 @@ import {
     getUserSummary,
     getChatContacts,
     getUnreadCounts,
+    getStatuses,
     getCurrentUser,
     deleteChat as deleteChatRequest,
     ensurePushSubscribed,
@@ -20,11 +21,11 @@ import {
 } from "../atom/globalState";
 import "./Chat.css";
 import Avatar from "../profile/Avatar";
-import { usePullToRefresh } from "../hooks/usePullToRefresh";
+import {usePullToRefresh} from "../hooks/usePullToRefresh";
 import MessageContextMenu from "./MessageContextMenu";
 import MessageBubble from "./MessageBubble";
-import { copyToClipboard } from "../util/clipboardUtil";
-import { formatLastMessageDate } from "../util/dateFormatterUtil";
+import {copyToClipboard} from "../util/clipboardUtil";
+import {formatLastMessageDate} from "../util/dateFormatterUtil";
 
 const setVH = () => {
     document.documentElement.style.setProperty(
@@ -58,11 +59,12 @@ const Chat = (props) => {
     const [deleteChatLoading, setDeleteChatLoading] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const messagesContainerRef = useRef(null);
+    const heartbeatIntervalRef = useRef(null);
     const [isUserNearBottom, setIsUserNearBottom] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
     const [contextMenu, setContextMenu] = useState({
         visible: false,
-        position: { x: 0, y: 0 },
+        position: {x: 0, y: 0},
         messageContent: "",
     });
 
@@ -93,7 +95,8 @@ const Chat = (props) => {
         if (!currentUser?.id) {
             getCurrentUser()
                 .then((response) => setLoggedInUser(response))
-                .catch(() => {});
+                .catch(() => {
+                });
         }
     }, []);
 
@@ -132,11 +135,22 @@ const Chat = (props) => {
         loadContacts();
 
         // Web Push (если пользователь разрешил уведомления)
-        ensurePushSubscribed(currentUser.id).catch(() => {});
+        ensurePushSubscribed(currentUser.id).catch(() => {
+        });
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible" && stompClient && stompClient.connected) {
+                sendStatusOnline();
+            }
+        };
+        document.addEventListener("visibilitychange", handleVisibilityChange);
 
         return () => {
-            // Отключаемся при размонтировании/смене пользователя,
-            // чтобы не плодить несколько stomp-подключений и подписок
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            if (heartbeatIntervalRef.current) {
+                clearInterval(heartbeatIntervalRef.current);
+                heartbeatIntervalRef.current = null;
+            }
             if (stompClient && stompClient.connected) {
                 stompClient.disconnect(() => {
                     console.log("stomp disconnected");
@@ -178,8 +192,17 @@ const Chat = (props) => {
         loadContactProfile(activeContact);
     }, [activeContact?.username]);
 
+    const sendStatusOnline = () => {
+        if (stompClient && stompClient.connected) {
+            try {
+                stompClient.send("/app/status", {}, JSON.stringify({status: "online"}));
+            } catch (e) {
+                console.warn("send status online failed", e);
+            }
+        }
+    };
+
     const connect = () => {
-        // Не создаём новое подключение, если уже есть активное
         if (stompClient && stompClient.connected) {
             return;
         }
@@ -193,11 +216,14 @@ const Chat = (props) => {
 
     const onConnected = () => {
         console.log("connected");
-        console.log(currentUser);
         setIsConnected(true);
 
-        // На всякий случай отпишемся от старых подписок, если они были
-        // (stompjs сам переиспользует клиент, поэтому важно не дублировать subscribe)
+        if (heartbeatIntervalRef.current) {
+            clearInterval(heartbeatIntervalRef.current);
+        }
+        sendStatusOnline();
+        heartbeatIntervalRef.current = setInterval(sendStatusOnline, 30000);
+
         try {
             if (stompClient && stompClient.subscriptions) {
                 Object.keys(stompClient.subscriptions).forEach((id) => {
@@ -220,7 +246,12 @@ const Chat = (props) => {
     };
 
     const onError = (err) => {
-        console.log(err);
+        console.warn("STOMP error", err);
+        if (heartbeatIntervalRef.current) {
+            clearInterval(heartbeatIntervalRef.current);
+            heartbeatIntervalRef.current = null;
+        }
+        setIsConnected(false);
     };
 
     const onReadReceiptReceived = (msg) => {
@@ -231,7 +262,7 @@ const Chat = (props) => {
         if (active && active.id === readerId) {
             setMessages((prev) =>
                 prev.map((m) =>
-                    m.senderId === currentUser.id ? { ...m, status: "DELIVERED" } : m
+                    m.senderId === currentUser.id ? {...m, status: "DELIVERED"} : m
                 )
             );
         }
@@ -268,9 +299,20 @@ const Chat = (props) => {
     };
 
     const onStatusReceived = (msg) => {
-        const data = JSON.parse(msg.body); // {userId, status}
-        setContacts(prevContacts =>
-            prevContacts.map(contact => contact.id === data.userId ? {...contact, status: data.status} : contact)
+        let data;
+        try {
+            data = typeof msg.body === "string" ? JSON.parse(msg.body) : msg.body;
+        } catch (e) {
+            return;
+        }
+        if (!data || data.userId == null) return;
+        setContacts((prevContacts) =>
+            prevContacts.map((contact) =>
+                contact.id === data.userId ? { ...contact, status: data.status } : contact
+            )
+        );
+        setActiveContact((prev) =>
+            prev && prev.id === data.userId ? { ...prev, status: data.status } : prev
         );
     };
 
@@ -404,7 +446,7 @@ const Chat = (props) => {
                     }));
                 }
                 setContacts((prev) =>
-                    prev.map((c) => (c.id === contact.id ? { ...c, newMessages: 0 } : c))
+                    prev.map((c) => (c.id === contact.id ? {...c, newMessages: 0} : c))
                 );
             });
     };
@@ -424,8 +466,9 @@ const Chat = (props) => {
             getUsers(),
             getChatContacts(currentUser.id),
             getUnreadCounts(currentUser.id),
+            getStatuses(currentUser.id),
         ])
-            .then(([users, contactIds, unreadCounts]) => {
+            .then(([users, contactIds, unreadCounts, statuses]) => {
                 const idsWithForce = forceContactId && !contactIds.includes(forceContactId)
                     ? [...contactIds, forceContactId]
                     : contactIds;
@@ -440,10 +483,12 @@ const Chat = (props) => {
                         findChatMessages(contact.id, currentUser.id).then((msgs) => {
                             const lastMessage = msgs.length > 0 ? msgs[msgs.length - 1] : null;
                             const newMessages = Number(unreadCounts[contact.id]) || 0;
+                            const status = statuses && statuses[contact.id] ? statuses[contact.id] : "offline";
                             return {
                                 ...contact,
                                 newMessages,
                                 lastMessage,
+                                status,
                             };
                         })
                     )
@@ -576,8 +621,8 @@ const Chat = (props) => {
             });
     };
 
-    const { scrollRef: contactsScrollRef, pullDistance, isRefreshing: isContactsRefreshing, isPullGestureRef } =
-        usePullToRefresh({ onRefresh: loadContacts, threshold: 60 });
+    const {scrollRef: contactsScrollRef, pullDistance, isRefreshing: isContactsRefreshing, isPullGestureRef} =
+        usePullToRefresh({onRefresh: loadContacts, threshold: 60});
 
     const isNewDay = (current, previous) => {
         if (!previous) return true;
@@ -602,8 +647,8 @@ const Chat = (props) => {
         const pos = position || (() => {
             const touch = e.touches?.[0] || e.changedTouches?.[0];
             return touch
-                ? { x: touch.clientX, y: touch.clientY }
-                : { x: e.clientX || 0, y: e.clientY || 0 };
+                ? {x: touch.clientX, y: touch.clientY}
+                : {x: e.clientX || 0, y: e.clientY || 0};
         })();
 
         setContextMenu({
@@ -614,7 +659,7 @@ const Chat = (props) => {
     };
 
     const closeContextMenu = () => {
-        setContextMenu((prev) => ({ ...prev, visible: false }));
+        setContextMenu((prev) => ({...prev, visible: false}));
     };
 
     const handleCopyMessage = async (messageContent) => {
@@ -717,11 +762,11 @@ const Chat = (props) => {
                 >
                     <div
                         className="contacts-pull-indicator"
-                        style={{ height: pullDistance || (isContactsRefreshing ? 52 : 0) }}
+                        style={{height: pullDistance || (isContactsRefreshing ? 52 : 0)}}
                         aria-hidden={!pullDistance && !isContactsRefreshing}
                     >
                         {isContactsRefreshing ? (
-                            <span className="contacts-pull-spinner" />
+                            <span className="contacts-pull-spinner"/>
                         ) : pullDistance > 0 ? (
                             <span className="contacts-pull-text">
                                 {pullDistance >= 60 ? "Отпустите для обновления" : "Потяните для обновления"}
@@ -771,7 +816,8 @@ const Chat = (props) => {
                                         </p>
                                         <span className="meta-badge-cell">
                                             {contact.newMessages > 0 && (
-                                                <span className="unread-badge" aria-label={`Непрочитанных: ${contact.newMessages}`}>
+                                                <span className="unread-badge"
+                                                      aria-label={`Непрочитанных: ${contact.newMessages}`}>
                                                     {contact.newMessages > 99 ? "99+" : contact.newMessages}
                                                 </span>
                                             )}
@@ -924,7 +970,7 @@ const Chat = (props) => {
             >
                 {profileLoading ? (
                     <div className="contact-profile-loading">
-                        <Spin />
+                        <Spin/>
                     </div>
                 ) : (
                     <div className="contact-profile-card">

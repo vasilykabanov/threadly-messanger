@@ -13,7 +13,9 @@ import ru.vkabanov.threadlychat.exception.ForbiddenException;
 import ru.vkabanov.threadlychat.model.ChatMessage;
 import ru.vkabanov.threadlychat.security.CurrentUser;
 import ru.vkabanov.threadlychat.service.ChatMessageService;
+import ru.vkabanov.threadlychat.service.UserStatusService;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +24,7 @@ import java.util.Map;
 public class ChatController {
 
     private final ChatMessageService chatMessageService;
+    private final UserStatusService userStatusService;
 
     @GetMapping(value = "/messages/{senderId}/{recipientId}/count", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Long> countNewMessages(@PathVariable String senderId, @PathVariable String recipientId,
@@ -62,6 +65,24 @@ public class ChatController {
             throw new ForbiddenException("Access denied to another user's unread counts");
         }
         return ResponseEntity.ok(chatMessageService.getUnreadCountsByContact(userId));
+    }
+
+    /**
+     * Статусы контактов текущего пользователя (online/offline).
+     * Используется при загрузке чата и для синхронизации с /topic/status.
+     */
+    @GetMapping(value = "/messages/statuses/{userId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, String>> getStatuses(@PathVariable String userId,
+                                                           @AuthenticationPrincipal CurrentUser currentUser) {
+        if (!currentUser.getUserId().equals(userId)) {
+            throw new ForbiddenException("Access denied to another user's statuses");
+        }
+        List<String> contactIds = chatMessageService.findContactIds(userId);
+        Map<String, String> statuses = new HashMap<>();
+        for (String contactId : contactIds) {
+            statuses.put(contactId, userStatusService.getStatus(contactId));
+        }
+        return ResponseEntity.ok(statuses);
     }
 
     @DeleteMapping(value = "/messages/{senderId}/{recipientId}")
