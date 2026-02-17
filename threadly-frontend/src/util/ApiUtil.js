@@ -209,6 +209,20 @@ export function getUnreadCounts(userId) {
     });
 }
 
+/**
+ * Статусы контактов (online/offline). Возвращает { [contactId]: "online" | "offline" }.
+ */
+export function getStatuses(userId) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+
+    return request({
+        url: CHAT_SERVICE + "/messages/statuses/" + userId,
+        method: "GET",
+    });
+}
+
 export function deleteChat(senderId, recipientId, userId, scope = "me") {
     if (!localStorage.getItem("accessToken")) {
         return Promise.reject("No access token set.");
