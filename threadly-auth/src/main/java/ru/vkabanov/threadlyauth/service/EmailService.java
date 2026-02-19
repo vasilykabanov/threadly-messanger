@@ -51,9 +51,8 @@ public class EmailService {
             return;
         }
 
-        String baseUrl = registrationProperties.getAdminApprovalBaseUrl();
-        String approveLink = baseUrl + "/admin/registration/approve?token=" + approvalToken;
-        String rejectLink = baseUrl + "/admin/registration/reject?token=" + approvalToken;
+        String approveLink = frontendUrl + "/admin/registration/approve?token=" + approvalToken;
+        String rejectLink = frontendUrl + "/admin/registration/reject?token=" + approvalToken;
         String subject = "Новый пользователь ожидает подтверждения регистрации";
         String htmlContent = buildAdminRegistrationEmailHtml(user, approveLink, rejectLink);
         admins.forEach(adminEmail -> sendHtmlEmail(adminEmail, subject, htmlContent));
