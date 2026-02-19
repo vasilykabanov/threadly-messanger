@@ -13,6 +13,4 @@ import java.util.List;
 public class RegistrationProperties {
 
     private List<String> admins = Collections.emptyList();
-
-    private String adminApprovalBaseUrl;
 }
