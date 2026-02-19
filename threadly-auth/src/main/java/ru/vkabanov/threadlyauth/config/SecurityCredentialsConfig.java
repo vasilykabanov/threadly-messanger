@@ -48,9 +48,6 @@ public class SecurityCredentialsConfig extends WebSecurityConfigurerAdapter {
                 .authorizeRequests()
                 .antMatchers(HttpMethod.POST, "/signin").permitAll()
                 .antMatchers(HttpMethod.POST, "/users").anonymous()
-                .antMatchers(HttpMethod.GET, "/verify-email").permitAll()
-                .antMatchers(HttpMethod.POST, "/resend-verification").permitAll()
-                .antMatchers(HttpMethod.POST, "/update-email-before-verification").permitAll()
                 .anyRequest().authenticated();
     }
 
