@@ -1,0 +1,90 @@
+.admin-approval-container {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px 40px;
+    text-align: center;
+}
+
+.admin-approval-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 40px 32px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid #e1e0e0;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+}
+
+.admin-approval-logo {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 24px;
+}
+
+.admin-approval-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+}
+
+.admin-approval-icon.success {
+    color: #22c55e;
+}
+
+.admin-approval-icon.error {
+    color: #ef4444;
+}
+
+.admin-approval-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: #1f2937;
+}
+
+.admin-approval-message {
+    font-size: 15px;
+    color: #6b7280;
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+.admin-approval-button {
+    width: 100%;
+    background-color: rebeccapurple !important;
+    color: white !important;
+    font-weight: 700 !important;
+}
+
+body.theme-new .admin-approval-card {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    box-shadow: 0 30px 60px rgba(2, 6, 23, 0.6);
+    backdrop-filter: blur(18px);
+}
+
+body.theme-new .admin-approval-title {
+    color: #f8fafc;
+}
+
+body.theme-new .admin-approval-message {
+    color: rgba(226, 232, 240, 0.7);
+}
+
+body.theme-new .admin-approval-button {
+    background: linear-gradient(135deg, #7c3aed, #6366f1) !important;
+    box-shadow: 0 12px 20px rgba(99, 102, 241, 0.35);
+}
+
+body.theme-new.theme-new-light .admin-approval-card {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+body.theme-new.theme-new-light .admin-approval-title {
+    color: #0f172a;
+}
+
+body.theme-new.theme-new-light .admin-approval-message {
+    color: #475569;
+}

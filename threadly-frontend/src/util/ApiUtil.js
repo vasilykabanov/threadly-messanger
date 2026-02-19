@@ -94,6 +94,22 @@ export function updateEmailBeforeVerification(payload) {
     });
 }
 
+export function approveRegistration(token) {
+    return request({
+        url: AUTH_SERVICE + "/admin/registration/approve?token=" + encodeURIComponent(token),
+        method: "GET",
+        skipAuthRedirect: true,
+    });
+}
+
+export function rejectRegistration(token) {
+    return request({
+        url: AUTH_SERVICE + "/admin/registration/reject?token=" + encodeURIComponent(token),
+        method: "GET",
+        skipAuthRedirect: true,
+    });
+}
+
 export function getCurrentUser() {
     if (!localStorage.getItem("accessToken")) {
         return Promise.reject("No access token set.");
