@@ -66,7 +66,7 @@ public class AuthEndpoint {
     
     @GetMapping("/verify-email")
     public ResponseEntity<?> verifyEmail(@RequestParam String token) {
-        userService.verifyEmail(token);
+        userService.verifyEmail(token.trim());
         return ResponseEntity.ok(new ApiResponse(true, "Email verified successfully"));
     }
     

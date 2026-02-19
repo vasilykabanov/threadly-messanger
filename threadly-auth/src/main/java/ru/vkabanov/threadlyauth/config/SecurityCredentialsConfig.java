@@ -51,6 +51,8 @@ public class SecurityCredentialsConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers(HttpMethod.GET, "/verify-email").permitAll()
                 .antMatchers(HttpMethod.POST, "/resend-verification").permitAll()
                 .antMatchers(HttpMethod.POST, "/update-email-before-verification").permitAll()
+                .antMatchers(HttpMethod.GET, "/admin/registration/approve").permitAll()
+                .antMatchers(HttpMethod.GET, "/admin/registration/reject").permitAll()
                 .anyRequest().authenticated();
     }
 
