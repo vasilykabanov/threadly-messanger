@@ -4,11 +4,14 @@ import {
     UserOutlined,
     LockOutlined,
 } from "@ant-design/icons";
+import {useSetRecoilState} from "recoil";
 import {login} from "../util/ApiUtil";
+import {loggedInUser} from "../atom/globalState";
 import "./Signin.css";
 
 const Signin = (props) => {
     const [loading, setLoading] = useState(false);
+    const setLoggedInUser = useSetRecoilState(loggedInUser);
 
     const clearPersistedState = () => {
         const persisted = sessionStorage.getItem("recoil-persist");
@@ -36,9 +39,10 @@ const Signin = (props) => {
         login(values)
             .then((response) => {
                 clearPersistedState();
+                setLoggedInUser({}); // сбрасываем старый пользователь из Recoil, иначе Chat отправит запросы со старым userId и chat вернёт 403
                 localStorage.setItem("accessToken", response.accessToken);
-                props.history.push("/chat");
                 setLoading(false);
+                setTimeout(() => props.history.push("/chat"), 0);
             })
             .catch((error) => {
                 if (error.status === 401) {

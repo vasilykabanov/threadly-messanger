@@ -30,6 +30,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String header = request.getHeader(jwtConfig.getHeader());
         if (!StringUtils.hasText(header) || !header.startsWith(jwtConfig.getPrefix())) {
+            log.debug("JWT missing or no header for {} {}", request.getMethod(), request.getRequestURI());
             filterChain.doFilter(request, response);
             return;
         }
@@ -42,9 +43,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     .getBody();
 
             String username = claims.getSubject();
-            String userId = claims.get("userId", String.class);
-            if (userId == null) {
-                log.warn("JWT has no userId claim");
+            Object userIdObj = claims.get("userId");
+            String userId = userIdObj != null ? userIdObj.toString() : null;
+
+            if (userId == null || userId.isEmpty()) {
+                log.warn("JWT has no userId claim for {} {}", request.getMethod(), request.getRequestURI());
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -54,9 +57,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     currentUser, null, Collections.emptyList());
             SecurityContextHolder.getContext().setAuthentication(auth);
         } catch (SignatureException e) {
-            log.debug("Invalid JWT signature");
+            log.debug("Invalid JWT signature for {} {}", request.getMethod(), request.getRequestURI());
         } catch (Exception e) {
-            log.trace("JWT parse error: {}", e.getMessage());
+            log.warn("JWT parse error for {} {}: {}", request.getMethod(), request.getRequestURI(), e.getMessage());
         }
 
         filterChain.doFilter(request, response);

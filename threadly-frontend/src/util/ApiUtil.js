@@ -3,6 +3,20 @@
 export const AUTH_SERVICE = "/api/auth";
 export const CHAT_SERVICE = "/api/chat";
 
+/** Достаёт userId из JWT (path в запросах к chat должен совпадать с JWT). */
+export function getUserIdFromToken() {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return null;
+    try {
+        const payload = token.split(".")[1];
+        if (!payload) return null;
+        const decoded = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+        return decoded.userId || null;
+    } catch {
+        return null;
+    }
+}
+
 const request = (options) => {
     const headers = new Headers();
 
@@ -86,8 +100,9 @@ export function getCurrentUser() {
     }
 
     return request({
-        url: AUTH_SERVICE + "/users/me",
+        url: AUTH_SERVICE + "/users/me?_=" + Date.now(),
         method: "GET",
+        cache: "no-store",
     });
 }
 
@@ -271,7 +286,8 @@ const urlBase64ToUint8Array = (base64String) => {
 };
 
 export async function ensurePushSubscribed(userId) {
-    console.log("[Push] ensurePushSubscribed called for userId:", userId);
+    const uid = getUserIdFromToken() || userId;
+    console.log("[Push] ensurePushSubscribed called for userId:", uid);
 
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
         console.log("[Push] ServiceWorker or PushManager not supported");
@@ -350,11 +366,10 @@ export async function ensurePushSubscribed(userId) {
         }
     }
 
-    // Всегда синхронизируем подписку с сервером
     const json = subscription.toJSON();
     console.log("[Push] Syncing subscription with server...");
     await subscribePush({
-        userId,
+        userId: uid,
         endpoint: json.endpoint,
         keys: json.keys,
     });

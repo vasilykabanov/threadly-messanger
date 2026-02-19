@@ -1,6 +1,7 @@
 package ru.vkabanov.threadlychat.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,6 +22,7 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 public class ChatController {
 
     private final ChatMessageService chatMessageService;
@@ -52,7 +54,12 @@ public class ChatController {
     @GetMapping(value = "/messages/contacts/{userId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<String>> findChatContacts(@PathVariable String userId,
                                                          @AuthenticationPrincipal CurrentUser currentUser) {
+        if (currentUser == null) {
+            log.warn("contacts/{}: no principal (JWT missing or invalid)", userId);
+            throw new ForbiddenException("Access denied to another user's contacts");
+        }
         if (!currentUser.getUserId().equals(userId)) {
+            log.warn("contacts: path userId={} != JWT userId={}", userId, currentUser.getUserId());
             throw new ForbiddenException("Access denied to another user's contacts");
         }
         return ResponseEntity.ok(chatMessageService.findContactIds(userId));
@@ -61,7 +68,12 @@ public class ChatController {
     @GetMapping(value = "/messages/unread-counts/{userId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Long>> getUnreadCounts(@PathVariable String userId,
                                                              @AuthenticationPrincipal CurrentUser currentUser) {
+        if (currentUser == null) {
+            log.warn("unread-counts/{}: no principal", userId);
+            throw new ForbiddenException("Access denied to another user's unread counts");
+        }
         if (!currentUser.getUserId().equals(userId)) {
+            log.warn("unread-counts: path userId={} != JWT userId={}", userId, currentUser.getUserId());
             throw new ForbiddenException("Access denied to another user's unread counts");
         }
         return ResponseEntity.ok(chatMessageService.getUnreadCountsByContact(userId));
@@ -74,7 +86,12 @@ public class ChatController {
     @GetMapping(value = "/messages/statuses/{userId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, String>> getStatuses(@PathVariable String userId,
                                                            @AuthenticationPrincipal CurrentUser currentUser) {
+        if (currentUser == null) {
+            log.warn("statuses/{}: no principal", userId);
+            throw new ForbiddenException("Access denied to another user's statuses");
+        }
         if (!currentUser.getUserId().equals(userId)) {
+            log.warn("statuses: path userId={} != JWT userId={}", userId, currentUser.getUserId());
             throw new ForbiddenException("Access denied to another user's statuses");
         }
         List<String> contactIds = chatMessageService.findContactIds(userId);
