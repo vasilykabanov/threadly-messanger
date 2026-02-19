@@ -1,6 +1,7 @@
 package ru.vkabanov.threadlychat.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -15,6 +16,7 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 public class PushController {
 
     private final PushNotificationService pushNotificationService;
@@ -30,7 +32,12 @@ public class PushController {
         if (request.getUserId() == null || request.getEndpoint() == null || request.getKeys() == null) {
             return ResponseEntity.badRequest().build();
         }
+        if (currentUser == null) {
+            log.warn("push/subscribe: no principal for request userId={}", request.getUserId());
+            throw new ForbiddenException("Can only subscribe for your own user");
+        }
         if (!currentUser.getUserId().equals(request.getUserId())) {
+            log.warn("push/subscribe: request userId={} != JWT userId={}", request.getUserId(), currentUser.getUserId());
             throw new ForbiddenException("Can only subscribe for your own user");
         }
         pushNotificationService.upsertSubscription(

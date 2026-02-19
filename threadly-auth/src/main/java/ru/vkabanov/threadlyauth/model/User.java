@@ -14,6 +14,7 @@ import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -35,6 +36,14 @@ public class User {
         this.active = user.active;
         this.userProfile = user.userProfile;
         this.roles = user.roles;
+        this.emailVerified = user.emailVerified;
+        this.emailVerificationToken = user.emailVerificationToken;
+        this.lastVerificationEmailSentAt = user.lastVerificationEmailSentAt;
+        this.verificationResendCount = user.verificationResendCount;
+        this.verificationResendPeriodStart = user.verificationResendPeriodStart;
+        this.registrationStatus = user.registrationStatus;
+        this.blocked = user.blocked;
+        this.registrationDate = user.registrationDate;
     }
 
     public User(String username, String password, String email) {
@@ -80,4 +89,8 @@ public class User {
     private Integer verificationResendCount;
     /** Начало 24-часового окна для подсчёта повторов */
     private Instant verificationResendPeriodStart;
+
+    private RegistrationStatus registrationStatus;
+    private boolean blocked;
+    private LocalDateTime registrationDate;
 }

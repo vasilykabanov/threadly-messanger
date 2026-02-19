@@ -9,6 +9,7 @@ import {
     getUnreadCounts,
     getStatuses,
     getCurrentUser,
+    getUserIdFromToken,
     deleteChat as deleteChatRequest,
     ensurePushSubscribed,
     searchUsers,
@@ -60,6 +61,7 @@ const Chat = (props) => {
     const [isConnected, setIsConnected] = useState(false);
     const messagesContainerRef = useRef(null);
     const heartbeatIntervalRef = useRef(null);
+    const connectUserIdRef = useRef(null);
     const [isUserNearBottom, setIsUserNearBottom] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
     const [contextMenu, setContextMenu] = useState({
@@ -67,7 +69,6 @@ const Chat = (props) => {
         position: {x: 0, y: 0},
         messageContent: "",
     });
-
     useEffect(() => {
         document.body.classList.add("chat-page");
         document.documentElement.classList.add("chat-page");
@@ -91,52 +92,25 @@ const Chat = (props) => {
     useEffect(() => {
         if (localStorage.getItem("accessToken") === null) {
             props.history.push("/login");
-        }
-        if (!currentUser?.id) {
-            getCurrentUser()
-                .then((response) => setLoggedInUser(response))
-                .catch(() => {
-                });
-        }
-    }, []);
-
-    useEffect(() => {
-        setActiveContact(null);
-        setMessages([]);
-    }, []);
-
-    useEffect(() => {
-        if (!searchQuery.trim()) {
-            setSearchResults([]);
-            setSearchLoading(false);
             return;
         }
-        setSearchLoading(true);
-        const t = setTimeout(() => {
-            searchUsers(searchQuery)
-                .then((list) => setSearchResults(list || []))
-                .catch(() => setSearchResults([]))
-                .finally(() => setSearchLoading(false));
-        }, 300);
-        return () => clearTimeout(t);
-    }, [searchQuery]);
+        getCurrentUser()
+            .then((response) => setLoggedInUser(response))
+            .catch(() => {});
 
-    useEffect(() => {
-        if (!currentUser?.id) return;
+        const userId = getUserIdFromToken();
+        if (!userId) return;
 
         const activeUserId = sessionStorage.getItem("activeUserId");
-        if (activeUserId && activeUserId !== currentUser.id) {
+        if (activeUserId && activeUserId !== userId) {
             setActiveContact(null);
             setMessages([]);
         }
-        sessionStorage.setItem("activeUserId", currentUser.id);
+        sessionStorage.setItem("activeUserId", userId);
 
-        connect();
-        loadContacts();
-
-        // Web Push (если пользователь разрешил уведомления)
-        ensurePushSubscribed(currentUser.id).catch(() => {
-        });
+        connect(userId);
+        loadContacts(undefined, userId);
+        ensurePushSubscribed(userId).catch(() => {});
 
         const handleVisibilityChange = () => {
             if (document.visibilityState === "visible" && stompClient && stompClient.connected) {
@@ -159,7 +133,28 @@ const Chat = (props) => {
             stompClient = null;
             setIsConnected(false);
         };
-    }, [currentUser?.id]);
+    }, []);
+
+    useEffect(() => {
+        setActiveContact(null);
+        setMessages([]);
+    }, []);
+
+    useEffect(() => {
+        if (!searchQuery.trim()) {
+            setSearchResults([]);
+            setSearchLoading(false);
+            return;
+        }
+        setSearchLoading(true);
+        const t = setTimeout(() => {
+            searchUsers(searchQuery)
+                .then((list) => setSearchResults(list || []))
+                .catch(() => setSearchResults([]))
+                .finally(() => setSearchLoading(false));
+        }, 300);
+        return () => clearTimeout(t);
+    }, [searchQuery]);
 
     useEffect(() => {
         if (!activeContact?.id) return;
@@ -202,19 +197,22 @@ const Chat = (props) => {
         }
     };
 
-    const connect = () => {
-        if (stompClient && stompClient.connected) {
+    const connect = (userId) => {
+        const uid = getUserIdFromToken() ?? userId ?? currentUser?.id;
+        if (!uid || (stompClient && stompClient.connected)) {
             return;
         }
-
+        connectUserIdRef.current = uid;
         const Stomp = require("stompjs");
         let SockJS = require("sockjs-client");
         SockJS = new SockJS("/api/chat/ws");
         stompClient = Stomp.over(SockJS);
-        stompClient.connect({userId: currentUser.id}, onConnected, onError);
+        stompClient.connect({userId: uid}, onConnected, onError);
     };
 
     const onConnected = () => {
+        const uid = connectUserIdRef.current ?? currentUser?.id;
+        if (!uid) return;
         console.log("connected");
         setIsConnected(true);
 
@@ -235,11 +233,11 @@ const Chat = (props) => {
         }
 
         stompClient.subscribe(
-            "/user/" + currentUser.id + "/queue/messages",
+            "/user/" + uid + "/queue/messages",
             onMessageReceived
         );
         stompClient.subscribe(
-            "/user/" + currentUser.id + "/queue/read-receipts",
+            "/user/" + uid + "/queue/read-receipts",
             onReadReceiptReceived
         );
         stompClient.subscribe("/topic/status", onStatusReceived);
@@ -461,26 +459,28 @@ const Chat = (props) => {
             .finally(() => setProfileLoading(false));
     };
 
-    const loadContacts = (forceContactId) => {
+    const loadContacts = (forceContactId, userIdForApi) => {
+        const uid = getUserIdFromToken() ?? userIdForApi ?? currentUser?.id;
+        if (!uid) return;
         Promise.all([
             getUsers(),
-            getChatContacts(currentUser.id),
-            getUnreadCounts(currentUser.id),
-            getStatuses(currentUser.id),
+            getChatContacts(uid),
+            getUnreadCounts(uid),
+            getStatuses(uid),
         ])
             .then(([users, contactIds, unreadCounts, statuses]) => {
                 const idsWithForce = forceContactId && !contactIds.includes(forceContactId)
                     ? [...contactIds, forceContactId]
                     : contactIds;
                 const contactsWithHistory = users.filter((contact) =>
-                    contact.id !== currentUser.id && idsWithForce.includes(contact.id)
+                    contact.id !== uid && idsWithForce.includes(contact.id)
                 );
 
-                setAllUsers(users.filter((contact) => contact.id !== currentUser.id));
+                setAllUsers(users.filter((contact) => contact.id !== uid));
 
                 return Promise.all(
                     contactsWithHistory.map((contact) =>
-                        findChatMessages(contact.id, currentUser.id).then((msgs) => {
+                        findChatMessages(contact.id, uid).then((msgs) => {
                             const lastMessage = msgs.length > 0 ? msgs[msgs.length - 1] : null;
                             const newMessages = Number(unreadCounts[contact.id]) || 0;
                             const status = statuses && statuses[contact.id] ? statuses[contact.id] : "offline";

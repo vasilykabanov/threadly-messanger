@@ -25,7 +25,9 @@ app:
     from-name: Threadly
   frontend-url: ${FRONTEND_URL:http://localhost}
   chat-service-url: ${CHAT_SERVICE_URL:http://localhost:8080}
-      
+  registration:
+    admins: ${APP_REGISTRATION_ADMINS:}
+    admin-approval-base-url: ${ADMIN_APPROVAL_BASE_URL:http://localhost:8081}
 security:
   basic:
     enable: false

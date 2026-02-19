@@ -13,6 +13,7 @@ import ru.vkabanov.threadlyauth.exception.EmailAlreadyExistsException;
 import ru.vkabanov.threadlyauth.exception.ResourceNotFoundException;
 import ru.vkabanov.threadlyauth.exception.UsernameAlreadyExistsException;
 import ru.vkabanov.threadlyauth.model.Profile;
+import ru.vkabanov.threadlyauth.model.RegistrationStatus;
 import ru.vkabanov.threadlyauth.model.Role;
 import ru.vkabanov.threadlyauth.model.User;
 import ru.vkabanov.threadlyauth.client.ChatContactsClient;
@@ -42,6 +43,7 @@ public class UserService {
     private final JwtTokenProvider tokenProvider;
     private final AuthenticationConfiguration authenticationConfiguration;
     private final EmailService emailService;
+    private final RegistrationApprovalService registrationApprovalService;
     private final ChatContactsClient chatContactsClient;
 
     private static final int SEARCH_MAX_RESULTS = 20;
@@ -51,6 +53,14 @@ public class UserService {
             // Check if email is verified before allowing login
             User user = userRepository.findByUsernameIgnoreCase(username)
                     .orElseThrow(() -> new BadRequestException("Неверный логин или пароль"));
+
+            RegistrationStatus status = user.getRegistrationStatus();
+            if (status == RegistrationStatus.PENDING) {
+                throw new BadRequestException("Ваша регистрация ожидает подтверждения");
+            }
+            if (status == RegistrationStatus.REJECTED || user.isBlocked()) {
+                throw new BadRequestException("Доступ запрещён");
+            }
             
             if (!user.isEmailVerified()) {
                 throw new BadRequestException("Email не подтверждён. Проверьте почту для активации аккаунта.");
@@ -123,15 +133,18 @@ public class UserService {
             log.warn("email {} already exists.", user.getEmail());
             throw new EmailAlreadyExistsException(String.format("email %s already exists", user.getEmail()));
         }
-        user.setActive(true);
+
+        user.setActive(false);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setRoles(new HashSet<>() {{
             add(role);
         }});
 
-        // Email verification
         user.setEmailVerified(false);
         user.setEmailVerificationToken(UUID.randomUUID().toString());
+        user.setRegistrationStatus(RegistrationStatus.PENDING);
+        user.setBlocked(false);
+        user.setRegistrationDate(Instant.now().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime());
         Instant now = Instant.now();
         user.setLastVerificationEmailSentAt(now);
         user.setVerificationResendPeriodStart(now);
@@ -139,14 +152,14 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
 
-        // Send verification email asynchronously
         emailService.sendVerificationEmail(savedUser);
+        registrationApprovalService.createApprovalRequest(savedUser);
 
         return savedUser;
     }
     
     public User verifyEmail(String token) {
-        User user = userRepository.findByEmailVerificationToken(token)
+        User user = userRepository.findByEmailVerificationToken(token != null ? token.trim() : null)
                 .orElseThrow(() -> new BadRequestException("Недействительный токен подтверждения"));
         
         if (user.isEmailVerified()) {
