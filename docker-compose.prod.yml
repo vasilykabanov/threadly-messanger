@@ -34,6 +34,8 @@ services:
       - "8081:8081"
     depends_on:
       - mongo-auth
+    env_file:
+      - .env
     environment:
       MONGODB_AUTH_HOST: ${MONGODB_AUTH_HOST}
       MONGODB_AUTH_PORT: ${MONGODB_AUTH_PORT}
