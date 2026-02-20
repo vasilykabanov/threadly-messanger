@@ -220,6 +220,14 @@
     text-overflow: ellipsis;
 }
 
+#frame #sidepanel #profile .wrap .connection-label {
+    margin-left: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    color: var(--color-text-muted);
+}
+
 #frame #sidepanel #profile .wrap i.expand-button {
     float: right;
     margin-top: 23px;
@@ -1163,6 +1171,16 @@ span.status-circle:before {
 
 .message-bubble .read-indicator .read-icon.unread {
     opacity: 0.6;
+}
+
+.message-bubble .read-indicator .read-icon.pending {
+    opacity: 0.7;
+    color: inherit;
+}
+
+.message-bubble .read-indicator .read-icon.failed {
+    opacity: 0.9;
+    color: #e74c3c;
 }
 
 .message-bubble .time {

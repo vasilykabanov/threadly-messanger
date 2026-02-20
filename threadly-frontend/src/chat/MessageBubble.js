@@ -1,12 +1,12 @@
 import React from "react";
-import { EyeOutlined, EyeInvisibleOutlined } from "@ant-design/icons";
+import { EyeOutlined, EyeInvisibleOutlined, LoadingOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import { useLongPress } from "../hooks/useLongPress";
 
-/** Статус прочтения: RECEIVED — не прочитано, DELIVERED — прочитано */
+/** RECEIVED — доставлено, DELIVERED — прочитано */
 const isRead = (status) => status === "DELIVERED";
 
 /**
- * Компонент пузыря сообщения с поддержкой long press и индикатором прочтения (только для своих).
+ * Пузырь сообщения. Для своих: PENDING — отправляется, FAILED — не доставлено, RECEIVED — доставлено, DELIVERED — прочитано.
  */
 const MessageBubble = ({
     content,
@@ -31,7 +31,9 @@ const MessageBubble = ({
         onLongPress(e, { x: e.clientX, y: e.clientY });
     };
 
-    const read = isOwn && status != null;
+    const showReadIndicator = isOwn && status != null && (status === "RECEIVED" || status === "DELIVERED");
+    const isPending = isOwn && status === "PENDING";
+    const isFailed = isOwn && status === "FAILED";
 
     return (
         <p
@@ -42,11 +44,21 @@ const MessageBubble = ({
             <span className="text">{renderMessageText(content)}</span>
             <span className="message-bubble-footer">
                 <span className="time">{formatTime(timestamp)}</span>
-                {read && (
+                {isPending && (
+                    <span className="read-indicator status-pending" title="Отправляется" aria-label="Отправляется">
+                        <LoadingOutlined className="read-icon pending" />
+                    </span>
+                )}
+                {isFailed && (
+                    <span className="read-indicator status-failed" title="Не доставлено" aria-label="Не доставлено">
+                        <CloseCircleOutlined className="read-icon failed" />
+                    </span>
+                )}
+                {showReadIndicator && (
                     <span
                         className="read-indicator"
-                        title={isRead(status) ? "Прочитано" : "Не прочитано"}
-                        aria-label={isRead(status) ? "Прочитано" : "Не прочитано"}
+                        title={isRead(status) ? "Прочитано" : "Доставлено"}
+                        aria-label={isRead(status) ? "Прочитано" : "Доставлено"}
                     >
                         {isRead(status) ? (
                             <EyeOutlined className="read-icon read" />

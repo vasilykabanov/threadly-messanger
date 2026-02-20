@@ -11,6 +11,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import ru.vkabanov.threadlychat.exception.ResourceNotFoundException;
 import ru.vkabanov.threadlychat.model.ChatMessage;
+import ru.vkabanov.threadlychat.model.ChatNotification;
 import ru.vkabanov.threadlychat.model.MessageStatus;
 import ru.vkabanov.threadlychat.model.ReadReceiptPayload;
 import ru.vkabanov.threadlychat.repository.ChatMessageRepository;
@@ -33,6 +34,32 @@ public class ChatMessageService {
     private MongoOperations mongoOperations;
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
+    @Autowired
+    private UserStatusService userStatusService;
+    @Autowired
+    private PushNotificationService pushNotificationService;
+
+    /** Сохраняет сообщение, уведомляет получателя и при необходимости отправляет push. Возвращает сохранённое сообщение для sent-ack. */
+    public ChatMessage sendMessage(ChatMessage chatMessage) {
+        var chatId = chatRoomService.getChatId(chatMessage.getSenderId(), chatMessage.getRecipientId(), true);
+        chatMessage.setChatId(chatId.get());
+        ChatMessage saved = save(chatMessage);
+        messagingTemplate.convertAndSendToUser(chatMessage.getRecipientId(), "/queue/messages",
+                new ChatNotification(saved.getId(), saved.getSenderId(), saved.getSenderName()));
+
+        if (!"online".equalsIgnoreCase(userStatusService.getStatus(chatMessage.getRecipientId()))) {
+            pushNotificationService.sendToUser(chatMessage.getRecipientId(), Map.of(
+                    "type", "chat_message",
+                    "messageId", saved.getId(),
+                    "senderId", saved.getSenderId(),
+                    "senderName", saved.getSenderName(),
+                    "recipientId", saved.getRecipientId(),
+                    "content", saved.getContent()
+            ));
+        }
+
+        return saved;
+    }
 
     public ChatMessage save(ChatMessage chatMessage) {
         chatMessage.setStatus(MessageStatus.RECEIVED);

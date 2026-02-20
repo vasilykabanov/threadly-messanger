@@ -59,9 +59,13 @@ const Chat = (props) => {
     const [deleteChatTarget, setDeleteChatTarget] = useState(null);
     const [deleteChatLoading, setDeleteChatLoading] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
+    const [showConnectionLabel, setShowConnectionLabel] = useState(false);
+    const connectionLabelTimeoutRef = useRef(null);
     const messagesContainerRef = useRef(null);
     const heartbeatIntervalRef = useRef(null);
     const connectUserIdRef = useRef(null);
+    const pendingMessagesRef = useRef([]);
+    const pendingTimeoutsRef = useRef({});
     const [isUserNearBottom, setIsUserNearBottom] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
     const [contextMenu, setContextMenu] = useState({
@@ -113,14 +117,24 @@ const Chat = (props) => {
         ensurePushSubscribed(userId).catch(() => {});
 
         const handleVisibilityChange = () => {
-            if (document.visibilityState === "visible" && stompClient && stompClient.connected) {
+            if (document.visibilityState !== "visible") return;
+            if (stompClient && stompClient.connected) {
                 sendStatusOnline();
+            } else {
+                const uid = getUserIdFromToken();
+                if (uid) connect(uid);
             }
         };
         document.addEventListener("visibilitychange", handleVisibilityChange);
 
         return () => {
             document.removeEventListener("visibilitychange", handleVisibilityChange);
+            if (connectionLabelTimeoutRef.current) {
+                clearTimeout(connectionLabelTimeoutRef.current);
+                connectionLabelTimeoutRef.current = null;
+            }
+            Object.values(pendingTimeoutsRef.current).forEach(clearTimeout);
+            pendingTimeoutsRef.current = {};
             if (heartbeatIntervalRef.current) {
                 clearInterval(heartbeatIntervalRef.current);
                 heartbeatIntervalRef.current = null;
@@ -210,11 +224,21 @@ const Chat = (props) => {
         stompClient.connect({userId: uid}, onConnected, onError);
     };
 
+    const showConnectionLabelTemporarily = () => {
+        if (connectionLabelTimeoutRef.current) clearTimeout(connectionLabelTimeoutRef.current);
+        setShowConnectionLabel(true);
+        connectionLabelTimeoutRef.current = setTimeout(() => {
+            connectionLabelTimeoutRef.current = null;
+            setShowConnectionLabel(false);
+        }, 3000);
+    };
+
     const onConnected = () => {
         const uid = connectUserIdRef.current ?? currentUser?.id;
         if (!uid) return;
-        console.log("connected");
         setIsConnected(true);
+        showConnectionLabelTemporarily();
+        console.log("connected");
 
         if (heartbeatIntervalRef.current) {
             clearInterval(heartbeatIntervalRef.current);
@@ -240,7 +264,46 @@ const Chat = (props) => {
             "/user/" + uid + "/queue/read-receipts",
             onReadReceiptReceived
         );
+        stompClient.subscribe("/user/" + uid + "/queue/sent-ack", onSentAckReceived);
         stompClient.subscribe("/topic/status", onStatusReceived);
+
+        const pending = pendingMessagesRef.current.splice(0, pendingMessagesRef.current.length);
+        pending.forEach((payload) => {
+            try {
+                stompClient.send("/app/chat", {}, JSON.stringify(payload));
+            } catch (e) {
+                console.warn("Failed to send pending message", e);
+            }
+        });
+    };
+
+    const onSentAckReceived = (msg) => {
+        const saved = typeof msg.body === "string" ? JSON.parse(msg.body) : msg.body;
+        if (!saved?.id || saved.senderId !== currentUser?.id) return;
+        setMessages((prev) => {
+            const idx = prev.findIndex(
+                (m) =>
+                    m.senderId === currentUser.id &&
+                    !m.id &&
+                    m.content === saved.content &&
+                    Math.abs(new Date(m.timestamp).getTime() - new Date(saved.timestamp).getTime()) < 5000
+            );
+            if (idx === -1) return prev;
+            const tempId = prev[idx]._clientTempId;
+            if (tempId && pendingTimeoutsRef.current[tempId]) {
+                clearTimeout(pendingTimeoutsRef.current[tempId]);
+                delete pendingTimeoutsRef.current[tempId];
+            }
+            const next = [...prev];
+            next[idx] = { ...next[idx], ...saved, id: saved.id, status: saved.status || "RECEIVED" };
+            return next;
+        });
+        setLastMessageByContact((prev) => {
+            if (saved.recipientId && prev[saved.recipientId]?.content === saved.content && !prev[saved.recipientId]?.id) {
+                return { ...prev, [saved.recipientId]: { ...prev[saved.recipientId], ...saved, id: saved.id, status: saved.status || "RECEIVED" } };
+            }
+            return prev;
+        });
     };
 
     const onError = (err) => {
@@ -250,6 +313,8 @@ const Chat = (props) => {
             heartbeatIntervalRef.current = null;
         }
         setIsConnected(false);
+        showConnectionLabelTemporarily();
+        stompClient = null;
     };
 
     const onReadReceiptReceived = (msg) => {
@@ -314,37 +379,58 @@ const Chat = (props) => {
         );
     };
 
+    const PENDING_FAIL_SEC = 20;
+
     const sendMessage = (msg) => {
         const trimmed = msg.trim();
         if (!trimmed || !activeContact?.id || !currentUser?.id) {
             return;
         }
 
-        const message = {
+        const now = new Date();
+        const clientTempId = `temp_${now.getTime()}_${Math.random().toString(36).slice(2)}`;
+        const outgoingMessage = {
             senderId: currentUser.id,
             recipientId: activeContact.id,
             senderName: currentUser.name,
             recipientName: activeContact.name,
             content: trimmed,
-            timestamp: new Date(),
-            status: "RECEIVED",
+            timestamp: now,
+            status: "PENDING",
+            _clientTempId: clientTempId,
         };
 
-        // Оптимистически добавляем сообщение отправителю,
-        // чтобы оно сразу появилось в чате.
-        const newMessages = [...messages, message];
-        setMessages(newMessages);
-        setLastMessageByContact((prev) => ({
-            ...prev,
-            [activeContact.id]: message,
-        }));
+        setMessages((prev) => [...prev, outgoingMessage]);
+        setLastMessageByContact((prev) => ({ ...prev, [activeContact.id]: outgoingMessage }));
         if (!contacts.some((contact) => contact.id === activeContact.id)) {
             setContacts([activeContact, ...contacts]);
         }
 
+        const payload = {
+            senderId: outgoingMessage.senderId,
+            recipientId: outgoingMessage.recipientId,
+            senderName: outgoingMessage.senderName,
+            recipientName: outgoingMessage.recipientName,
+            content: outgoingMessage.content,
+            timestamp: outgoingMessage.timestamp instanceof Date ? outgoingMessage.timestamp.toISOString() : outgoingMessage.timestamp,
+        };
         if (stompClient && stompClient.connected) {
-            stompClient.send("/app/chat", {}, JSON.stringify(message));
+            stompClient.send("/app/chat", {}, JSON.stringify(payload));
+        } else {
+            pendingMessagesRef.current.push(payload);
+            const uid = getUserIdFromToken() ?? currentUser?.id;
+            if (uid) connect(uid);
         }
+
+        const timeoutId = setTimeout(() => {
+            setMessages((prev) =>
+                prev.map((m) =>
+                    m._clientTempId === clientTempId ? { ...m, status: "FAILED" } : m
+                )
+            );
+            delete pendingTimeoutsRef.current[clientTempId];
+        }, PENDING_FAIL_SEC * 1000);
+        pendingTimeoutsRef.current[clientTempId] = timeoutId;
     };
 
     const normalizeText = (value = "") =>
@@ -695,6 +781,11 @@ const Chat = (props) => {
                         <p onClick={goToSettings} role="button" tabIndex={0}>
                             {currentUser.name || currentUser.username || "Профиль"}
                         </p>
+                        {showConnectionLabel && (
+                            <span className="connection-label" aria-label={isConnected ? "Подключено" : "Нет соединения"}>
+                                {isConnected ? "Подключено" : "Нет соединения"}
+                            </span>
+                        )}
                     </div>
                 </div>
                 <div
