@@ -59,8 +59,6 @@ const Chat = (props) => {
     const [deleteChatTarget, setDeleteChatTarget] = useState(null);
     const [deleteChatLoading, setDeleteChatLoading] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
-    const [showConnectionLabel, setShowConnectionLabel] = useState(false);
-    const connectionLabelTimeoutRef = useRef(null);
     const messagesContainerRef = useRef(null);
     const heartbeatIntervalRef = useRef(null);
     const connectUserIdRef = useRef(null);
@@ -129,10 +127,6 @@ const Chat = (props) => {
 
         return () => {
             document.removeEventListener("visibilitychange", handleVisibilityChange);
-            if (connectionLabelTimeoutRef.current) {
-                clearTimeout(connectionLabelTimeoutRef.current);
-                connectionLabelTimeoutRef.current = null;
-            }
             Object.values(pendingTimeoutsRef.current).forEach(clearTimeout);
             pendingTimeoutsRef.current = {};
             if (heartbeatIntervalRef.current) {
@@ -224,20 +218,10 @@ const Chat = (props) => {
         stompClient.connect({userId: uid}, onConnected, onError);
     };
 
-    const showConnectionLabelTemporarily = () => {
-        if (connectionLabelTimeoutRef.current) clearTimeout(connectionLabelTimeoutRef.current);
-        setShowConnectionLabel(true);
-        connectionLabelTimeoutRef.current = setTimeout(() => {
-            connectionLabelTimeoutRef.current = null;
-            setShowConnectionLabel(false);
-        }, 3000);
-    };
-
     const onConnected = () => {
         const uid = connectUserIdRef.current ?? currentUser?.id;
         if (!uid) return;
         setIsConnected(true);
-        showConnectionLabelTemporarily();
         console.log("connected");
 
         if (heartbeatIntervalRef.current) {
@@ -313,7 +297,6 @@ const Chat = (props) => {
             heartbeatIntervalRef.current = null;
         }
         setIsConnected(false);
-        showConnectionLabelTemporarily();
         stompClient = null;
     };
 
@@ -781,9 +764,9 @@ const Chat = (props) => {
                         <p onClick={goToSettings} role="button" tabIndex={0}>
                             {currentUser.name || currentUser.username || "Профиль"}
                         </p>
-                        {showConnectionLabel && (
-                            <span className="connection-label" aria-label={isConnected ? "Подключено" : "Нет соединения"}>
-                                {isConnected ? "Подключено" : "Нет соединения"}
+                        {!isConnected && (
+                            <span className="connection-label" aria-label="Нет соединения">
+                                Нет соединения
                             </span>
                         )}
                     </div>
@@ -992,14 +975,6 @@ const Chat = (props) => {
                                             )}
 
                                             <li className={msg.senderId === currentUser.id ? "sent" : "replies"}>
-                                                {msg.senderId !== currentUser.id && (
-                                                    <Avatar
-                                                        name={activeContact.name}
-                                                        src={activeContact.profilePicture}
-                                                        size={28}
-                                                    />
-                                                )}
-
                                                 <MessageBubble
                                                     content={msg.content}
                                                     timestamp={msg.timestamp}

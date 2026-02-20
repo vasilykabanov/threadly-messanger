@@ -17,6 +17,18 @@
     border: none;
 }
 
+body.theme-new .profile-container .ant-card {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+}
+
+body.theme-new.theme-new-light .profile-container .ant-card {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+}
+
 .profile-container .ant-card-actions {
     position: static;
 }
@@ -104,24 +116,6 @@ body.theme-new.theme-new-light .mobile-bottom-nav {
 
 body.theme-new.theme-new-light .mobile-nav-item {
     color: #0f172a;
-}
-
-body.theme-legacy .mobile-bottom-nav {
-    background: #ffffff;
-    border-top: 1px solid #e5e7eb;
-    backdrop-filter: none;
-}
-
-body.theme-legacy .mobile-nav-item {
-    color: #6b7280;
-}
-
-body.theme-legacy .mobile-nav-item.active {
-    color: #3b82f6;
-}
-
-body.theme-legacy .mobile-nav-item.danger {
-    color: #ef4444;
 }
 
 .user-avatar-circle {
