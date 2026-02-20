@@ -2,13 +2,12 @@ import React, {useEffect, useState} from "react";
 import {Card, Button, Modal, Form, Input, Switch, message} from "antd";
 import {changePassword, getCurrentUser, updateProfile, ensurePushSubscribed} from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
-import {loggedInUser, uiTheme, uiThemeMode} from "../atom/globalState";
+import {loggedInUser, uiThemeMode} from "../atom/globalState";
 import Avatar from "../profile/Avatar";
 import "../profile/Profile.css";
 
 const Settings = (props) => {
     const [currentUser, setLoggedInUser] = useRecoilState(loggedInUser);
-    const [theme, setTheme] = useRecoilState(uiTheme);
     const [themeMode, setThemeMode] = useRecoilState(uiThemeMode);
     const [profileForm] = Form.useForm();
     const [passwordForm] = Form.useForm();
@@ -97,13 +96,6 @@ const Settings = (props) => {
 
     useEffect(() => {
         try {
-            localStorage.setItem("uiTheme", theme);
-        } catch (error) {
-        }
-    }, [theme]);
-
-    useEffect(() => {
-        try {
             localStorage.setItem("uiThemeMode", themeMode);
         } catch (error) {
         }
@@ -164,7 +156,7 @@ const Settings = (props) => {
             <div className="desktop-back-row">
                 <Button type="text" onClick={goToChat}>← К чатам</Button>
             </div>
-            <Card style={{width: "100%"}}>
+            <Card style={{width: "100%"}} bordered={false}>
                 <div className="profile-header-centered">
                     <Avatar
                         src={currentUser.profilePicture}
@@ -365,7 +357,7 @@ const Settings = (props) => {
                 </Form>
             </Modal>
 
-            {/* Модальное окно: Дизайн */}
+            {/* Модальное окно: Дизайн (тема) */}
             <Modal
                 title="Дизайн"
                 open={designModalOpen}
@@ -374,32 +366,18 @@ const Settings = (props) => {
             >
                 <div className="settings-theme-toggle">
                     <div className="settings-theme-text">
-                        <div className="settings-theme-title">Новый космический дизайн</div>
+                        <div className="settings-theme-title">Тема</div>
                         <div className="settings-theme-subtitle">
-                            Стеклянные панели, неоновый акцент и крупная типографика
+                            {themeMode === "dark" ? "Тёмная" : "Светлая"}
                         </div>
                     </div>
                     <Switch
-                        checked={theme === "new"}
-                        onChange={(checked) => setTheme(checked ? "new" : "legacy")}
+                        checked={themeMode === "dark"}
+                        checkedChildren="Тёмная"
+                        unCheckedChildren="Светлая"
+                        onChange={(checked) => setThemeMode(checked ? "dark" : "light")}
                     />
                 </div>
-                {theme === "new" && (
-                    <div className="settings-theme-toggle">
-                        <div className="settings-theme-text">
-                            <div className="settings-theme-title">Тема</div>
-                            <div className="settings-theme-subtitle">
-                                {themeMode === "dark" ? "Тёмная" : "Светлая"}
-                            </div>
-                        </div>
-                        <Switch
-                            checked={themeMode === "dark"}
-                            checkedChildren="Тёмная"
-                            unCheckedChildren="Светлая"
-                            onChange={(checked) => setThemeMode(checked ? "dark" : "light")}
-                        />
-                    </div>
-                )}
             </Modal>
 
             <div className="mobile-bottom-nav">

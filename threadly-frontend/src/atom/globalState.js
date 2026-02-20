@@ -1,14 +1,5 @@
 import {atom} from "recoil";
 
-const getInitialTheme = () => {
-    if (typeof window === "undefined") return "legacy";
-    try {
-        return localStorage.getItem("uiTheme") || "new";
-    } catch (error) {
-        return "new";
-    }
-};
-
 const getInitialThemeMode = () => {
     if (typeof window === "undefined") return "dark";
     try {
@@ -40,11 +31,6 @@ export const chatMessages = atom({
     persistence_UNSTABLE: {
         type: "chatMessages",
     },
-});
-
-export const uiTheme = atom({
-    key: "uiTheme",
-    default: getInitialTheme(),
 });
 
 export const uiThemeMode = atom({

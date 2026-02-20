@@ -12,30 +12,20 @@ import AdminRegistrationApproval from "./admin-registration/AdminRegistrationApp
 import "./App.css";
 import PrivateRoute from "./PrivateRoute";
 import {useRecoilValue} from "recoil";
-import {uiTheme, uiThemeMode} from "./atom/globalState";
+import {uiThemeMode} from "./atom/globalState";
 
 export const AppContext = React.createContext();
 const App = (props) => {
-    const theme = useRecoilValue(uiTheme);
     const themeMode = useRecoilValue(uiThemeMode);
 
     useEffect(() => {
-        const nextTheme = theme === "new" ? "theme-new" : "theme-legacy";
         const nextMode = themeMode === "light" ? "theme-new-light" : "theme-new-dark";
-        document.body.classList.remove(
-            "theme-new",
-            "theme-legacy",
-            "theme-new-light",
-            "theme-new-dark"
-        );
-        document.body.classList.add(nextTheme);
-        if (theme === "new") {
-            document.body.classList.add(nextMode);
-        }
-    }, [theme, themeMode]);
+        document.body.classList.remove("theme-new", "theme-new-light", "theme-new-dark");
+        document.body.classList.add("theme-new", nextMode);
+    }, [themeMode]);
 
     return (
-        <div className={`App ${theme === "new" ? "theme-new" : "theme-legacy"}`}>
+        <div className="App theme-new">
             <BrowserRouter>
                 <Switch>
                     <PrivateRoute exact path="/" component={Profile} />
