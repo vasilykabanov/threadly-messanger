@@ -45,13 +45,22 @@ public class WsController {
         log.info("[Push] Recipient {} status: {}", chatMessage.getRecipientId(), recipientStatus);
         if (!"online".equalsIgnoreCase(recipientStatus)) {
             log.info("[Push] Sending push notification to {}", chatMessage.getRecipientId());
+            String pushContent = saved.getContent();
+            if (saved.getMessageType() != null && !"TEXT".equals(saved.getMessageType())) {
+                switch (saved.getMessageType()) {
+                    case "VOICE": pushContent = "🎤 Голосовое сообщение"; break;
+                    case "IMAGE": pushContent = "📷 Фото"; break;
+                    case "VIDEO_CIRCLE": pushContent = "🔵 Видеосообщение"; break;
+                    default: break;
+                }
+            }
             pushNotificationService.sendToUser(chatMessage.getRecipientId(), Map.of(
                     "type", "chat_message",
                     "messageId", saved.getId(),
                     "senderId", saved.getSenderId(),
                     "senderName", saved.getSenderName(),
                     "recipientId", saved.getRecipientId(),
-                    "content", saved.getContent()
+                    "content", pushContent != null ? pushContent : ""
             ));
         }
     }

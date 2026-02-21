@@ -24,6 +24,8 @@ public class ChatMessage {
    private String senderName;
    private String recipientName;
    private String content;
+   private String messageType; // TEXT, VOICE, IMAGE, VIDEO_CIRCLE
+   private String mediaUrl;
    private Date timestamp;
    private MessageStatus status;
    private Set<String> deletedFor;

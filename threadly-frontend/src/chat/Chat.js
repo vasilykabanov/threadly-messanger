@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useState, useRef, useCallback} from "react";
 import {Button, Drawer, message, Spin, Modal} from "antd";
 import {
     getUsers,
@@ -10,7 +10,9 @@ import {
     getCurrentUser,
     deleteChat as deleteChatRequest,
     ensurePushSubscribed,
+    uploadMedia,
 } from "../util/ApiUtil";
+import {CHAT_SERVICE} from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
 import {
     loggedInUser,
@@ -51,6 +53,24 @@ const Chat = (props) => {
     const [deleteChatTarget, setDeleteChatTarget] = useState(null);
     const [deleteChatLoading, setDeleteChatLoading] = useState(false);
 
+    // Media state
+    const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+    const [isRecordingVideo, setIsRecordingVideo] = useState(false);
+    const [voiceDuration, setVoiceDuration] = useState(0);
+    const [videoDuration, setVideoDuration] = useState(0);
+    const [mediaUploading, setMediaUploading] = useState(false);
+    const [videoPreviewStream, setVideoPreviewStream] = useState(null);
+    const [facingMode, setFacingMode] = useState("user");
+    const [torchOn, setTorchOn] = useState(false);
+
+    const mediaRecorderRef = useRef(null);
+    const mediaChunksRef = useRef([]);
+    const voiceTimerRef = useRef(null);
+    const videoTimerRef = useRef(null);
+    const videoPreviewRef = useRef(null);
+    const photoInputRef = useRef(null);
+    const contactsRefreshRef = useRef(null);
+
     useEffect(() => {
         document.body.classList.add("chat-page");
         return () => {
@@ -87,8 +107,19 @@ const Chat = (props) => {
         connect();
         loadContacts();
 
+        // Автообновление контактов каждые 10 секунд
+        contactsRefreshRef.current = setInterval(() => {
+            loadContacts(activeContact?.id);
+        }, 10000);
+
         // Web Push (если пользователь разрешил уведомления)
         ensurePushSubscribed(currentUser.id).catch(() => {});
+
+        return () => {
+            if (contactsRefreshRef.current) {
+                clearInterval(contactsRefreshRef.current);
+            }
+        };
     }, [currentUser?.id]);
 
     useEffect(() => {
@@ -123,23 +154,39 @@ const Chat = (props) => {
     const onMessageReceived = (msg) => {
         const notification = JSON.parse(msg.body);
         const active = JSON.parse(sessionStorage.getItem("recoil-persist"))
-            .chatActiveContact;
+            ?.chatActiveContact;
 
-        if (active && active.id === notification.senderId) {
-            findChatMessage(notification.id).then((message) => {
+        findChatMessage(notification.id).then((message) => {
+            // If this is the active chat, add message to the message list
+            if (active && active.id === notification.senderId) {
                 const newMessages = JSON.parse(sessionStorage.getItem("recoil-persist"))
                     .chatMessages;
                 newMessages.push(message);
                 setMessages(newMessages);
-                setLastMessageByContact((prev) => ({
-                    ...prev,
-                    [message.senderId]: message,
-                }));
+            }
+
+            // Update last message for this sender
+            setLastMessageByContact((prev) => ({
+                ...prev,
+                [notification.senderId]: message,
+            }));
+
+            // Immediately move sender to the top of contacts list
+            setContacts((prevContacts) => {
+                const idx = prevContacts.findIndex((c) => c.id === notification.senderId);
+                if (idx >= 0) {
+                    const updated = [...prevContacts];
+                    const [contact] = updated.splice(idx, 1);
+                    if (!(active && active.id === notification.senderId)) {
+                        contact.newMessages = (contact.newMessages || 0) + 1;
+                    }
+                    return [contact, ...updated];
+                }
+                // Sender not in contacts yet — trigger full reload
+                loadContacts(active?.id);
+                return prevContacts;
             });
-        } else {
-            // message.info("Received a new message from " + notification.senderName); TODO для чего тут так?
-        }
-        loadContacts(active?.id);
+        });
     };
 
     const onStatusReceived = (msg) => {
@@ -157,6 +204,7 @@ const Chat = (props) => {
                 senderName: currentUser.name,
                 recipientName: activeContact.name,
                 content: msg,
+                messageType: "TEXT",
                 timestamp: new Date(),
             };
             stompClient.send("/app/chat", {}, JSON.stringify(message));
@@ -173,6 +221,281 @@ const Chat = (props) => {
             }
             loadContacts(activeContact?.id);
         }
+    };
+
+    const sendMediaMessage = (mediaUrl, messageType, contentPreview) => {
+        const msg = {
+            senderId: currentUser.id,
+            recipientId: activeContact.id,
+            senderName: currentUser.name,
+            recipientName: activeContact.name,
+            content: contentPreview || "",
+            messageType: messageType,
+            mediaUrl: mediaUrl,
+            timestamp: new Date(),
+        };
+        stompClient.send("/app/chat", {}, JSON.stringify(msg));
+
+        const newMessages = [...messages];
+        newMessages.push(msg);
+        setMessages(newMessages);
+        setLastMessageByContact((prev) => ({
+            ...prev,
+            [activeContact.id]: {...msg, content: contentPreview || getMediaLabel(messageType)},
+        }));
+        if (!contacts.some((contact) => contact.id === activeContact.id)) {
+            setContacts([activeContact, ...contacts]);
+        }
+        loadContacts(activeContact?.id);
+    };
+
+    const getMediaLabel = (type) => {
+        switch (type) {
+            case "VOICE": return "🎤 Голосовое сообщение";
+            case "IMAGE": return "📷 Фото";
+            case "VIDEO_CIRCLE": return "🔵 Видеосообщение";
+            default: return "";
+        }
+    };
+
+    // ===== Голосовые сообщения =====
+    const startVoiceRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+            const mediaRecorder = new MediaRecorder(stream, {mimeType: "audio/webm"});
+            mediaRecorderRef.current = mediaRecorder;
+            mediaChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    mediaChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                stream.getTracks().forEach((track) => track.stop());
+                const blob = new Blob(mediaChunksRef.current, {type: "audio/webm"});
+                uploadAndSendMedia(blob, "voice.webm", "VOICE");
+            };
+
+            mediaRecorder.start();
+            setIsRecordingVoice(true);
+            setVoiceDuration(0);
+            voiceTimerRef.current = setInterval(() => {
+                setVoiceDuration((prev) => prev + 1);
+            }, 1000);
+        } catch (err) {
+            message.error("Нет доступа к микрофону");
+            console.error("Microphone access error:", err);
+        }
+    };
+
+    const stopVoiceRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+            mediaRecorderRef.current.stop();
+        }
+        setIsRecordingVoice(false);
+        if (voiceTimerRef.current) {
+            clearInterval(voiceTimerRef.current);
+            voiceTimerRef.current = null;
+        }
+    };
+
+    const cancelVoiceRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+            mediaRecorderRef.current.ondataavailable = null;
+            mediaRecorderRef.current.onstop = null;
+            mediaRecorderRef.current.stop();
+            const stream = mediaRecorderRef.current.stream;
+            if (stream) stream.getTracks().forEach((track) => track.stop());
+        }
+        setIsRecordingVoice(false);
+        setVoiceDuration(0);
+        if (voiceTimerRef.current) {
+            clearInterval(voiceTimerRef.current);
+            voiceTimerRef.current = null;
+        }
+    };
+
+    // ===== Отправка фото =====
+    const handlePhotoSelect = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+        if (!allowedTypes.includes(file.type)) {
+            message.error("Поддерживаются: JPG, PNG, GIF, WEBP");
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            message.error("Файл слишком большой (макс. 10MB)");
+            return;
+        }
+
+        uploadAndSendMedia(file, file.name, "IMAGE");
+        event.target.value = "";
+    };
+
+    // ===== Видеосообщения (кружочки) =====
+    const startVideoRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {facingMode: facingMode, width: 320, height: 320},
+                audio: true,
+            });
+            setVideoPreviewStream(stream);
+
+            const mediaRecorder = new MediaRecorder(stream, {mimeType: "video/webm"});
+            mediaRecorderRef.current = mediaRecorder;
+            mediaChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    mediaChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                stream.getTracks().forEach((track) => track.stop());
+                setVideoPreviewStream(null);
+                const blob = new Blob(mediaChunksRef.current, {type: "video/webm"});
+                uploadAndSendMedia(blob, "video_circle.webm", "VIDEO_CIRCLE");
+            };
+
+            mediaRecorder.start();
+            setIsRecordingVideo(true);
+            setVideoDuration(0);
+            videoTimerRef.current = setInterval(() => {
+                setVideoDuration((prev) => {
+                    if (prev >= 59) {
+                        stopVideoRecording();
+                        return 60;
+                    }
+                    return prev + 1;
+                });
+            }, 1000);
+        } catch (err) {
+            message.error("Нет доступа к камере или микрофону");
+            console.error("Camera access error:", err);
+        }
+    };
+
+    const stopVideoRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+            mediaRecorderRef.current.stop();
+        }
+        setIsRecordingVideo(false);
+        setTorchOn(false);
+        if (videoTimerRef.current) {
+            clearInterval(videoTimerRef.current);
+            videoTimerRef.current = null;
+        }
+    };
+
+    const cancelVideoRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+            mediaRecorderRef.current.ondataavailable = null;
+            mediaRecorderRef.current.onstop = null;
+            mediaRecorderRef.current.stop();
+            const stream = mediaRecorderRef.current.stream;
+            if (stream) stream.getTracks().forEach((track) => track.stop());
+        }
+        setIsRecordingVideo(false);
+        setVideoPreviewStream(null);
+        setVideoDuration(0);
+        setTorchOn(false);
+        if (videoTimerRef.current) {
+            clearInterval(videoTimerRef.current);
+            videoTimerRef.current = null;
+        }
+    };
+
+    const switchCamera = async () => {
+        if (!isRecordingVideo) return;
+
+        const newMode = facingMode === "user" ? "environment" : "user";
+
+        try {
+            const newStream = await navigator.mediaDevices.getUserMedia({
+                video: {facingMode: newMode, width: 320, height: 320},
+            });
+
+            const newVideoTrack = newStream.getVideoTracks()[0];
+            const currentStream = videoPreviewRef.current?.srcObject;
+
+            if (currentStream) {
+                const oldVideoTrack = currentStream.getVideoTracks()[0];
+                if (oldVideoTrack) {
+                    currentStream.removeTrack(oldVideoTrack);
+                    oldVideoTrack.stop();
+                }
+                currentStream.addTrack(newVideoTrack);
+            }
+
+            setFacingMode(newMode);
+            setTorchOn(false);
+        } catch (err) {
+            message.error("Не удалось переключить камеру");
+            console.error("Camera switch error:", err);
+        }
+    };
+
+    const toggleTorch = async () => {
+        if (!isRecordingVideo) return;
+
+        const currentStream = videoPreviewRef.current?.srcObject;
+        if (!currentStream) return;
+
+        const videoTrack = currentStream.getVideoTracks()[0];
+        if (!videoTrack) return;
+
+        try {
+            const capabilities = videoTrack.getCapabilities?.();
+            if (!capabilities || !capabilities.torch) {
+                message.warning("Фонарик не поддерживается на этом устройстве");
+                return;
+            }
+
+            const newTorchState = !torchOn;
+            await videoTrack.applyConstraints({
+                advanced: [{torch: newTorchState}],
+            });
+            setTorchOn(newTorchState);
+        } catch (err) {
+            message.error("Не удалось управлять фонариком");
+            console.error("Torch error:", err);
+        }
+    };
+
+    // ===== Загрузка медиа =====
+    const uploadAndSendMedia = (blobOrFile, filename, messageType) => {
+        setMediaUploading(true);
+        const file = blobOrFile instanceof File
+            ? blobOrFile
+            : new File([blobOrFile], filename, {type: blobOrFile.type});
+
+        uploadMedia(file)
+            .then((response) => {
+                sendMediaMessage(response.mediaUrl, messageType, getMediaLabel(messageType));
+            })
+            .catch((error) => {
+                message.error("Ошибка загрузки: " + (error?.error || "неизвестная ошибка"));
+                console.error("Upload error:", error);
+            })
+            .finally(() => setMediaUploading(false));
+    };
+
+    // Подключение видео-превью
+    useEffect(() => {
+        if (videoPreviewRef.current && videoPreviewStream) {
+            videoPreviewRef.current.srcObject = videoPreviewStream;
+        }
+    }, [videoPreviewStream]);
+
+    const formatDuration = (seconds) => {
+        const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+        const s = (seconds % 60).toString().padStart(2, "0");
+        return `${m}:${s}`;
     };
 
     const normalizeText = (value = "") =>
@@ -253,6 +576,57 @@ const Chat = (props) => {
                 </a>
             );
         });
+    };
+
+    const renderMediaContent = (msg) => {
+        const mediaUrl = msg.mediaUrl ? CHAT_SERVICE + msg.mediaUrl : null;
+        const type = msg.messageType || "TEXT";
+
+        switch (type) {
+            case "VOICE":
+                return (
+                    <div className="media-message voice-message">
+                        <div className="voice-icon">🎤</div>
+                        <audio controls preload="metadata" className="voice-player">
+                            <source src={mediaUrl} type="audio/webm" />
+                            <source src={mediaUrl} type="audio/ogg" />
+                            Ваш браузер не поддерживает аудио
+                        </audio>
+                    </div>
+                );
+
+            case "IMAGE":
+                return (
+                    <div className="media-message image-message">
+                        <img
+                            src={mediaUrl}
+                            alt="Фото"
+                            className="chat-image"
+                            onClick={() => window.open(mediaUrl, "_blank")}
+                        />
+                    </div>
+                );
+
+            case "VIDEO_CIRCLE":
+                return (
+                    <div className="media-message video-circle-message">
+                        <video
+                            className="video-circle-player"
+                            controls
+                            preload="metadata"
+                            playsInline
+                        >
+                            <source src={mediaUrl} type="video/webm" />
+                            Ваш браузер не поддерживает видео
+                        </video>
+                    </div>
+                );
+
+            default:
+                return (
+                    <span className="text">{renderMessageText(msg.content)}</span>
+                );
+        }
     };
 
     const filteredContacts = contacts.filter((contact) =>
@@ -597,7 +971,9 @@ const Chat = (props) => {
                                         </div>
                                         <p className="preview">
                                             {lastMessageByContact[contact.id]?.content
-                                                ? lastMessageByContact[contact.id].content
+                                                ? (lastMessageByContact[contact.id].messageType && lastMessageByContact[contact.id].messageType !== "TEXT"
+                                                    ? getMediaLabel(lastMessageByContact[contact.id].messageType)
+                                                    : lastMessageByContact[contact.id].content)
                                                 : "Нет сообщений"}
                                         </p>
                                     </div>
@@ -680,8 +1056,8 @@ const Chat = (props) => {
                                                     />
                                                 )}
 
-                                                <p className="message-bubble">
-                                                    <span className="text">{renderMessageText(msg.content)}</span>
+                                                <p className={`message-bubble ${(msg.messageType && msg.messageType !== "TEXT") ? "media-bubble" : ""}`}>
+                                                    {renderMediaContent(msg)}
                                                     <span className="time">{formatTime(msg.timestamp)}</span>
                                                 </p>
                                             </li>
@@ -692,7 +1068,89 @@ const Chat = (props) => {
                         </ScrollToBottom>
 
                         <div className="message-input">
+                            {/* Видео-превью кружочка */}
+                            {isRecordingVideo && (
+                                <div className="video-recording-overlay">
+                                    <div className="video-recording-preview">
+                                        <video
+                                            ref={videoPreviewRef}
+                                            autoPlay
+                                            muted
+                                            playsInline
+                                            className="video-preview-circle"
+                                        />
+                                        <div className="recording-timer">{formatDuration(videoDuration)}</div>
+                                        <div className="video-camera-controls">
+                                            <Button
+                                                className="camera-control-btn"
+                                                onClick={switchCamera}
+                                                title="Переключить камеру"
+                                                shape="circle"
+                                                icon={<i className="fa fa-refresh" />}
+                                            />
+                                            <Button
+                                                className={`camera-control-btn ${torchOn ? "torch-on" : ""}`}
+                                                onClick={toggleTorch}
+                                                title="Фонарик"
+                                                shape="circle"
+                                                icon={<i className={torchOn ? "fa fa-bolt" : "fa fa-bolt"} />}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="recording-controls">
+                                        <Button
+                                            className="recording-cancel-btn"
+                                            onClick={cancelVideoRecording}
+                                        >
+                                            ✕ Отмена
+                                        </Button>
+                                        <Button
+                                            className="recording-stop-btn"
+                                            onClick={stopVideoRecording}
+                                            type="primary"
+                                        >
+                                            ■ Отправить
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Индикатор записи голоса */}
+                            {isRecordingVoice && (
+                                <div className="voice-recording-bar">
+                                    <span className="recording-dot" />
+                                    <span className="recording-label">Запись {formatDuration(voiceDuration)}</span>
+                                    <Button size="small" onClick={cancelVoiceRecording}>✕</Button>
+                                    <Button size="small" type="primary" onClick={stopVoiceRecording}>
+                                        Отправить
+                                    </Button>
+                                </div>
+                            )}
+
+                            {/* Индикатор загрузки */}
+                            {mediaUploading && (
+                                <div className="media-uploading-bar">
+                                    <Spin size="small" /> <span>Загрузка...</span>
+                                </div>
+                            )}
+
                             <div className="wrap">
+                                {/* Кнопка фото */}
+                                <Button
+                                    className="media-btn photo-btn"
+                                    icon={<i className="fa fa-image" />}
+                                    onClick={() => photoInputRef.current?.click()}
+                                    disabled={isRecordingVoice || isRecordingVideo || mediaUploading}
+                                    title="Отправить фото"
+                                />
+                                <input
+                                    ref={photoInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/gif,image/webp"
+                                    style={{display: "none"}}
+                                    onChange={handlePhotoSelect}
+                                />
+
                                 <input
                                     className="chat-input"
                                     name="user_input"
@@ -705,16 +1163,39 @@ const Chat = (props) => {
                                             setText("");
                                         }
                                     }}
+                                    disabled={isRecordingVoice || isRecordingVideo || mediaUploading}
                                 />
 
-                                <Button
-                                    className="send-btn"
-                                    icon={<i className="fa fa-paper-plane"/>}
-                                    onClick={() => {
-                                        sendMessage(text);
-                                        setText("");
-                                    }}
-                                />
+                                {text.trim() ? (
+                                    <Button
+                                        className="send-btn"
+                                        icon={<i className="fa fa-paper-plane"/>}
+                                        onClick={() => {
+                                            sendMessage(text);
+                                            setText("");
+                                        }}
+                                    />
+                                ) : (
+                                    <>
+                                        {/* Кнопка голосового сообщения */}
+                                        <Button
+                                            className={`media-btn voice-btn ${isRecordingVoice ? "recording" : ""}`}
+                                            icon={<i className="fa fa-microphone" />}
+                                            onClick={isRecordingVoice ? stopVoiceRecording : startVoiceRecording}
+                                            disabled={isRecordingVideo || mediaUploading}
+                                            title="Голосовое сообщение"
+                                        />
+
+                                        {/* Кнопка кружочка */}
+                                        <Button
+                                            className={`media-btn video-btn ${isRecordingVideo ? "recording" : ""}`}
+                                            icon={<i className="fa fa-video-camera" />}
+                                            onClick={isRecordingVideo ? stopVideoRecording : startVideoRecording}
+                                            disabled={isRecordingVoice || mediaUploading}
+                                            title="Видеосообщение (кружочек)"
+                                        />
+                                    </>
+                                )}
                             </div>
                         </div>
                     </>

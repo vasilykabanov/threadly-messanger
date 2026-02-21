@@ -5,9 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import ru.vkabanov.threadlyauth.exception.BadRequestException;
 import ru.vkabanov.threadlyauth.exception.EmailAlreadyExistsException;
@@ -32,6 +30,36 @@ public class AuthEndpoint {
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         String token = userService.loginUser(loginRequest.getUsername(), loginRequest.getPassword());
         return ResponseEntity.ok(new JwtAuthenticationResponse(token));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        try {
+            String message = userService.initiatePasswordReset(request.getLoginOrEmail());
+            return ResponseEntity.ok(new ApiResponse(true, message));
+        } catch (BadRequestException e) {
+            throw e;
+        }
+    }
+
+    @GetMapping("/reset-password/validate")
+    public ResponseEntity<?> validateResetToken(@RequestParam String token) {
+        try {
+            userService.validateResetToken(token);
+            return ResponseEntity.ok(new ApiResponse(true, "Токен действителен"));
+        } catch (BadRequestException e) {
+            throw e;
+        }
+    }
+
+    @PostMapping("/reset-password/confirm")
+    public ResponseEntity<?> confirmResetPassword(@Valid @RequestBody ConfirmResetPasswordRequest request) {
+        try {
+            userService.confirmPasswordReset(request.getToken(), request.getNewPassword());
+            return ResponseEntity.ok(new ApiResponse(true, "Пароль успешно изменён"));
+        } catch (BadRequestException e) {
+            throw e;
+        }
     }
 
     @PostMapping(value = "/users", produces = MediaType.APPLICATION_JSON_VALUE)

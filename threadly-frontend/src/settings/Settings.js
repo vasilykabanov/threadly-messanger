@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {Card, Button, Modal, Form, Input, Switch, message} from "antd";
-import {changePassword, getCurrentUser, updateProfile, ensurePushSubscribed} from "../util/ApiUtil";
+import {changePassword, getCurrentUser, updateProfile, ensurePushSubscribed, uploadAvatar} from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
 import {loggedInUser, uiTheme, uiThemeMode} from "../atom/globalState";
 import Avatar from "../profile/Avatar";
@@ -20,6 +20,7 @@ const Settings = (props) => {
     const [designModalOpen, setDesignModalOpen] = useState(false);
     const [pushEnabled, setPushEnabled] = useState(false);
     const [pushLoading, setPushLoading] = useState(false);
+    const [avatarUploading, setAvatarUploading] = useState(false);
 
     const clearPersistedState = () => {
         const persisted = sessionStorage.getItem("recoil-persist");
@@ -153,6 +154,32 @@ const Settings = (props) => {
         props.history.push("/chat");
     };
 
+    const handleAvatarUpload = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+        if (!allowedTypes.includes(file.type)) {
+            message.error("Поддерживаются только форматы: JPG, PNG, GIF, WEBP");
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            message.error("Файл слишком большой (макс. 5MB)");
+            return;
+        }
+
+        setAvatarUploading(true);
+        uploadAvatar(file)
+            .then((response) => {
+                setLoggedInUser(response);
+                message.success("Аватар обновлён");
+            })
+            .catch((error) => {
+                message.error(error?.message || "Не удалось загрузить аватар");
+            })
+            .finally(() => setAvatarUploading(false));
+    };
+
     const logout = () => {
         clearPersistedState();
         localStorage.removeItem("accessToken");
@@ -166,11 +193,43 @@ const Settings = (props) => {
             </div>
             <Card style={{width: "100%"}}>
                 <div className="profile-header-centered">
-                    <Avatar
-                        src={currentUser.profilePicture}
-                        name={currentUser.name}
-                        size={100}
-                    />
+                    <div className="avatar-upload-wrapper" style={{position: "relative", cursor: "pointer"}}>
+                        <Avatar
+                            src={currentUser.profilePicture}
+                            name={currentUser.name}
+                            size={100}
+                        />
+                        <label
+                            className="avatar-upload-overlay"
+                            htmlFor="avatar-upload-input"
+                            style={{
+                                position: "absolute",
+                                bottom: 0,
+                                right: 0,
+                                width: 32,
+                                height: 32,
+                                borderRadius: "50%",
+                                background: "#7c3aed",
+                                color: "#fff",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                                fontSize: 14,
+                            }}
+                        >
+                            {avatarUploading ? "…" : <i className="fa fa-camera" />}
+                        </label>
+                        <input
+                            id="avatar-upload-input"
+                            type="file"
+                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            style={{display: "none"}}
+                            onChange={handleAvatarUpload}
+                            disabled={avatarUploading}
+                        />
+                    </div>
                     <div className="profile-header-name">{currentUser.name}</div>
                     <div className="profile-header-username">@{currentUser.username}</div>
                 </div>
@@ -274,6 +333,14 @@ const Settings = (props) => {
                         rules={[
                             {required: true, message: "Введите имя пользователя"},
                             {min: 3, max: 15, message: "От 3 до 15 символов"},
+                            {
+                                validator: (_, value) => {
+                                    if (!value) return Promise.resolve();
+                                    return /^[a-zA-Z0-9_-]+$/.test(value)
+                                        ? Promise.resolve()
+                                        : Promise.reject(new Error("Разрешены только: a-z, A-Z, 0-9, - и _"));
+                                },
+                            },
                         ]}
                     >
                         <Input placeholder="username"/>

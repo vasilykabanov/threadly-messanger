@@ -2,6 +2,8 @@ import React, {useEffect} from "react";
 import {BrowserRouter, Redirect, Route, Switch} from "react-router-dom";
 import Signin from "./signin/Signin";
 import Signup from "./signup/Signup";
+import ForgotPassword from "./forgot-password/ForgotPassword";
+import ResetPassword from "./reset-password/ResetPassword";
 import Profile from "./profile/Profile";
 import Chat from "./chat/Chat";
 import Settings from "./settings/Settings";
@@ -37,6 +39,8 @@ const App = (props) => {
                     <PrivateRoute exact path="/" component={Profile} />
                     <Route exact path="/login" render={(props) => <Signin {...props} />}/>
                     <Route exact path="/signup" render={(props) => <Signup {...props} />}/>
+                    <Route exact path="/forgot-password" render={(props) => <ForgotPassword {...props} />}/>
+                    <Route exact path="/reset-password" render={(props) => <ResetPassword {...props} />}/>
                     {/*<Route exact path="/chat" render={(props) => <Chat {...props} />}/>*/}
                     <PrivateRoute exact path="/chat" component={Chat} />
                     <PrivateRoute exact path="/settings" component={Settings} />

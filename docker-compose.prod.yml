@@ -35,6 +35,14 @@ services:
     environment:
       SPRING_DATA_MONGODB_HOST: mongo-auth
       SPRING_DATA_MONGODB_PORT: 27017
+      FILE_UPLOAD_DIR: /app/uploads/avatars
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      APP_BASE_URL: ${APP_BASE_URL:-https://threadly-chat.ru}
+    volumes:
+      - auth-uploads:/app/uploads/avatars
     restart: unless-stopped
 
   # ---------------- Mongo для threadly-chat ----------------
@@ -64,6 +72,9 @@ services:
       SPRING_DATA_MONGODB_HOST: mongo-chat
       SPRING_DATA_MONGODB_PORT: 27017
       THREDLY_AUTH_URL: http://threadly-auth:8081
+      FILE_UPLOAD_DIR: /app/uploads/media
+    volumes:
+      - chat-uploads:/app/uploads/media
     restart: unless-stopped
 
   # ---------------- threadly-frontend ----------------
@@ -80,3 +91,5 @@ volumes:
   mongo-chat-data:
   caddy-data:
   caddy-config:
+  auth-uploads:
+  chat-uploads:

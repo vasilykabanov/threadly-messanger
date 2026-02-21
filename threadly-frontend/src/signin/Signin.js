@@ -79,9 +79,9 @@ const Signin = (props) => {
                         {
                             validator: (_, value) => {
                                 if (!value) return Promise.resolve();
-                                return /[А-Яа-яЁё]/.test(value)
-                                    ? Promise.reject(new Error("Логин должен быть на латинице"))
-                                    : Promise.resolve();
+                                return /^[a-zA-Z0-9_-]+$/.test(value)
+                                    ? Promise.resolve()
+                                    : Promise.reject(new Error("Разрешены только: a-z, A-Z, 0-9, - и _"));
                             },
                         },
                     ]}
@@ -116,6 +116,8 @@ const Signin = (props) => {
                 </Form.Item>
                 <div className="auth-footer">
                     Еще нет аккаунта? <a href="/signup">Зарегистрироваться</a>
+                    <br />
+                    <a href="/forgot-password" style={{marginTop: 8, display: "inline-block"}}>Забыли пароль?</a>
                 </div>
             </Form>
             </div>

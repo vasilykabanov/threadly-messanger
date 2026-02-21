@@ -10,6 +10,16 @@ spring:
 server:
   port: 8080
 
+spring:
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+file:
+  upload-dir: ${FILE_UPLOAD_DIR:uploads/media}
+
 threadly:
   push:
     # Генерируются один раз (VAPID). Пример генерации:

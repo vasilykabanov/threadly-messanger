@@ -12,15 +12,20 @@ import ru.vkabanov.threadlyauth.exception.BadRequestException;
 import ru.vkabanov.threadlyauth.exception.EmailAlreadyExistsException;
 import ru.vkabanov.threadlyauth.exception.ResourceNotFoundException;
 import ru.vkabanov.threadlyauth.exception.UsernameAlreadyExistsException;
+import ru.vkabanov.threadlyauth.model.PasswordResetToken;
 import ru.vkabanov.threadlyauth.model.Profile;
 import ru.vkabanov.threadlyauth.model.Role;
 import ru.vkabanov.threadlyauth.model.User;
+import ru.vkabanov.threadlyauth.repository.PasswordResetTokenRepository;
 import ru.vkabanov.threadlyauth.repository.UserRepository;
 import ru.vkabanov.threadlyauth.payload.UpdateProfileRequest;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -29,8 +34,10 @@ public class UserService {
 
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+    private final PasswordResetTokenRepository tokenRepository;
     private final JwtTokenProvider tokenProvider;
     private final AuthenticationConfiguration authenticationConfiguration;
+    private final EmailService emailService;
 
     public String loginUser(String username, String password) {
         try {
@@ -88,6 +95,97 @@ public class UserService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         return userRepository.save(user);
+    }
+
+    /**
+     * Initiates password reset: finds user by login or email, generates token, sends email.
+     * Returns a message to display to the user (with masked email or generic text).
+     */
+    public String initiatePasswordReset(String loginOrEmail) {
+        boolean isEmail = loginOrEmail.contains("@");
+        Optional<User> userOpt;
+
+        if (isEmail) {
+            userOpt = userRepository.findByEmail(loginOrEmail);
+        } else {
+            userOpt = userRepository.findByUsernameIgnoreCase(loginOrEmail);
+        }
+
+        User user = userOpt.orElseThrow(() ->
+                new BadRequestException("Пользователь с такой почтой или с таким логином не найден"));
+
+        // Delete old tokens for this user
+        tokenRepository.deleteByUserId(user.getId());
+
+        // Generate new token
+        String token = UUID.randomUUID().toString();
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .token(token)
+                .userId(user.getId())
+                .expiryDate(Instant.now().plus(1, ChronoUnit.HOURS))
+                .build();
+        tokenRepository.save(resetToken);
+
+        // Send email
+        emailService.sendPasswordResetEmail(user.getEmail(), token);
+
+        // Return appropriate message
+        if (isEmail) {
+            return "Письмо отправлено на данную почту";
+        } else {
+            return "Письмо отправлено на почту " + maskEmail(user.getEmail());
+        }
+    }
+
+    /**
+     * Validates that a reset token exists and is not expired.
+     */
+    public void validateResetToken(String token) {
+        PasswordResetToken resetToken = tokenRepository.findByToken(token)
+                .orElseThrow(() -> new BadRequestException("Ссылка недействительна"));
+
+        if (resetToken.isExpired()) {
+            tokenRepository.delete(resetToken);
+            throw new BadRequestException("Ссылка истекла");
+        }
+    }
+
+    /**
+     * Confirms password reset using a token: validates token, sets new password, deletes token.
+     */
+    public void confirmPasswordReset(String token, String newPassword) {
+        PasswordResetToken resetToken = tokenRepository.findByToken(token)
+                .orElseThrow(() -> new BadRequestException("Ссылка недействительна"));
+
+        if (resetToken.isExpired()) {
+            tokenRepository.delete(resetToken);
+            throw new BadRequestException("Ссылка истекла");
+        }
+
+        User user = userRepository.findById(resetToken.getUserId())
+                .orElseThrow(() -> new BadRequestException("Пользователь не найден"));
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        tokenRepository.delete(resetToken);
+        log.info("Password reset confirmed for user {}", user.getUsername());
+    }
+
+    /**
+     * Masks an email: "vladik@gmail.com" → "vl***k@gmail.com"
+     */
+    private String maskEmail(String email) {
+        int atIdx = email.indexOf('@');
+        if (atIdx <= 2) {
+            return "**" + email.substring(atIdx);
+        }
+        String local = email.substring(0, atIdx);
+        String domain = email.substring(atIdx);
+        return local.substring(0, 2)
+                + "*".repeat(Math.max(1, local.length() - 3))
+                + local.charAt(local.length() - 1)
+                + domain;
     }
 
     public User updateProfile(String userId, UpdateProfileRequest request) {

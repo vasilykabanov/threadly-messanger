@@ -169,6 +169,98 @@ export function deleteChat(senderId, recipientId, userId, scope = "me") {
 }
 
 // -------------------------
+// Forgot Password / Reset Password
+// -------------------------
+
+export function requestPasswordReset(forgotPasswordRequest) {
+    return request({
+        url: AUTH_SERVICE + "/forgot-password",
+        method: "POST",
+        body: JSON.stringify(forgotPasswordRequest),
+        skipAuthRedirect: true,
+    });
+}
+
+export function validateResetToken(token) {
+    return request({
+        url: AUTH_SERVICE + "/reset-password/validate?token=" + encodeURIComponent(token),
+        method: "GET",
+        skipAuthRedirect: true,
+    });
+}
+
+export function confirmPasswordReset(confirmRequest) {
+    return request({
+        url: AUTH_SERVICE + "/reset-password/confirm",
+        method: "POST",
+        body: JSON.stringify(confirmRequest),
+        skipAuthRedirect: true,
+    });
+}
+
+// -------------------------
+// Avatar Upload
+// -------------------------
+
+export function uploadAvatar(file) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const headers = new Headers();
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+        headers.append("Authorization", "Bearer " + token);
+    }
+
+    return fetch(AUTH_SERVICE + "/users/me/avatar", {
+        method: "POST",
+        headers: headers,
+        body: formData,
+    }).then(async (response) => {
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            return Promise.reject(json);
+        }
+        return json;
+    });
+}
+
+// -------------------------
+// Media Upload (Chat)
+// -------------------------
+
+export function uploadMedia(file) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const headers = new Headers();
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+        headers.append("Authorization", "Bearer " + token);
+    }
+
+    return fetch(CHAT_SERVICE + "/media/upload", {
+        method: "POST",
+        headers: headers,
+        body: formData,
+    }).then(async (response) => {
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            return Promise.reject(json);
+        }
+        return json;
+    });
+}
+
+// -------------------------
 // Web Push
 // -------------------------
 

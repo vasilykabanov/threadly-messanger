@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {Card, Avatar, Button, Divider, Form, Input, message} from "antd";
 import {useRecoilState} from "recoil";
 import {loggedInUser} from "../atom/globalState";
-import {getCurrentUser, updateProfile} from "../util/ApiUtil";
+import {getCurrentUser, updateProfile, uploadAvatar} from "../util/ApiUtil";
 import "./Profile.css";
 
 const {Meta} = Card;
@@ -12,6 +12,33 @@ const Profile = (props) => {
     const [profileForm] = Form.useForm();
     const [savingProfile, setSavingProfile] = useState(false);
     const [backTarget, setBackTarget] = useState("/chat");
+    const [avatarUploading, setAvatarUploading] = useState(false);
+
+    const handleAvatarUpload = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+        if (!allowedTypes.includes(file.type)) {
+            message.error("Поддерживаются только форматы: JPG, PNG, GIF, WEBP");
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            message.error("Файл слишком большой (макс. 5MB)");
+            return;
+        }
+
+        setAvatarUploading(true);
+        uploadAvatar(file)
+            .then((response) => {
+                setLoggedInUser(response);
+                message.success("Аватар обновлён");
+            })
+            .catch((error) => {
+                message.error(error?.message || "Не удалось загрузить аватар");
+            })
+            .finally(() => setAvatarUploading(false));
+    };
 
     const clearPersistedState = () => {
         const persisted = sessionStorage.getItem("recoil-persist");
@@ -114,9 +141,40 @@ const Profile = (props) => {
             >
                 <Meta
                     avatar={
-                        <Avatar src={currentUser.profilePicture} className="user-avatar-circle">
-                            {currentUser.name?.[0]?.toUpperCase()}
-                        </Avatar>
+                        <div style={{position: "relative", display: "inline-block"}}>
+                            <Avatar src={currentUser.profilePicture} className="user-avatar-circle">
+                                {currentUser.name?.[0]?.toUpperCase()}
+                            </Avatar>
+                            <label
+                                htmlFor="profile-avatar-upload"
+                                style={{
+                                    position: "absolute",
+                                    bottom: 0,
+                                    right: 0,
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: "50%",
+                                    background: "#7c3aed",
+                                    color: "#fff",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    cursor: "pointer",
+                                    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                                    fontSize: 14,
+                                }}
+                            >
+                                {avatarUploading ? "…" : <i className="fa fa-camera" />}
+                            </label>
+                            <input
+                                id="profile-avatar-upload"
+                                type="file"
+                                accept="image/jpeg,image/png,image/gif,image/webp"
+                                style={{display: "none"}}
+                                onChange={handleAvatarUpload}
+                                disabled={avatarUploading}
+                            />
+                        </div>
                     }
                     title={currentUser.name}
                     description={"@" + currentUser.username}
@@ -146,9 +204,16 @@ const Profile = (props) => {
                         rules={[
                             {required: true, message: "Введите имя пользователя"},
                             {min: 3, max: 15, message: "От 3 до 15 символов"},
+                            {
+                                validator: (_, value) => {
+                                    if (!value) return Promise.resolve();
+                                    return /^[a-zA-Z0-9_-]+$/.test(value)
+                                        ? Promise.resolve()
+                                        : Promise.reject(new Error("Разрешены только: a-z, A-Z, 0-9, - и _"));
+                                },
+                            },
                         ]}
                     >
-                        <Input placeholder="username"/>
                     </Form.Item>
 
                     <Form.Item
