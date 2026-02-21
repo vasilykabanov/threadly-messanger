@@ -214,6 +214,7 @@ const Profile = (props) => {
                             },
                         ]}
                     >
+                        <Input placeholder="username"/>
                     </Form.Item>
 
                     <Form.Item
