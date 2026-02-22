@@ -5,17 +5,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import ru.vkabanov.threadlychat.exception.ForbiddenException;
 import ru.vkabanov.threadlychat.model.ChatMessage;
 import ru.vkabanov.threadlychat.security.CurrentUser;
 import ru.vkabanov.threadlychat.service.ChatMessageService;
+import ru.vkabanov.threadlychat.service.ImageMessageService;
 import ru.vkabanov.threadlychat.service.UserStatusService;
 
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +27,7 @@ public class ChatController {
 
     private final ChatMessageService chatMessageService;
     private final UserStatusService userStatusService;
+    private final ImageMessageService imageMessageService;
 
     @GetMapping(value = "/messages/{senderId}/{recipientId}/count", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Long> countNewMessages(@PathVariable String senderId, @PathVariable String recipientId,
@@ -49,6 +50,53 @@ public class ChatController {
         ChatMessage message = chatMessageService.findById(id);
         ensureParticipant(currentUser.getUserId(), message.getSenderId(), message.getRecipientId());
         return ResponseEntity.ok(message);
+    }
+
+    /**
+     * Загрузка изображения в чат.
+     * multipart/form-data: file (файл), chatId (идентификатор чата).
+     * Возвращает созданное сообщение с полем imageUrl (presigned URL).
+     */
+    @PostMapping(value = "/messages/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ChatMessage> uploadImage(@RequestParam("file") MultipartFile file,
+                                                    @RequestParam("chatId") String chatId,
+                                                    @AuthenticationPrincipal CurrentUser currentUser) {
+        ChatMessage message = imageMessageService.sendImageMessage(currentUser, chatId, file);
+        return ResponseEntity.ok(message);
+    }
+
+    /**
+     * Получить временную (presigned) ссылку на изображение сообщения.
+     * Доступ только для участников чата.
+     */
+    @GetMapping(value = "/messages/{id}/image-url", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, String>> getImageUrl(@PathVariable String id,
+                                                           @AuthenticationPrincipal CurrentUser currentUser) {
+        return imageMessageService.getImageUrl(id, currentUser)
+                .map(url -> ResponseEntity.ok(Map.of("url", url)))
+                .orElse(ResponseEntity.noContent().build());
+    }
+
+    /**
+     * Прокси изображения сообщения (same-origin, обход ORB). Участник чата проверяется по JWT.
+     */
+    @GetMapping(value = "/messages/{id}/image")
+    public ResponseEntity<StreamingResponseBody> getMessageImage(@PathVariable String id,
+                                                                 @AuthenticationPrincipal CurrentUser currentUser) {
+        return imageMessageService.getImageStream(id, currentUser)
+                .map(result -> {
+                    MediaType mediaType = MediaType.parseMediaType(result.getContentType());
+                    StreamingResponseBody body = outputStream -> {
+                        try (InputStream in = result.getStream()) {
+                            in.transferTo(outputStream);
+                        }
+                    };
+                    return ResponseEntity.ok()
+                            .contentType(mediaType)
+                            .header("Cache-Control", "private, max-age=3600")
+                            .body(body);
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping(value = "/messages/contacts/{userId}", produces = MediaType.APPLICATION_JSON_VALUE)

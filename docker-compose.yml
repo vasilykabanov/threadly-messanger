@@ -53,6 +53,21 @@ services:
     volumes:
       - mongo-chat-data:/data/db
 
+  # ---------------- MinIO (хранилище изображений чата) ----------------
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    command: server /data
+    env_file:
+      - .env
+    environment:
+      MINIO_ROOT_USER: ${THREADLY_STORAGE_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${THREADLY_STORAGE_SECRET_KEY}
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+
   # ---------------- threadly-chat ----------------
   threadly-chat:
     build:
@@ -64,6 +79,7 @@ services:
     depends_on:
       - mongo-chat
       - threadly-auth
+      - minio
     env_file:
       - .env
     environment:
@@ -72,6 +88,15 @@ services:
       MONGODB_CHAT_DATABASE: ${MONGODB_CHAT_DATABASE}
       AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
       JWT_SECRET: ${JWT_SECRET}
+      THREADLY_STORAGE_ENABLED: ${THREADLY_STORAGE_ENABLED}
+      THREADLY_STORAGE_ENDPOINT: ${THREADLY_STORAGE_ENDPOINT}
+      THREADLY_STORAGE_PRESIGNED_ENDPOINT: ${THREADLY_STORAGE_PRESIGNED_ENDPOINT}
+      THREADLY_STORAGE_BUCKET: ${THREADLY_STORAGE_BUCKET}
+      THREADLY_STORAGE_ACCESS_KEY: ${THREADLY_STORAGE_ACCESS_KEY}
+      THREADLY_STORAGE_SECRET_KEY: ${THREADLY_STORAGE_SECRET_KEY}
+      THREADLY_STORAGE_REGION: ${THREADLY_STORAGE_REGION}
+      THREADLY_STORAGE_PRESIGNED_EXPIRY: ${THREADLY_STORAGE_PRESIGNED_EXPIRY}
+      THREADLY_IMAGE_MAX_SIZE: ${THREADLY_IMAGE_MAX_SIZE}
     restart: unless-stopped
 
   # ---------------- threadly-frontend ----------------
@@ -90,3 +115,4 @@ services:
 volumes:
   mongo-auth-data:
   mongo-chat-data:
+  minio-data:
