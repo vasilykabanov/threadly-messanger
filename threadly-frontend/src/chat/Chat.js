@@ -732,8 +732,16 @@ const Chat = (props) => {
             });
     };
 
+    const onContactsRefresh = () => {
+        const uid = getUserIdFromToken() ?? currentUser?.id;
+        if (uid && (!stompClient || !stompClient.connected)) {
+            connect(uid);
+        }
+        loadContacts(undefined, uid);
+    };
+
     const {scrollRef: contactsScrollRef, pullDistance, isRefreshing: isContactsRefreshing, isPullGestureRef} =
-        usePullToRefresh({onRefresh: loadContacts, threshold: 60});
+        usePullToRefresh({onRefresh: onContactsRefresh, threshold: 60});
 
     const isNewDay = (current, previous) => {
         if (!previous) return true;
