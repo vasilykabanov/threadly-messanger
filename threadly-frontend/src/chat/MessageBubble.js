@@ -23,6 +23,7 @@ const MessageBubble = ({
     messageType = "TEXT",
     imageUrl,
     messageId,
+    onImageLoad,
 }) => {
     const [proxyImageUrl, setProxyImageUrl] = useState(null);
     const [imageLoadError, setImageLoadError] = useState(false);
@@ -111,6 +112,9 @@ const MessageBubble = ({
                         onKeyDown={(e) => e.key === "Enter" && setLightboxOpen(true)}
                         aria-label="Открыть фото"
                         title="Открыть фото"
+                        onLoad={() => {
+                            if (onImageLoad) requestAnimationFrame(() => onImageLoad());
+                        }}
                     />
                     {content && content !== "[Photo]" && (
                         <span className="text message-bubble-image-caption">{renderMessageText(content)}</span>

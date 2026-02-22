@@ -1,4 +1,4 @@
-import React, {useEffect, useLayoutEffect, useRef, useState} from "react";
+import React, {useCallback, useEffect, useLayoutEffect, useRef, useState} from "react";
 import {Button, Drawer, message, Spin, Modal} from "antd";
 import {
     getUsers,
@@ -61,6 +61,7 @@ const Chat = (props) => {
     const [deleteChatLoading, setDeleteChatLoading] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const messagesContainerRef = useRef(null);
+    const messagesListRef = useRef(null);
     const heartbeatIntervalRef = useRef(null);
     const connectUserIdRef = useRef(null);
     const pendingMessagesRef = useRef([]);
@@ -192,6 +193,30 @@ const Chat = (props) => {
             behavior: "auto",
         });
     }, [messages.length, activeContact?.id, isUserNearBottom]);
+
+    useEffect(() => {
+        // После загрузки фото высота списка сообщений растёт — снова прокручиваем вниз, если пользователь у конца
+        const container = messagesContainerRef.current;
+        const listEl = messagesListRef.current;
+        if (!container || !listEl || !activeContact?.id || !messages.length) return;
+
+        const resizeObserver = new ResizeObserver(() => {
+            if (!isUserNearBottom) return;
+            container.scrollTo({
+                top: container.scrollHeight,
+                behavior: "auto",
+            });
+        });
+        resizeObserver.observe(listEl);
+        return () => resizeObserver.disconnect();
+    }, [activeContact?.id, messages.length, isUserNearBottom]);
+
+    const scrollMessagesToBottomIfNear = useCallback(() => {
+        if (!isUserNearBottom) return;
+        const container = messagesContainerRef.current;
+        if (!container) return;
+        container.scrollTo({ top: container.scrollHeight, behavior: "auto" });
+    }, [isUserNearBottom]);
 
     useEffect(() => {
         if (!activeContact?.username) return;
@@ -1012,7 +1037,7 @@ const Chat = (props) => {
                             ref={messagesContainerRef}
                             onScroll={handleMessagesScroll}
                         >
-                            <ul>
+                            <ul ref={messagesListRef}>
                                 {messages.map((msg, index) => {
                                     const showDate = isNewDay(msg.timestamp, messages[index - 1]?.timestamp);
 
@@ -1039,6 +1064,7 @@ const Chat = (props) => {
                                                     messageType={msg.messageType || "TEXT"}
                                                     imageUrl={msg.imageUrl}
                                                     messageId={msg.id}
+                                                    onImageLoad={scrollMessagesToBottomIfNear}
                                                 />
                                             </li>
                                         </React.Fragment>
