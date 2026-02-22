@@ -13,6 +13,7 @@ import {
     deleteChat as deleteChatRequest,
     ensurePushSubscribed,
     searchUsers,
+    uploadImageMessage,
 } from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
 import {
@@ -71,6 +72,8 @@ const Chat = (props) => {
         position: {x: 0, y: 0},
         messageContent: "",
     });
+    const [imageUploading, setImageUploading] = useState(false);
+    const fileInputRef = useRef(null);
     useEffect(() => {
         document.body.classList.add("chat-page");
         document.documentElement.classList.add("chat-page");
@@ -414,6 +417,45 @@ const Chat = (props) => {
             delete pendingTimeoutsRef.current[clientTempId];
         }, PENDING_FAIL_SEC * 1000);
         pendingTimeoutsRef.current[clientTempId] = timeoutId;
+    };
+
+    const getChatId = () => {
+        if (!activeContact?.id || !currentUser?.id) return null;
+        if (messages.length > 0 && messages[0].chatId) return messages[0].chatId;
+        return `${currentUser.id}_${activeContact.id}`;
+    };
+
+    const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+    const MAX_IMAGE_SIZE_MB = 10;
+
+    const handleAttachImage = (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file || !activeContact?.id || !currentUser?.id) return;
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+            message.warning("Допустимы только JPG, PNG и WebP");
+            return;
+        }
+        if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+            message.warning(`Размер файла не более ${MAX_IMAGE_SIZE_MB} МБ`);
+            return;
+        }
+        const chatId = getChatId();
+        if (!chatId) return;
+        setImageUploading(true);
+        uploadImageMessage(file, chatId)
+            .then((saved) => {
+                setMessages((prev) => [...prev, { ...saved, status: saved.status || "RECEIVED" }]);
+                setLastMessageByContact((prev) => ({ ...prev, [activeContact.id]: saved }));
+                if (!contacts.some((c) => c.id === activeContact.id)) {
+                    setContacts([activeContact, ...contacts]);
+                }
+            })
+            .catch((err) => {
+                const msg = err?.message || err?.error || "Не удалось отправить фото";
+                message.error(msg, 3);
+            })
+            .finally(() => setImageUploading(false));
     };
 
     const normalizeText = (value = "") =>
@@ -884,8 +926,10 @@ const Chat = (props) => {
                                             </span>
                                         </div>
                                         <p className="preview">
-                                            {lastMessageByContact[contact.id]?.content
-                                                ? lastMessageByContact[contact.id].content
+                                            {lastMessageByContact[contact.id]
+                                                ? (lastMessageByContact[contact.id].messageType === "IMAGE"
+                                                    ? "[Фото]"
+                                                    : lastMessageByContact[contact.id].content ?? "")
                                                 : "Нет сообщений"}
                                         </p>
                                         <span className="meta-badge-cell">
@@ -984,6 +1028,9 @@ const Chat = (props) => {
                                                     formatTime={formatTime}
                                                     isOwn={msg.senderId === currentUser.id}
                                                     status={msg.status}
+                                                    messageType={msg.messageType || "TEXT"}
+                                                    imageUrl={msg.imageUrl}
+                                                    messageId={msg.id}
                                                 />
                                             </li>
                                         </React.Fragment>
@@ -994,6 +1041,28 @@ const Chat = (props) => {
 
                         <div className="message-input">
                             <div className="wrap">
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    className="message-input-file"
+                                    aria-label="Прикрепить фото"
+                                    onChange={handleAttachImage}
+                                />
+                                <button
+                                    type="button"
+                                    className="attachment"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={imageUploading}
+                                    aria-label="Прикрепить фото"
+                                    title="Прикрепить фото"
+                                >
+                                    {imageUploading ? (
+                                        <Spin size="small" className="attachment-spinner" />
+                                    ) : (
+                                        <i className="fa fa-paperclip" aria-hidden="true" />
+                                    )}
+                                </button>
                                 <input
                                     className="chat-input"
                                     name="user_input"

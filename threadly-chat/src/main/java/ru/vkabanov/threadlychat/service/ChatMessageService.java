@@ -13,6 +13,7 @@ import ru.vkabanov.threadlychat.exception.ResourceNotFoundException;
 import ru.vkabanov.threadlychat.model.ChatMessage;
 import ru.vkabanov.threadlychat.model.ChatNotification;
 import ru.vkabanov.threadlychat.model.MessageStatus;
+import ru.vkabanov.threadlychat.model.MessageType;
 import ru.vkabanov.threadlychat.model.ReadReceiptPayload;
 import ru.vkabanov.threadlychat.repository.ChatMessageRepository;
 
@@ -38,6 +39,8 @@ public class ChatMessageService {
     private UserStatusService userStatusService;
     @Autowired
     private PushNotificationService pushNotificationService;
+    @Autowired(required = false)
+    private ImageStorageService imageStorageService;
 
     /** Сохраняет сообщение, уведомляет получателя и при необходимости отправляет push. Возвращает сохранённое сообщение для sent-ack. */
     public ChatMessage sendMessage(ChatMessage chatMessage) {
@@ -48,13 +51,17 @@ public class ChatMessageService {
                 new ChatNotification(saved.getId(), saved.getSenderId(), saved.getSenderName()));
 
         if (!"online".equalsIgnoreCase(userStatusService.getStatus(chatMessage.getRecipientId()))) {
+            String content = saved.getContent();
+            if (saved.getMessageType() == MessageType.IMAGE) {
+                content = content != null ? content : "[Photo]";
+            }
             pushNotificationService.sendToUser(chatMessage.getRecipientId(), Map.of(
                     "type", "chat_message",
                     "messageId", saved.getId(),
                     "senderId", saved.getSenderId(),
-                    "senderName", saved.getSenderName(),
+                    "senderName", saved.getSenderName() != null ? saved.getSenderName() : "",
                     "recipientId", saved.getRecipientId(),
-                    "content", saved.getContent()
+                    "content", content
             ));
         }
 
@@ -92,16 +99,19 @@ public class ChatMessageService {
             }
         }
 
+        enrichWithImageUrls(messages);
         return messages;
     }
 
     public ChatMessage findById(String id) {
-        return repository.findById(id)
+        ChatMessage message = repository.findById(id)
                 .map(chatMessage -> {
                     chatMessage.setStatus(MessageStatus.DELIVERED);
                     return repository.save(chatMessage);
                 })
                 .orElseThrow(() -> new ResourceNotFoundException("can't find message (" + id + ")"));
+        enrichWithImageUrl(message);
+        return message;
     }
 
     public List<String> findContactIds(String userId) {
@@ -178,6 +188,27 @@ public class ChatMessageService {
         if (chatId == null) {
             return;
         }
+        if (imageStorageService != null && imageStorageService.isEnabled()) {
+            List<ChatMessage> messages = repository.findByChatId(chatId);
+            for (ChatMessage m : messages) {
+                if (m.getMessageType() == MessageType.IMAGE && m.getImageKey() != null) {
+                    imageStorageService.delete(m.getImageKey());
+                }
+            }
+        }
         repository.deleteByChatId(chatId);
+    }
+
+    private void enrichWithImageUrl(ChatMessage message) {
+        if (imageStorageService != null && imageStorageService.isEnabled()
+                && message != null && message.getMessageType() == MessageType.IMAGE && message.getImageKey() != null) {
+            imageStorageService.getPresignedUrl(message.getImageKey()).ifPresent(message::setImageUrl);
+        }
+    }
+
+    private void enrichWithImageUrls(List<ChatMessage> messages) {
+        if (messages != null) {
+            messages.forEach(this::enrichWithImageUrl);
+        }
     }
 }

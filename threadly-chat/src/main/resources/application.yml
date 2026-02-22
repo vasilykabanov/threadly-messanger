@@ -15,6 +15,17 @@ security:
     prefix: "Bearer "
     secret: ${JWT_SECRET:}
 threadly:
+  storage:
+    enabled: ${THREADLY_STORAGE_ENABLED}
+    endpoint: ${THREADLY_STORAGE_ENDPOINT}
+    presigned-endpoint: ${THREADLY_STORAGE_PRESIGNED_ENDPOINT}
+    bucket: ${THREADLY_STORAGE_BUCKET}
+    access-key: ${THREADLY_STORAGE_ACCESS_KEY}
+    secret-key: ${THREADLY_STORAGE_SECRET_KEY}
+    region: ${THREADLY_STORAGE_REGION}
+    presigned-expiry-seconds: ${THREADLY_STORAGE_PRESIGNED_EXPIRY}
+  image:
+    max-size-bytes: ${THREADLY_IMAGE_MAX_SIZE}
   push:
     # Генерируются один раз (VAPID). Пример генерации:
     # node -e "const webpush=require('web-push');console.log(webpush.generateVAPIDKeys())"

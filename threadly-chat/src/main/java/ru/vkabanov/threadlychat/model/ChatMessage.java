@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Date;
@@ -23,8 +24,20 @@ public class ChatMessage {
    private String recipientId;
    private String senderName;
    private String recipientName;
+   /** Текст сообщения (для TEXT) или подпись/описание (для IMAGE, опционально). */
    private String content;
    private Date timestamp;
    private MessageStatus status;
    private Set<String> deletedFor;
+
+   /** Тип сообщения: TEXT или IMAGE. По умолчанию TEXT для обратной совместимости. */
+   @Builder.Default
+   private MessageType messageType = MessageType.TEXT;
+
+   /** Ключ объекта в MinIO. Заполняется только для messageType == IMAGE. В БД хранится только ключ. */
+   private String imageKey;
+
+   /** Presigned URL для отображения изображения. Не сохраняется в БД, заполняется при отдаче клиенту. */
+   @Transient
+   private String imageUrl;
 }

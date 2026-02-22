@@ -266,6 +266,74 @@ export function deleteChat(senderId, recipientId, userId, scope = "me") {
     });
 }
 
+/**
+ * Загрузка изображения в чат. multipart: file + chatId.
+ * Возвращает созданное сообщение { id, chatId, senderId, recipientId, messageType: "IMAGE", imageKey, imageUrl, content, timestamp, status }.
+ */
+export function uploadImageMessage(file, chatId) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    const token = localStorage.getItem("accessToken");
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("chatId", chatId);
+
+    const headers = new Headers();
+    headers.append("Authorization", "Bearer " + token);
+
+    return fetch(CHAT_SERVICE + "/messages/image", {
+        method: "POST",
+        headers,
+        body: formData,
+    }).then(async (response) => {
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            if (response.status === 401 && token) {
+                localStorage.removeItem("accessToken");
+                window.location.href = "/login";
+            }
+            return Promise.reject({ status: response.status, ...json });
+        }
+        return json;
+    });
+}
+
+/**
+ * Получить временную ссылку на изображение сообщения (если presigned URL истёк).
+ * Возвращает { url } или 204 без тела.
+ */
+export function getMessageImageUrl(messageId) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/messages/" + encodeURIComponent(messageId) + "/image-url",
+        method: "GET",
+    });
+}
+
+/**
+ * Загрузить изображение сообщения через прокси (same-origin, обход ORB).
+ * Возвращает blob URL для использования в <img src>. Вызывающий должен вызвать URL.revokeObjectURL(url) при размонтировании.
+ */
+export function fetchMessageImageAsBlobUrl(messageId) {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+        return Promise.resolve(null);
+    }
+    return fetch(CHAT_SERVICE + "/messages/" + encodeURIComponent(messageId) + "/image", {
+        method: "GET",
+        headers: { Authorization: "Bearer " + token },
+    })
+        .then((res) => {
+            if (!res.ok) return null;
+            return res.blob();
+        })
+        .then((blob) => (blob ? URL.createObjectURL(blob) : null))
+        .catch(() => null);
+}
+
 // -------------------------
 // Web Push
 // -------------------------
