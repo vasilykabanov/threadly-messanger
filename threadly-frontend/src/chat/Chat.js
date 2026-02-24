@@ -2,7 +2,6 @@ import React, {useCallback, useEffect, useLayoutEffect, useRef, useState} from "
 import {Button, Drawer, message, Spin, Modal} from "antd";
 import {
     getUsers,
-    findChatMessages,
     findChatMessage,
     getUserSummary,
     getChatContacts,
@@ -16,6 +15,7 @@ import {
     uploadImageMessage,
     getChatImages,
     fetchMessageImageAsBlobUrl,
+    getChatMessagesPage,
 } from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
 import {
@@ -122,6 +122,10 @@ const Chat = (props) => {
     });
     const [imageUploading, setImageUploading] = useState(false);
     const fileInputRef = useRef(null);
+    const [messagesPage, setMessagesPage] = useState(0);
+    const [hasMoreMessages, setHasMoreMessages] = useState(true);
+    const [messagesLoadingOlder, setMessagesLoadingOlder] = useState(false);
+    const scrollRestoreRef = useRef(null);
     const [photos, setPhotos] = useState([]);
     const [photosPage, setPhotosPage] = useState(0);
     const [photosHasMore, setPhotosHasMore] = useState(true);
@@ -268,6 +272,16 @@ const Chat = (props) => {
         resizeObserver.observe(listEl);
         return () => resizeObserver.disconnect();
     }, [activeContact?.id, messages.length, isUserNearBottom]);
+
+    useLayoutEffect(() => {
+        const restore = scrollRestoreRef.current;
+        if (!restore) return;
+        const container = messagesContainerRef.current;
+        if (!container) return;
+        const newScrollHeight = container.scrollHeight;
+        container.scrollTop = restore.scrollTop + (newScrollHeight - restore.scrollHeight);
+        scrollRestoreRef.current = null;
+    }, [messages]);
 
     const scrollMessagesToBottomIfNear = useCallback(() => {
         if (!isUserNearBottom) return;
@@ -696,19 +710,48 @@ const Chat = (props) => {
     const loadChatForContact = (contact) => {
         if (!contact?.id) return;
         setMessages([]);
-        findChatMessages(contact.id, currentUser.id)
-            .then((items) => {
-                setMessages(items);
+        setMessagesPage(0);
+        setHasMoreMessages(true);
+        getChatMessagesPage(contact.id, currentUser.id, 0, 50)
+            .then((data) => {
+                const items = data?.items || [];
+                const ordered = [...items].reverse();
+                setMessages(ordered);
+                setHasMoreMessages(Boolean(data?.hasMore));
+                setMessagesPage(data?.nextPage != null ? data.nextPage : 0);
                 if (items.length > 0) {
                     setLastMessageByContact((prev) => ({
                         ...prev,
-                        [contact.id]: items[items.length - 1],
+                        [contact.id]: items[0],
                     }));
                 }
                 setContacts((prev) =>
                     prev.map((c) => (c.id === contact.id ? {...c, newMessages: 0} : c))
                 );
             });
+    };
+
+    const loadMoreMessages = () => {
+        if (!activeContact?.id || !currentUser?.id || !hasMoreMessages || messagesLoadingOlder) return;
+        const container = messagesContainerRef.current;
+        if (!container) return;
+        const scrollHeight = container.scrollHeight;
+        const scrollTop = container.scrollTop;
+        scrollRestoreRef.current = { scrollHeight, scrollTop };
+        setMessagesLoadingOlder(true);
+        getChatMessagesPage(activeContact.id, currentUser.id, messagesPage, 50)
+            .then((data) => {
+                const items = data?.items || [];
+                if (items.length === 0) {
+                    setHasMoreMessages(false);
+                    return;
+                }
+                const ordered = [...items].reverse();
+                setMessages((prev) => [...ordered, ...prev]);
+                setHasMoreMessages(Boolean(data?.hasMore));
+                setMessagesPage(data?.nextPage != null ? data.nextPage : messagesPage + 1);
+            })
+            .finally(() => setMessagesLoadingOlder(false));
     };
 
     const loadContactProfile = (contact) => {
@@ -742,8 +785,8 @@ const Chat = (props) => {
 
                 return Promise.all(
                     contactsWithHistory.map((contact) =>
-                        findChatMessages(contact.id, uid).then((msgs) => {
-                            const lastMessage = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+                        getChatMessagesPage(contact.id, uid, 0, 1).then((data) => {
+                            const lastMessage = data?.items?.length > 0 ? data.items[0] : null;
                             const newMessages = Number(unreadCounts[contact.id]) || 0;
                             const status = statuses && statuses[contact.id] ? statuses[contact.id] : "offline";
                             return {
@@ -910,6 +953,11 @@ const Chat = (props) => {
 
         // Считаем, что пользователь "у низа", если он ближе 64px к концу.
         setIsUserNearBottom(distanceFromBottom < 64);
+
+        // Подгрузка старых сообщений при скролле вверх.
+        if (container.scrollTop < 80 && hasMoreMessages && !messagesLoadingOlder) {
+            loadMoreMessages();
+        }
     };
 
     const openContextMenu = (e, position, messageContent) => {
@@ -1186,6 +1234,11 @@ const Chat = (props) => {
                             ref={messagesContainerRef}
                             onScroll={handleMessagesScroll}
                         >
+                            {messagesLoadingOlder && (
+                                <div className="messages-loading-older">
+                                    <Spin size="small" />
+                                </div>
+                            )}
                             <ul ref={messagesListRef}>
                                 {messages.map((msg, index) => {
                                     const showDate = isNewDay(msg.timestamp, messages[index - 1]?.timestamp);

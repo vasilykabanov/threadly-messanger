@@ -13,6 +13,7 @@ import ru.vkabanov.threadlychat.exception.ResourceNotFoundException;
 import ru.vkabanov.threadlychat.exception.ForbiddenException;
 import ru.vkabanov.threadlychat.model.ChatMessage;
 import ru.vkabanov.threadlychat.model.ChatImagesPage;
+import ru.vkabanov.threadlychat.model.ChatMessagesPage;
 import ru.vkabanov.threadlychat.model.ChatRoom;
 import ru.vkabanov.threadlychat.model.ChatNotification;
 import ru.vkabanov.threadlychat.model.MessageStatus;
@@ -91,15 +92,43 @@ public class ChatMessageService {
         return mongoOperations.count(query, ChatMessage.class);
     }
 
-    public List<ChatMessage> findChatMessages(String senderId, String recipientId) {
-        var chatId = chatRoomService.getChatId(senderId, recipientId, false);
-        var messages = chatId.map(cId -> repository.findByChatId(cId)).orElse(new ArrayList<>());
+    /**
+     * Пагинированная загрузка сообщений чата (как для вкладки «Фото»).
+     * Сортировка по дате DESC: страница 0 — самые новые, при подгрузке — более старые.
+     *
+     * @param senderId   один участник (например, контакт)
+     * @param recipientId второй участник (например, текущий пользователь)
+     * @param page       номер страницы (0-based)
+     * @param size       размер страницы
+     */
+    public ChatMessagesPage findChatMessagesPage(String senderId, String recipientId, int page, int size) {
+        if (page < 0) page = 0;
+        if (size <= 0 || size > 200) size = 50;
 
-        messages = messages.stream()
-                .filter(message -> message.getDeletedFor() == null || !message.getDeletedFor().contains(recipientId))
-                .toList();
+        var chatIdOpt = chatRoomService.getChatId(senderId, recipientId, false);
+        if (chatIdOpt.isEmpty()) {
+            return ChatMessagesPage.builder()
+                    .items(new ArrayList<>())
+                    .hasMore(false)
+                    .nextPage(null)
+                    .build();
+        }
+        String chatId = chatIdOpt.get();
 
-        if (messages.size() > 0) {
+        Query query = new Query(Criteria
+                .where("chatId").is(chatId)
+                .and("deletedFor").ne(recipientId));
+        query.with(Sort.by(Sort.Direction.DESC, "timestamp"));
+        query.skip((long) page * size);
+        query.limit(size + 1);
+
+        List<ChatMessage> results = mongoOperations.find(query, ChatMessage.class);
+        boolean hasMore = results.size() > size;
+        if (hasMore) {
+            results = results.subList(0, size);
+        }
+
+        if (page == 0 && !results.isEmpty()) {
             long modified = updateStatuses(senderId, recipientId, MessageStatus.DELIVERED);
 
             if (modified > 0) {
@@ -107,8 +136,13 @@ public class ChatMessageService {
             }
         }
 
-        enrichWithImageUrls(messages);
-        return messages;
+        enrichWithImageUrls(results);
+
+        return ChatMessagesPage.builder()
+                .items(results)
+                .hasMore(hasMore)
+                .nextPage(hasMore ? page + 1 : null)
+                .build();
     }
 
     public ChatMessage findById(String id) {

@@ -1011,6 +1011,12 @@ span.status-circle:before {
     scroll-behavior: auto; /* мгновенный скролл при открытии чата, без анимации */
 }
 
+.messages-loading-older {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0;
+}
+
 #frame .content .messages::-webkit-scrollbar {
     width: 8px;
     background: transparent;

@@ -192,13 +192,13 @@ export function countNewMessages(senderId, recipientId) {
     });
 }
 
-export function findChatMessages(senderId, recipientId) {
+export function getChatMessagesPage(senderId, recipientId, page = 0, size = 50) {
     if (!localStorage.getItem("accessToken")) {
         return Promise.reject("No access token set.");
     }
-
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
     return request({
-        url: CHAT_SERVICE + "/messages/" + senderId + "/" + recipientId,
+        url: CHAT_SERVICE + "/messages/" + senderId + "/" + recipientId + "/page?" + params.toString(),
         method: "GET",
     });
 }
