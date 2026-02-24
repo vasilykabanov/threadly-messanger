@@ -459,8 +459,6 @@ span.status-circle:before {
 }
 
 #frame #sidepanel #search {
-    border-top: 1px solid #32465a;
-    border-bottom: 1px solid #32465a;
     font-weight: 300;
     position: relative;
     display: flex;
@@ -1095,7 +1093,7 @@ span.status-circle:before {
     border-radius: 50%;
     background: transparent;
     color: var(--color-accent, #435f7a);
-    font-size: 20px;
+    font-size: 30px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -1586,7 +1584,6 @@ body.theme-new #frame #sidepanel #search {
     padding: 10px 12px;
     border-radius: 18px;
     background: rgba(30, 41, 59, 0.6);
-    border: 1px solid rgba(148, 163, 184, 0.18);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -1625,7 +1622,6 @@ body.theme-new #frame #sidepanel #contacts ul li.contact {
     margin: 8px 12px;
     border-radius: 18px;
     background: rgba(30, 41, 59, 0.55);
-    border: 1px solid rgba(148, 163, 184, 0.16);
     transition: transform 0.2s ease, background 0.2s ease;
 }
 
@@ -1725,8 +1721,6 @@ body.theme-new #frame .content .message-input {
 
 body.theme-new #frame .content .message-input .wrap {
     background: rgba(30, 41, 59, 0.7);
-    border-radius: 18px;
-    border: 1px solid rgba(148, 163, 184, 0.2);
     backdrop-filter: blur(16px);
 }
 
