@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import ru.vkabanov.threadlychat.exception.ForbiddenException;
 import ru.vkabanov.threadlychat.model.ChatMessage;
+import ru.vkabanov.threadlychat.model.ChatImagesPage;
 import ru.vkabanov.threadlychat.security.CurrentUser;
 import ru.vkabanov.threadlychat.service.ChatMessageService;
 import ru.vkabanov.threadlychat.service.ImageMessageService;
@@ -148,6 +149,27 @@ public class ChatController {
             statuses.put(contactId, userStatusService.getStatus(contactId));
         }
         return ResponseEntity.ok(statuses);
+    }
+
+    /**
+     * Список изображений чата для вкладки "Фото" в профиле собеседника.
+     * Возвращает только сообщения типа IMAGE для указанного chatId,
+     * отсортированные по дате убыванию. Поддерживает пагинацию.
+     *
+     * GET /chats/{chatId}/images?page=0&size=60
+     */
+    @GetMapping(value = "/chats/{chatId}/images", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ChatImagesPage> getChatImages(@PathVariable String chatId,
+                                                        @RequestParam(defaultValue = "0") int page,
+                                                        @RequestParam(defaultValue = "60") int size,
+                                                        @AuthenticationPrincipal CurrentUser currentUser) {
+        if (currentUser == null) {
+            log.warn("chat images: no principal for chatId={}", chatId);
+            throw new ForbiddenException("Access denied to chat images");
+        }
+
+        ChatImagesPage result = chatMessageService.findImageMessagesByChat(chatId, currentUser.getUserId(), page, size);
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping(value = "/messages/{senderId}/{recipientId}")

@@ -10,12 +10,18 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import ru.vkabanov.threadlychat.exception.ResourceNotFoundException;
+import ru.vkabanov.threadlychat.exception.ForbiddenException;
 import ru.vkabanov.threadlychat.model.ChatMessage;
+import ru.vkabanov.threadlychat.model.ChatImagesPage;
+import ru.vkabanov.threadlychat.model.ChatRoom;
 import ru.vkabanov.threadlychat.model.ChatNotification;
 import ru.vkabanov.threadlychat.model.MessageStatus;
 import ru.vkabanov.threadlychat.model.MessageType;
 import ru.vkabanov.threadlychat.model.ReadReceiptPayload;
 import ru.vkabanov.threadlychat.repository.ChatMessageRepository;
+import ru.vkabanov.threadlychat.repository.ChatRoomRepository;
+
+import org.springframework.data.domain.Sort;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,6 +47,8 @@ public class ChatMessageService {
     private PushNotificationService pushNotificationService;
     @Autowired(required = false)
     private ImageStorageService imageStorageService;
+    @Autowired
+    private ChatRoomRepository chatRoomRepository;
 
     /** Сохраняет сообщение, уведомляет получателя и при необходимости отправляет push. Возвращает сохранённое сообщение для sent-ack. */
     public ChatMessage sendMessage(ChatMessage chatMessage) {
@@ -197,6 +205,56 @@ public class ChatMessageService {
             }
         }
         repository.deleteByChatId(chatId);
+    }
+
+    /**
+     * Возвращает страницу изображений для указанного чата.
+     * Проверяет, что текущий пользователь является участником чата.
+     * Сообщения отсортированы по дате убыванию (самые новые сверху).
+     *
+     * @param chatId       идентификатор чата
+     * @param currentUserId текущий пользователь
+     * @param page         номер страницы (0-based)
+     * @param size         размер страницы
+     */
+    public ChatImagesPage findImageMessagesByChat(String chatId, String currentUserId, int page, int size) {
+        if (page < 0) {
+            page = 0;
+        }
+
+        if (size <= 0 || size > 200) {
+            size = 60;
+        }
+
+        ChatRoom room = chatRoomRepository.findFirstByChatId(chatId)
+                .orElseThrow(() -> new ResourceNotFoundException("Chat not found: " + chatId));
+        boolean participant = currentUserId.equals(room.getSenderId()) || currentUserId.equals(room.getRecipientId());
+        if (!participant) {
+            throw new ForbiddenException("You are not a participant of this chat");
+        }
+
+        Query query = new Query(Criteria
+                .where("chatId").is(chatId)
+                .and("messageType").is(MessageType.IMAGE)
+                .and("deletedFor").ne(currentUserId));
+        query.with(Sort.by(Sort.Direction.DESC, "timestamp"));
+        query.skip((long) page * size);
+        query.limit(size + 1);
+
+        List<ChatMessage> results = mongoOperations.find(query, ChatMessage.class);
+
+        boolean hasMore = results.size() > size;
+        if (hasMore) {
+            results = results.subList(0, size);
+        }
+
+        enrichWithImageUrls(results);
+
+        return ChatImagesPage.builder()
+                .items(results)
+                .hasMore(hasMore)
+                .nextPage(hasMore ? page + 1 : null)
+                .build();
     }
 
     private void enrichWithImageUrl(ChatMessage message) {

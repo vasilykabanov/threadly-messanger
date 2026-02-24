@@ -334,6 +334,24 @@ export function fetchMessageImageAsBlobUrl(messageId) {
         .catch(() => null);
 }
 
+/**
+ * Получить изображения чата для вкладки "Фото" в профиле собеседника.
+ * Возвращает страницу с IMAGE-сообщениями, отсортированными по дате DESC.
+ */
+export function getChatImages(chatId, page = 0, size = 60) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    const params = new URLSearchParams({
+        page: String(page),
+        size: String(size),
+    });
+    return request({
+        url: CHAT_SERVICE + "/chats/" + encodeURIComponent(chatId) + "/images?" + params.toString(),
+        method: "GET",
+    });
+}
+
 // -------------------------
 // Web Push
 // -------------------------

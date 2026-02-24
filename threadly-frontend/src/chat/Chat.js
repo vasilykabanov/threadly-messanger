@@ -14,6 +14,8 @@ import {
     ensurePushSubscribed,
     searchUsers,
     uploadImageMessage,
+    getChatImages,
+    fetchMessageImageAsBlobUrl,
 } from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
 import {
@@ -28,6 +30,51 @@ import MessageContextMenu from "./MessageContextMenu";
 import MessageBubble from "./MessageBubble";
 import {copyToClipboard} from "../util/clipboardUtil";
 import {formatLastMessageDate} from "../util/dateFormatterUtil";
+
+/** Превью фото из чата: загрузка через прокси (blob), чтобы не упираться в CORS presigned URL. */
+function PhotoGridImage({ messageId, onClick }) {
+    const [blobUrl, setBlobUrl] = useState(null);
+    const blobRef = useRef(null);
+
+    useEffect(() => {
+        if (!messageId) return;
+        let cancelled = false;
+        fetchMessageImageAsBlobUrl(messageId).then((url) => {
+            if (cancelled) {
+                if (url) URL.revokeObjectURL(url);
+                return;
+            }
+            if (url) {
+                if (blobRef.current) URL.revokeObjectURL(blobRef.current);
+                blobRef.current = url;
+                setBlobUrl(url);
+            }
+        });
+        return () => {
+            cancelled = true;
+            if (blobRef.current) {
+                URL.revokeObjectURL(blobRef.current);
+                blobRef.current = null;
+            }
+            setBlobUrl(null);
+        };
+    }, [messageId]);
+
+    return (
+        <button
+            type="button"
+            className="photos-grid-item"
+            onClick={onClick}
+            disabled={!blobUrl}
+        >
+            {blobUrl ? (
+                <img src={blobUrl} alt="Фото из чата" loading="lazy" />
+            ) : (
+                <span className="photos-grid-placeholder" />
+            )}
+        </button>
+    );
+}
 
 const setVH = () => {
     document.documentElement.style.setProperty(
@@ -75,6 +122,17 @@ const Chat = (props) => {
     });
     const [imageUploading, setImageUploading] = useState(false);
     const fileInputRef = useRef(null);
+    const [photos, setPhotos] = useState([]);
+    const [photosPage, setPhotosPage] = useState(0);
+    const [photosHasMore, setPhotosHasMore] = useState(true);
+    const [photosLoading, setPhotosLoading] = useState(false);
+    const [photosError, setPhotosError] = useState(null);
+    const photosScrollRef = useRef(null);
+    const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
+    const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+    const [viewerBlobUrl, setViewerBlobUrl] = useState(null);
+    const viewerBlobRef = useRef(null);
+
     useEffect(() => {
         document.body.classList.add("chat-page");
         document.documentElement.classList.add("chat-page");
@@ -222,6 +280,74 @@ const Chat = (props) => {
         if (!activeContact?.username) return;
         loadContactProfile(activeContact);
     }, [activeContact?.username]);
+
+    const loadChatImages = (reset = false) => {
+        const chatId = getChatId();
+        if (!chatId) return;
+        if (!reset && (!photosHasMore || photosLoading)) return;
+
+        const pageToLoad = reset ? 0 : photosPage;
+        if (reset) {
+            setPhotosError(null);
+            setPhotos([]);
+            setPhotosHasMore(true);
+        }
+        setPhotosLoading(true);
+
+        getChatImages(chatId, pageToLoad, 60)
+            .then((data) => {
+                const items = data?.items || [];
+                setPhotos((prev) => reset ? items : [...prev, ...items]);
+                setPhotosHasMore(Boolean(data?.hasMore));
+                if (data?.nextPage != null) {
+                    setPhotosPage(data.nextPage);
+                } else {
+                    setPhotosPage(pageToLoad);
+                }
+            })
+            .catch(() => {
+                setPhotosError("Не удалось загрузить фотографии");
+            })
+            .finally(() => setPhotosLoading(false));
+    };
+
+    useEffect(() => {
+        if (!isProfileOpen) return;
+        if (!activeContact?.id) return;
+        loadChatImages(true);
+    }, [isProfileOpen, activeContact?.id]);
+
+    useEffect(() => {
+        if (!isPhotoViewerOpen || !photos.length) {
+            if (viewerBlobRef.current) {
+                URL.revokeObjectURL(viewerBlobRef.current);
+                viewerBlobRef.current = null;
+            }
+            setViewerBlobUrl(null);
+            return;
+        }
+        const msg = photos[activePhotoIndex];
+        const messageId = msg?.id;
+        if (!messageId) return;
+        let cancelled = false;
+        fetchMessageImageAsBlobUrl(messageId).then((url) => {
+            if (cancelled) {
+                if (url) URL.revokeObjectURL(url);
+                return;
+            }
+            if (viewerBlobRef.current) URL.revokeObjectURL(viewerBlobRef.current);
+            viewerBlobRef.current = url;
+            setViewerBlobUrl(url);
+        });
+        return () => {
+            cancelled = true;
+            if (viewerBlobRef.current) {
+                URL.revokeObjectURL(viewerBlobRef.current);
+                viewerBlobRef.current = null;
+            }
+            setViewerBlobUrl(null);
+        };
+    }, [isPhotoViewerOpen, activePhotoIndex, photos]);
 
     const sendStatusOnline = () => {
         if (stompClient && stompClient.connected) {
@@ -818,6 +944,29 @@ const Chat = (props) => {
 
     const isMobileChatOpen = isMobile && !!activeContact;
 
+    const handlePhotosScroll = () => {
+        const el = photosScrollRef.current;
+        if (!el) return;
+        const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+        if (distanceFromBottom < 64) {
+            loadChatImages(false);
+        }
+    };
+
+    const openPhotoViewer = (index) => {
+        if (index < 0 || index >= photos.length) return;
+        setActivePhotoIndex(index);
+        setIsPhotoViewerOpen(true);
+    };
+
+    const showPrevPhoto = () => {
+        setActivePhotoIndex((prev) => (prev > 0 ? prev - 1 : prev));
+    };
+
+    const showNextPhoto = () => {
+        setActivePhotoIndex((prev) => (prev < photos.length - 1 ? prev + 1 : prev));
+    };
+
     return (
         <div id="frame" className={isMobileChatOpen ? "chat-open" : ""}>
             <div id="sidepanel">
@@ -1170,6 +1319,51 @@ const Chat = (props) => {
                         >
                             Удалить чат
                         </Button>
+
+                        <div className="contact-photos-section">
+                            <div
+                                className="contact-photos-tab"
+                                ref={photosScrollRef}
+                                onScroll={handlePhotosScroll}
+                            >
+                                {photosLoading && photos.length === 0 && (
+                                    <div className="contact-profile-loading">
+                                        <Spin/>
+                                    </div>
+                                )}
+                                {photosError && (
+                                    <div className="contact-profile-error">
+                                        {photosError}
+                                        <Button type="link" onClick={() => loadChatImages(true)}>
+                                            Повторить
+                                        </Button>
+                                    </div>
+                                )}
+                                {!photosLoading && !photosError && photos.length === 0 && (
+                                    <div className="contact-profile-empty">
+                                        Нет фотографий
+                                    </div>
+                                )}
+                                {photos.length > 0 && (
+                                    <>
+                                        <div className="photos-grid">
+                                            {photos.map((msg, index) => (
+                                                <PhotoGridImage
+                                                    key={msg.id || `${msg.chatId}-${msg.timestamp}-${index}`}
+                                                    messageId={msg.id}
+                                                    onClick={() => openPhotoViewer(index)}
+                                                />
+                                            ))}
+                                        </div>
+                                        {photosLoading && photos.length > 0 && (
+                                            <div className="photos-grid-loading-more">
+                                                <Spin size="small"/>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 )}
             </Drawer>
@@ -1261,6 +1455,45 @@ const Chat = (props) => {
                 onCopy={handleCopyMessage}
                 messageContent={contextMenu.messageContent}
             />
+
+            <Modal
+                open={isPhotoViewerOpen}
+                footer={null}
+                onCancel={() => setIsPhotoViewerOpen(false)}
+                width="80%"
+                className="photo-viewer-modal"
+                centered
+            >
+                {photos.length > 0 && photos[activePhotoIndex] && (
+                    <div className="photo-viewer-content">
+                        <button
+                            type="button"
+                            className="photo-viewer-nav photo-viewer-prev"
+                            onClick={showPrevPhoto}
+                            disabled={activePhotoIndex === 0}
+                        >
+                            ‹
+                        </button>
+                        {viewerBlobUrl ? (
+                            <img
+                                src={viewerBlobUrl}
+                                alt="Фото из чата"
+                                className="photo-viewer-image"
+                            />
+                        ) : (
+                            <div className="photo-viewer-loading"><Spin /></div>
+                        )}
+                        <button
+                            type="button"
+                            className="photo-viewer-nav photo-viewer-next"
+                            onClick={showNextPhoto}
+                            disabled={activePhotoIndex === photos.length - 1}
+                        >
+                            ›
+                        </button>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 };
