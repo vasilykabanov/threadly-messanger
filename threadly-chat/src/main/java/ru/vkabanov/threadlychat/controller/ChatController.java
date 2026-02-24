@@ -11,6 +11,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import ru.vkabanov.threadlychat.exception.ForbiddenException;
 import ru.vkabanov.threadlychat.model.ChatMessage;
 import ru.vkabanov.threadlychat.model.ChatImagesPage;
+import ru.vkabanov.threadlychat.model.ChatMessagesPage;
 import ru.vkabanov.threadlychat.security.CurrentUser;
 import ru.vkabanov.threadlychat.service.ChatMessageService;
 import ru.vkabanov.threadlychat.service.ImageMessageService;
@@ -37,12 +38,14 @@ public class ChatController {
         return ResponseEntity.ok(chatMessageService.countNewMessages(senderId, recipientId));
     }
 
-    @GetMapping(value = "/messages/{senderId}/{recipientId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<ChatMessage>> findChatMessages(@PathVariable String senderId,
-                                                              @PathVariable String recipientId,
-                                                              @AuthenticationPrincipal CurrentUser currentUser) {
+    @GetMapping(value = "/messages/{senderId}/{recipientId}/page", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ChatMessagesPage> findChatMessagesPage(@PathVariable String senderId,
+                                                                 @PathVariable String recipientId,
+                                                                 @RequestParam(defaultValue = "0") int page,
+                                                                 @RequestParam(defaultValue = "50") int size,
+                                                                 @AuthenticationPrincipal CurrentUser currentUser) {
         ensureParticipant(currentUser.getUserId(), senderId, recipientId);
-        return ResponseEntity.ok(chatMessageService.findChatMessages(senderId, recipientId));
+        return ResponseEntity.ok(chatMessageService.findChatMessagesPage(senderId, recipientId, page, size));
     }
 
     @GetMapping(value = "/messages/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
