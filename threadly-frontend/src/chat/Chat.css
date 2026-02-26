@@ -2244,3 +2244,278 @@ body.theme-new .chat-menu-item {
 body.theme-new.theme-new-light .chat-menu-item {
     color: #0f172a !important;
 }
+
+/* ========================
+   Video circle recording overlay
+   ======================== */
+.video-recording-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2000;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.video-recording-preview {
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #667eea;
+    box-shadow: 0 0 24px rgba(102, 126, 234, 0.5);
+}
+
+.video-recording-controls {
+    position: absolute;
+    bottom: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.video-rec-time {
+    color: #ef4444;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    animation: rec-pulse 1s ease-in-out infinite;
+}
+
+@keyframes rec-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.video-rec-buttons {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.video-rec-buttons button {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: #fff;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.video-rec-buttons button:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.video-rec-send {
+    background: #667eea !important;
+}
+
+.video-rec-send:hover {
+    background: #5a6fd6 !important;
+}
+
+.video-rec-cancel {
+    background: rgba(239, 68, 68, 0.6) !important;
+    font-size: 24px !important;
+}
+
+.video-rec-torch .torch-on {
+    color: #fbbf24;
+}
+
+/* ========================
+   Voice recording bar
+   ======================== */
+.voice-recording-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    padding: 0 8px;
+}
+
+.voice-rec-indicator {
+    color: #ef4444;
+    font-size: 20px;
+    animation: rec-pulse 1s ease-in-out infinite;
+}
+
+.voice-rec-time {
+    color: var(--color-text-light, #fff);
+    font-size: 15px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+body.theme-new.theme-new-light .voice-rec-time {
+    color: #0f172a;
+}
+
+.voice-rec-cancel,
+.voice-rec-send {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 6px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.voice-rec-cancel {
+    color: #ef4444;
+    margin-left: auto;
+}
+
+.voice-rec-send {
+    color: #667eea;
+}
+
+.voice-rec-cancel:hover,
+.voice-rec-send:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* ========================
+   Media buttons (voice/video) in input
+   ======================== */
+.media-btn {
+    background: none;
+    border: none;
+    color: var(--color-text-muted, #94a3b8);
+    cursor: pointer;
+    padding: 8px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: color 0.2s, background 0.2s;
+    flex-shrink: 0;
+}
+
+body.theme-new .media-btn {
+    color: rgba(226, 232, 240, 0.6);
+}
+
+body.theme-new .media-btn:hover {
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.12);
+}
+
+body.theme-new.theme-new-light .media-btn {
+    color: rgba(51, 65, 85, 0.5);
+}
+
+body.theme-new.theme-new-light .media-btn:hover {
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.08);
+}
+
+/* ========================
+   Video circle player (in message bubble)
+   ======================== */
+.message-bubble--video-circle {
+    padding: 4px !important;
+    background: transparent !important;
+}
+
+.message-bubble-video-circle-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.video-circle-player {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #000;
+    border: 3px solid #667eea;
+}
+
+.video-circle-placeholder {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: rgba(102, 126, 234, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    border: 3px solid rgba(102, 126, 234, 0.3);
+}
+
+/* ========================
+   Voice player (in message bubble)
+   ======================== */
+.message-bubble--voice {
+    min-width: 200px;
+}
+
+.message-bubble-voice-wrap {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.voice-player {
+    width: 100%;
+    max-width: 280px;
+    height: 36px;
+}
+
+.voice-placeholder {
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+/* ========================
+   Unread badge (already present, but ensure styling)
+   ======================== */
+.unread-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 11px;
+    background: #667eea;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 22px;
+    white-space: nowrap;
+}
+
+body.theme-new .unread-badge {
+    background: #667eea;
+    color: #fff;
+}
+
+body.theme-new.theme-new-light .unread-badge {
+    background: #667eea;
+    color: #fff;
+}
+
+.meta-badge-cell {
+    position: absolute;
+    right: 16px;
+    bottom: 12px;
+}

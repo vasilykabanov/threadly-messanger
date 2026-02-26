@@ -5,5 +5,7 @@ package ru.vkabanov.threadlychat.model;
  */
 public enum MessageType {
     TEXT,
-    IMAGE
+    IMAGE,
+    VIDEO_CIRCLE,
+    VOICE
 }

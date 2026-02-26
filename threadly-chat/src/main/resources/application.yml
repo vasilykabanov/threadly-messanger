@@ -4,8 +4,8 @@ spring:
   servlet:
     multipart:
       # Лимит загрузки файла (должен быть не меньше threadly.image.max-size-bytes). По умолчанию Tomcat — 1MB.
-      max-file-size: 10MB
-      max-request-size: 10MB
+      max-file-size: 50MB
+      max-request-size: 50MB
   data:
     mongodb:
       database: ${MONGODB_CHAT_DATABASE}

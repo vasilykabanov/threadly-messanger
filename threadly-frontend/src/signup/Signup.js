@@ -63,7 +63,17 @@ const Signup = (props) => {
                 </Form.Item>
                 <Form.Item
                     name="username"
-                    rules={[{required: true, message: "Введите логин!"}]}
+                    rules={[
+                        {required: true, message: "Введите логин!"},
+                        {
+                            validator: (_, value) => {
+                                if (!value) return Promise.resolve();
+                                return /^[a-zA-Z0-9_-]+$/.test(value)
+                                    ? Promise.resolve()
+                                    : Promise.reject(new Error("Логин может содержать только латиницу, цифры, - и _"));
+                            },
+                        },
+                    ]}
                 >
                     <Input size="large" placeholder="Логин"/>
                 </Form.Item>

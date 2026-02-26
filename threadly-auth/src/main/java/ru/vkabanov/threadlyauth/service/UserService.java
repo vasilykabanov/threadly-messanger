@@ -17,11 +17,14 @@ import ru.vkabanov.threadlyauth.exception.EmailAlreadyExistsException;
 import ru.vkabanov.threadlyauth.exception.ResourceNotFoundException;
 import ru.vkabanov.threadlyauth.exception.UsernameAlreadyExistsException;
 import ru.vkabanov.threadlyauth.model.Profile;
+import ru.vkabanov.threadlyauth.model.PasswordResetToken;
 import ru.vkabanov.threadlyauth.model.RegistrationStatus;
 import ru.vkabanov.threadlyauth.model.Role;
 import ru.vkabanov.threadlyauth.model.User;
+import ru.vkabanov.threadlyauth.payload.ConfirmResetPasswordRequest;
 import ru.vkabanov.threadlyauth.payload.UpdateEmailBeforeVerificationRequest;
 import ru.vkabanov.threadlyauth.payload.UpdateProfileRequest;
+import ru.vkabanov.threadlyauth.repository.PasswordResetTokenRepository;
 import ru.vkabanov.threadlyauth.repository.UserRepository;
 
 import javax.imageio.ImageIO;
@@ -48,6 +51,7 @@ public class UserService {
     private final RegistrationApprovalService registrationApprovalService;
     private final ChatContactsClient chatContactsClient;
     private final AvatarStorageService avatarStorageService;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     private static final int SEARCH_MAX_RESULTS = 20;
 
@@ -444,5 +448,84 @@ public class UserService {
         }
 
         return saved;
+    }
+
+    // ========================
+    // Forgot / Reset password
+    // ========================
+
+    private static final int RESET_TOKEN_EXPIRY_HOURS = 1;
+
+    /**
+     * Инициирует сброс пароля: находит пользователя по логину или email,
+     * генерирует токен, отправляет письмо. Возвращает замаскированный email.
+     */
+    public String initiatePasswordReset(String usernameOrEmail) {
+        User user = userRepository.findByUsernameIgnoreCase(usernameOrEmail)
+                .or(() -> userRepository.findByEmail(usernameOrEmail))
+                .orElseThrow(() -> new BadRequestException("Пользователь не найден"));
+
+        if (!user.isEmailVerified()) {
+            throw new BadRequestException("Email не подтверждён. Подтвердите email перед сбросом пароля.");
+        }
+
+        // Удаляем старые токены для этого пользователя
+        passwordResetTokenRepository.deleteAllByUserId(user.getId());
+
+        Instant now = Instant.now();
+        String tokenValue = UUID.randomUUID().toString();
+
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .token(tokenValue)
+                .userId(user.getId())
+                .createdAt(now)
+                .expiresAt(now.plus(Duration.ofHours(RESET_TOKEN_EXPIRY_HOURS)))
+                .build();
+        passwordResetTokenRepository.save(resetToken);
+
+        emailService.sendPasswordResetEmail(user, tokenValue);
+        log.info("Password reset initiated for user {} (email masked)", user.getUsername());
+
+        return maskEmail(user.getEmail());
+    }
+
+    /**
+     * Маскирует email: "user@example.com" → "u***@example.com"
+     */
+    String maskEmail(String email) {
+        if (email == null || !email.contains("@")) return "***";
+        String[] parts = email.split("@", 2);
+        String local = parts[0];
+        String domain = parts[1];
+        if (local.length() <= 1) {
+            return local + "***@" + domain;
+        }
+        return local.charAt(0) + "***@" + domain;
+    }
+
+    /**
+     * Подтверждает сброс пароля по токену. Устанавливает новый пароль.
+     */
+    public void confirmPasswordReset(ConfirmResetPasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new BadRequestException("Пароли не совпадают");
+        }
+
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.getToken().trim())
+                .orElseThrow(() -> new BadRequestException("Недействительный или истёкший токен"));
+
+        if (resetToken.getExpiresAt().isBefore(Instant.now())) {
+            passwordResetTokenRepository.delete(resetToken);
+            throw new BadRequestException("Срок действия ссылки истёк. Запросите сброс заново.");
+        }
+
+        User user = userRepository.findById(resetToken.getUserId())
+                .orElseThrow(() -> new BadRequestException("Пользователь не найден"));
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        passwordResetTokenRepository.delete(resetToken);
+        log.info("Password reset completed for user {}", user.getUsername());
     }
 }

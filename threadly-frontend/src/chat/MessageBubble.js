@@ -2,14 +2,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { EyeOutlined, EyeInvisibleOutlined, LoadingOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import { Modal } from "antd";
 import { useLongPress } from "../hooks/useLongPress";
-import { fetchMessageImageAsBlobUrl } from "../util/ApiUtil";
+import { fetchMessageImageAsBlobUrl, fetchMediaAsBlobUrl } from "../util/ApiUtil";
 
 /** RECEIVED — доставлено, DELIVERED — прочитано */
 const isRead = (status) => status === "DELIVERED";
 
 /**
  * Пузырь сообщения. Для своих: PENDING — отправляется, FAILED — не доставлено, RECEIVED — доставлено, DELIVERED — прочитано.
- * messageType: "TEXT" | "IMAGE". Для IMAGE передаётся imageUrl (presigned) и опционально content как подпись.
+ * messageType: "TEXT" | "IMAGE" | "VIDEO_CIRCLE" | "VOICE".
  */
 const MessageBubble = ({
     content,
@@ -31,6 +31,12 @@ const MessageBubble = ({
     const blobUrlRef = useRef(null);
     const cancelledRef = useRef(false);
     const lightboxJustClosedRef = useRef(false);
+
+    // Media (video/voice) state
+    const [mediaBlobUrl, setMediaBlobUrl] = useState(null);
+    const [mediaLoading, setMediaLoading] = useState(false);
+    const mediaBlobRef = useRef(null);
+    const mediaCancelledRef = useRef(false);
 
     const handleCloseLightbox = () => {
         setLightboxOpen(false);
@@ -71,6 +77,32 @@ const MessageBubble = ({
         };
     }, [messageId, messageType]);
 
+    // Load media blob (video circle / voice)
+    useEffect(() => {
+        if ((messageType !== "VIDEO_CIRCLE" && messageType !== "VOICE") || !messageId) return;
+        mediaCancelledRef.current = false;
+        setMediaBlobUrl(null);
+        setMediaLoading(true);
+        fetchMediaAsBlobUrl(messageId).then((url) => {
+            if (mediaCancelledRef.current) {
+                if (url) URL.revokeObjectURL(url);
+                return;
+            }
+            if (url) {
+                mediaBlobRef.current = url;
+                setMediaBlobUrl(url);
+            }
+            setMediaLoading(false);
+        });
+        return () => {
+            mediaCancelledRef.current = true;
+            if (mediaBlobRef.current) {
+                URL.revokeObjectURL(mediaBlobRef.current);
+                mediaBlobRef.current = null;
+            }
+        };
+    }, [messageId, messageType]);
+
     const longPressHandlers = useLongPress({
         onLongPress: handleLongPress,
         maxMovement: 10,
@@ -90,16 +122,52 @@ const MessageBubble = ({
     const isFailed = isOwn && status === "FAILED";
 
     const isImage = messageType === "IMAGE";
+    const isVideoCircle = messageType === "VIDEO_CIRCLE";
+    const isVoice = messageType === "VOICE";
     // Используем только blob URL из прокси, чтобы не слать запросы к presigned URL (они отменяются и могут блокироваться ORB)
     const displayImageUrl = isImage ? proxyImageUrl : null;
 
     return (
         <p
-            className={`message-bubble ${isImage ? "message-bubble--image" : ""}`}
+            className={`message-bubble ${isImage ? "message-bubble--image" : ""} ${isVideoCircle ? "message-bubble--video-circle" : ""} ${isVoice ? "message-bubble--voice" : ""}`}
             {...longPressHandlers}
             onContextMenu={handleContextMenu}
         >
-            {isImage && displayImageUrl ? (
+            {isVideoCircle ? (
+                <span className="message-bubble-video-circle-wrap">
+                    {mediaBlobUrl ? (
+                        <video
+                            src={mediaBlobUrl}
+                            className="video-circle-player"
+                            playsInline
+                            controls
+                            preload="metadata"
+                            onLoadedData={() => {
+                                if (onImageLoad) requestAnimationFrame(() => onImageLoad());
+                            }}
+                        />
+                    ) : mediaLoading ? (
+                        <span className="video-circle-placeholder"><LoadingOutlined spin /></span>
+                    ) : (
+                        <span className="video-circle-placeholder">🔵</span>
+                    )}
+                </span>
+            ) : isVoice ? (
+                <span className="message-bubble-voice-wrap">
+                    {mediaBlobUrl ? (
+                        <audio
+                            src={mediaBlobUrl}
+                            className="voice-player"
+                            controls
+                            preload="metadata"
+                        />
+                    ) : mediaLoading ? (
+                        <span className="voice-placeholder"><LoadingOutlined spin /> Загрузка…</span>
+                    ) : (
+                        <span className="voice-placeholder">🎤 Голосовое сообщение</span>
+                    )}
+                </span>
+            ) : isImage && displayImageUrl ? (
                 <span className="message-bubble-image-wrap">
                     <img
                         src={displayImageUrl}
