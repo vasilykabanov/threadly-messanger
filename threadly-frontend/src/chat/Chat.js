@@ -875,7 +875,7 @@ const Chat = (props) => {
             sessionStorage.setItem("profileBack", "/chat");
         } catch (error) {
         }
-        props.history.push("/");
+        props.history.push("/profile");
     };
 
     const goToSettings = () => {
@@ -1223,7 +1223,7 @@ const Chat = (props) => {
 
                     <button
                         id="addcontact"
-                        onClick={() => props.history.push("/")}>
+                        onClick={() => props.history.push("/profile")}>
                         <i className="fa fa-user fa-fw" aria-hidden="true"></i>{" "}
                         <span>Профиль</span>
                     </button>

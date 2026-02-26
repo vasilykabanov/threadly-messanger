@@ -64,11 +64,11 @@ public class UserService {
             if (status == RegistrationStatus.REJECTED || user.isBlocked()) {
                 throw new BadRequestException("Доступ запрещён");
             }
-            
+
             if (!user.isEmailVerified()) {
                 throw new BadRequestException("Email не подтверждён. Проверьте почту для активации аккаунта.");
             }
-            
+
             AuthenticationManager authenticationManager = authenticationConfiguration.getAuthenticationManager();
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
             return tokenProvider.generateToken(authentication);
@@ -160,28 +160,29 @@ public class UserService {
 
         return savedUser;
     }
-    
+
     public User verifyEmail(String token) {
         User user = userRepository.findByEmailVerificationToken(token != null ? token.trim() : null)
                 .orElseThrow(() -> new BadRequestException("Недействительный токен подтверждения"));
-        
+
         if (user.isEmailVerified()) {
             throw new BadRequestException("Email уже подтверждён");
         }
-        
+
         user.setEmailVerified(true);
         user.setEmailVerificationToken(null);
-        
+
         log.info("Email verified for user {}", user.getUsername());
         return userRepository.save(user);
     }
-    
+
     private static final int MIN_RESEND_INTERVAL_MINUTES = 2;
     private static final int MAX_RESENDS_PER_24H = 5;
     private static final int RESEND_WINDOW_HOURS = 24;
 
     /**
      * Проверяет лимиты отправки писем подтверждения и обновляет счётчики на пользователе.
+     *
      * @throws BadRequestException если превышен лимит или нужно подождать
      */
     private void checkAndUpdateVerificationEmailLimit(User user) {
@@ -424,7 +425,11 @@ public class UserService {
             profile = new Profile();
         }
         profile.setDisplayName(request.getName());
-        profile.setProfilePictureUrl(request.getProfilePictureUrl());
+
+        if (request.getProfilePictureUrl() != null && !request.getProfilePictureUrl().isBlank()) {
+            profile.setProfilePictureUrl(request.getProfilePictureUrl());
+        }
+
         user.setUserProfile(profile);
 
         if (emailChanged) {

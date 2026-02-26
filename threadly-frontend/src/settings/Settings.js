@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {Card, Button, Modal, Form, Input, Switch, message} from "antd";
-import {changePassword, getCurrentUser, updateProfile, ensurePushSubscribed, uploadAvatar} from "../util/ApiUtil";
+import {changePassword, getCurrentUser, ensurePushSubscribed, uploadAvatar} from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
 import {loggedInUser, uiThemeMode} from "../atom/globalState";
 import Avatar from "../profile/Avatar";
@@ -9,13 +9,10 @@ import "../profile/Profile.css";
 const Settings = (props) => {
     const [currentUser, setLoggedInUser] = useRecoilState(loggedInUser);
     const [themeMode, setThemeMode] = useRecoilState(uiThemeMode);
-    const [profileForm] = Form.useForm();
     const [passwordForm] = Form.useForm();
-    const [savingProfile, setSavingProfile] = useState(false);
     const [changingPassword, setChangingPassword] = useState(false);
     const [avatarUploading, setAvatarUploading] = useState(false);
 
-    const [profileModalOpen, setProfileModalOpen] = useState(false);
     const [passwordModalOpen, setPasswordModalOpen] = useState(false);
     const [designModalOpen, setDesignModalOpen] = useState(false);
     const [pushEnabled, setPushEnabled] = useState(false);
@@ -91,39 +88,11 @@ const Settings = (props) => {
     };
 
     useEffect(() => {
-        if (!currentUser?.username) return;
-        profileForm.setFieldsValue({
-            name: currentUser.name,
-            username: currentUser.username,
-            email: currentUser.email,
-            profilePictureUrl: currentUser.profilePicture,
-        });
-    }, [currentUser?.username, currentUser?.profilePicture, profileForm, profileModalOpen]);
-
-    useEffect(() => {
         try {
             localStorage.setItem("uiThemeMode", themeMode);
         } catch (error) {
         }
     }, [themeMode]);
-
-    const onUpdateProfile = (values) => {
-        setSavingProfile(true);
-        updateProfile(values)
-            .then((response) => {
-                setLoggedInUser(response);
-                message.success("Профиль обновлён");
-                setProfileModalOpen(false);
-            })
-            .catch((error) => {
-                const errorMessage =
-                    error?.message && !/bad request/i.test(error.message)
-                        ? error.message
-                        : "Не удалось обновить профиль";
-                message.error(errorMessage);
-            })
-            .finally(() => setSavingProfile(false));
-    };
 
     const onChangePassword = (values) => {
         setChangingPassword(true);
@@ -149,6 +118,14 @@ const Settings = (props) => {
     const goToChat = () => {
         window.scrollTo(0, 0);
         props.history.push("/chat");
+    };
+
+    const goToProfile = () => {
+        try {
+            sessionStorage.setItem("profileBack", "/settings");
+        } catch (error) {
+        }
+        props.history.push("/profile");
     };
 
     const logout = () => {
@@ -204,37 +181,33 @@ const Settings = (props) => {
                         const url = URL.createObjectURL(file);
                         setAvatarPreview(url);
                         setAvatarFile(file);
-                         Modal.confirm({
-                             title: "Сохранить новое фото профиля?",
-                             okText: "Сохранить",
-                             cancelText: "Отмена",
-                             centered: true,
-                             onOk: () => {
-                                 if (!file) return;
-                                 setAvatarUploading(true);
-                                 return uploadAvatar(file)
-                                     .then((response) => {
-                                         setLoggedInUser(response);
-                                         profileForm.setFieldsValue({
-                                             ...profileForm.getFieldsValue(),
-                                             profilePictureUrl: response.profilePicture,
-                                         });
-                                         setAvatarPreview(null);
-                                         setAvatarFile(null);
-                                         message.success("Аватар обновлён");
-                                     })
-                                     .catch((error) => {
-                                         message.error(error?.message || "Не удалось обновить аватар");
-                                     })
-                                     .finally(() => {
-                                         setAvatarUploading(false);
-                                     });
-                             },
-                             onCancel: () => {
-                                 setAvatarPreview(null);
-                                 setAvatarFile(null);
-                             },
-                         });
+                        Modal.confirm({
+                            title: "Сохранить новое фото профиля?",
+                            okText: "Сохранить",
+                            cancelText: "Отмена",
+                            centered: true,
+                            onOk: () => {
+                                if (!file) return;
+                                setAvatarUploading(true);
+                                return uploadAvatar(file)
+                                    .then((response) => {
+                                        setLoggedInUser(response);
+                                        setAvatarPreview(null);
+                                        setAvatarFile(null);
+                                        message.success("Аватар обновлён");
+                                    })
+                                    .catch((error) => {
+                                        message.error(error?.message || "Не удалось обновить аватар");
+                                    })
+                                    .finally(() => {
+                                        setAvatarUploading(false);
+                                    });
+                            },
+                            onCancel: () => {
+                                setAvatarPreview(null);
+                                setAvatarFile(null);
+                            },
+                        });
                     }}
                 />
 
@@ -242,7 +215,7 @@ const Settings = (props) => {
                     <button
                         type="button"
                         className="settings-menu-item"
-                        onClick={() => setProfileModalOpen(true)}
+                        onClick={goToProfile}
                     >
                         <span className="settings-menu-left">
                             <i className="fa fa-user" aria-hidden="true"></i>
@@ -317,110 +290,6 @@ const Settings = (props) => {
                     Выйти из аккаунта
                 </Button>
             </Card>
-
-            {/* Модальное окно: Профиль */}
-            <Modal
-                title="Редактирование профиля"
-                open={profileModalOpen}
-                onCancel={() => setProfileModalOpen(false)}
-                footer={null}
-                destroyOnClose
-            >
-                <Form
-                    form={profileForm}
-                    layout="vertical"
-                    onFinish={onUpdateProfile}
-                    className="profile-form"
-                >
-                    <Form.Item
-                        name="name"
-                        label="Имя"
-                        rules={[
-                            {required: true, message: "Введите имя"},
-                            {min: 3, max: 40, message: "От 3 до 40 символов"},
-                        ]}
-                    >
-                        <Input placeholder="Ваше имя"/>
-                    </Form.Item>
-
-                    <Form.Item
-                        name="username"
-                        label="Имя пользователя"
-                        rules={[
-                            {required: true, message: "Введите имя пользователя"},
-                            {min: 3, max: 15, message: "От 3 до 15 символов"},
-                        ]}
-                    >
-                        <Input placeholder="username"/>
-                    </Form.Item>
-
-                    <Form.Item
-                        name="email"
-                        label="Email"
-                        rules={[
-                            {required: true, message: "Введите email"},
-                            {type: "email", message: "Некорректный email"},
-                        ]}
-                    >
-                        <Input placeholder="email@example.com"/>
-                    </Form.Item>
-
-                    <Form.Item
-                        name="profilePictureUrl"
-                        label="Ссылка на аватар"
-                    >
-                        <Input placeholder="https://..."/>
-                    </Form.Item>
-
-                    <Form.Item style={{marginBottom: 0}}>
-                        <div style={{display: "flex", gap: 8}}>
-                            <Button type="primary" htmlType="submit" loading={savingProfile} style={{flex: 1}}>
-                                Сохранить
-                            </Button>
-                            {avatarPreview && (
-                                <>
-                                    <Button
-                                        type="default"
-                                        loading={avatarUploading}
-                                        onClick={() => {
-                                            if (!avatarFile || avatarUploading) return;
-                                            setAvatarUploading(true);
-                                            uploadAvatar(avatarFile)
-                                                .then((response) => {
-                                                    setLoggedInUser(response);
-                                                    profileForm.setFieldsValue({
-                                                        ...profileForm.getFieldsValue(),
-                                                        profilePictureUrl: response.profilePicture,
-                                                    });
-                                                    setAvatarPreview(null);
-                                                    setAvatarFile(null);
-                                                    message.success("Аватар обновлён");
-                                                })
-                                                .catch((error) => {
-                                                    message.error(error?.message || "Не удалось обновить аватар");
-                                                })
-                                                .finally(() => {
-                                                    setAvatarUploading(false);
-                                                });
-                                        }}
-                                    >
-                                        Сохранить фото
-                                    </Button>
-                                    <Button
-                                        type="link"
-                                        onClick={() => {
-                                            setAvatarPreview(null);
-                                            setAvatarFile(null);
-                                        }}
-                                    >
-                                        Отменить
-                                    </Button>
-                                </>
-                            )}
-                        </div>
-                    </Form.Item>
-                </Form>
-            </Modal>
 
             {/* Модальное окно: Смена пароля */}
             <Modal

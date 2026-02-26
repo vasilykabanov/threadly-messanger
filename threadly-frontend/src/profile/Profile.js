@@ -54,7 +54,6 @@ const Profile = (props) => {
             name: currentUser.name,
             username: currentUser.username,
             email: currentUser.email,
-            profilePictureUrl: currentUser.profilePicture,
         });
     }, [currentUser?.username, profileForm]);
 
@@ -87,21 +86,44 @@ const Profile = (props) => {
         props.history.push(backTarget);
     };
 
-    const onUpdateProfile = (values) => {
+    const onUpdateProfile = async (values) => {
+        const usernameChanged = values.username !== currentUser.username;
+        const emailChanged = values.email !== currentUser.email;
+
         setSavingProfile(true);
-        updateProfile(values)
-            .then((response) => {
-                setLoggedInUser(response);
-                if (values.email !== currentUser.email) {
-                    message.success("Профиль обновлён. Мы отправили письмо для подтверждения нового email.");
-                } else {
-                    message.success("Профиль обновлён");
-                }
-            })
-            .catch((error) => {
-                message.error(error?.message || "Не удалось обновить профиль");
-            })
-            .finally(() => setSavingProfile(false));
+        try {
+            // Если выбрана новая аватарка — сначала загружаем её
+            if (avatarFile) {
+                const avatarResponse = await uploadAvatar(avatarFile);
+                setLoggedInUser(avatarResponse);
+                setAvatarPreview(null);
+                setAvatarFile(null);
+            }
+
+            const payload = {
+                name: values.name,
+                username: values.username,
+                email: values.email,
+            };
+
+            const response = await updateProfile(payload);
+            setLoggedInUser(response);
+
+            if (emailChanged) {
+                message.success("Профиль обновлён. Мы отправили письмо для подтверждения нового email.");
+            } else {
+                message.success("Профиль обновлён");
+            }
+
+            if (usernameChanged) {
+                message.info("Имя пользователя изменено. Пожалуйста, войдите снова.");
+                logout();
+            }
+        } catch (error) {
+            message.error(error?.message || "Не удалось обновить профиль");
+        } finally {
+            setSavingProfile(false);
+        }
     };
 
 
@@ -163,52 +185,6 @@ const Profile = (props) => {
                     <div className="profile-header-name">{currentUser.name}</div>
                     <div className="profile-header-username">{"@" + currentUser.username}</div>
                 </div>
-                <div className="avatar-actions-row">
-                    <Button
-                        size="small"
-                        onClick={() => fileInputRef.current?.click()}
-                    >
-                        Изменить фотографию
-                    </Button>
-                    {avatarPreview && (
-                        <>
-                            <Button
-                                type="primary"
-                                size="small"
-                                loading={avatarUploading}
-                                onClick={() => {
-                                    if (!avatarFile || avatarUploading) return;
-                                    setAvatarUploading(true);
-                                    uploadAvatar(avatarFile)
-                                        .then((response) => {
-                                            setLoggedInUser(response);
-                                            setAvatarPreview(null);
-                                            setAvatarFile(null);
-                                            message.success("Аватар обновлён");
-                                        })
-                                        .catch((error) => {
-                                            message.error(error?.message || "Не удалось обновить аватар");
-                                        })
-                                        .finally(() => {
-                                            setAvatarUploading(false);
-                                        });
-                                }}
-                            >
-                                Сохранить
-                            </Button>
-                            <Button
-                                size="small"
-                                onClick={() => {
-                                    setAvatarPreview(null);
-                                    setAvatarFile(null);
-                                }}
-                            >
-                                Отменить
-                            </Button>
-                        </>
-                    )}
-                </div>
-
                 <Divider>Профиль</Divider>
                 <Form
                     form={profileForm}
@@ -249,15 +225,13 @@ const Profile = (props) => {
                         <Input placeholder="email@example.com"/>
                     </Form.Item>
 
-                    <Form.Item
-                        name="profilePictureUrl"
-                        label="Ссылка на аватар"
-                    >
-                        <Input placeholder="https://..."/>
-                    </Form.Item>
-
-                    <Form.Item>
-                        <Button type="primary" htmlType="submit" loading={savingProfile}>
+                    <Form.Item style={{marginBottom: 0}}>
+                        <Button
+                            type="primary"
+                            block
+                            htmlType="submit"
+                            loading={savingProfile}
+                        >
                             Сохранить изменения
                         </Button>
                     </Form.Item>
