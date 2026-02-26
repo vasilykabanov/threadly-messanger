@@ -721,7 +721,7 @@ span.status-circle:before {
 }
 
 #frame #sidepanel #contacts ul li.contact .wrap .meta .preview {
-    grid-column: 1 / -1;
+    grid-column: 1;
     grid-row: 2;
     margin: 0;
     padding: 0 0 1px;
@@ -735,6 +735,24 @@ span.status-circle:before {
     -webkit-transition: 1s all ease;
     transition: 1s all ease;
     color: #8b9198;
+}
+
+#frame #sidepanel #contacts ul li.contact .wrap .meta .new-messages-badge {
+    grid-column: 2;
+    grid-row: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    background: #7c3aed;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0 6px;
+    line-height: 1;
 }
 
 #frame #sidepanel #contacts ul li.contact .wrap .meta .preview span {

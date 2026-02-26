@@ -216,9 +216,19 @@ const Chat = (props) => {
                 ...prev,
                 [activeContact.id]: message,
             }));
-            if (!contacts.some((contact) => contact.id === activeContact.id)) {
-                setContacts([activeContact, ...contacts]);
-            }
+            // Immediately move active contact to top (like Telegram)
+            setContacts((prevContacts) => {
+                const idx = prevContacts.findIndex((c) => c.id === activeContact.id);
+                if (idx > 0) {
+                    const updated = [...prevContacts];
+                    const [contact] = updated.splice(idx, 1);
+                    return [contact, ...updated];
+                }
+                if (idx < 0) {
+                    return [activeContact, ...prevContacts];
+                }
+                return prevContacts;
+            });
             loadContacts(activeContact?.id);
         }
     };
@@ -243,9 +253,19 @@ const Chat = (props) => {
             ...prev,
             [activeContact.id]: {...msg, content: contentPreview || getMediaLabel(messageType)},
         }));
-        if (!contacts.some((contact) => contact.id === activeContact.id)) {
-            setContacts([activeContact, ...contacts]);
-        }
+        // Immediately move active contact to top (like Telegram)
+        setContacts((prevContacts) => {
+            const idx = prevContacts.findIndex((c) => c.id === activeContact.id);
+            if (idx > 0) {
+                const updated = [...prevContacts];
+                const [contact] = updated.splice(idx, 1);
+                return [contact, ...updated];
+            }
+            if (idx < 0) {
+                return [activeContact, ...prevContacts];
+            }
+            return prevContacts;
+        });
         loadContacts(activeContact?.id);
     };
 
@@ -939,6 +959,10 @@ const Chat = (props) => {
                                 key={contact.id}
                                 onClick={() => {
                                     setIsMobileChatOpen(true);
+                                    // Clear unread badge immediately
+                                    setContacts((prev) => prev.map((c) =>
+                                        c.id === contact.id ? {...c, newMessages: 0} : c
+                                    ));
                                     if (activeContact?.id !== contact.id) {
                                         setActiveContact(contact);
                                     } else {
@@ -976,6 +1000,11 @@ const Chat = (props) => {
                                                     : lastMessageByContact[contact.id].content)
                                                 : "Нет сообщений"}
                                         </p>
+                                        {contact.newMessages > 0 && (
+                                            <span className="new-messages-badge">
+                                                {contact.newMessages > 99 ? "99+" : contact.newMessages}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </li>
