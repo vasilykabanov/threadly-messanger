@@ -7,11 +7,13 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Клиент к chat-сервису для получения списка ID пользователей, с которыми у пользователя есть переписка.
@@ -45,6 +47,25 @@ public class ChatContactsClient {
         } catch (Exception e) {
             log.warn("Failed to fetch contact ids from chat service for user {}: {}", userId, e.getMessage());
             return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Уведомляет chat-сервис об обновлении аватара пользователя.
+     * Chat далее рассылает событие по WebSocket.
+     */
+    public void notifyAvatarUpdated(String userId, String avatarUrl) {
+        String url = chatServiceUrl + "/internal/avatar-updated";
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, String>> entity = new HttpEntity<>(
+                    Map.of("userId", userId, "avatarUrl", avatarUrl),
+                    headers
+            );
+            restTemplate.exchange(url, HttpMethod.POST, entity, Void.class);
+        } catch (Exception e) {
+            log.warn("Failed to notify chat service about avatar update for user {}: {}", userId, e.getMessage());
         }
     }
 }

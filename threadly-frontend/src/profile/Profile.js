@@ -1,8 +1,8 @@
-import React, {useEffect, useState} from "react";
-import {Card, Avatar, Button, Divider, Form, Input, message} from "antd";
+import React, {useEffect, useRef, useState} from "react";
+import {Card, Avatar, Button, Divider, Form, Input, message, Spin} from "antd";
 import {useRecoilState} from "recoil";
 import {loggedInUser} from "../atom/globalState";
-import {getCurrentUser, updateProfile} from "../util/ApiUtil";
+import {getCurrentUser, updateProfile, uploadAvatar} from "../util/ApiUtil";
 import "./Profile.css";
 
 const {Meta} = Card;
@@ -11,6 +11,10 @@ const Profile = (props) => {
     const [currentUser, setLoggedInUser] = useRecoilState(loggedInUser);
     const [profileForm] = Form.useForm();
     const [savingProfile, setSavingProfile] = useState(false);
+    const [avatarUploading, setAvatarUploading] = useState(false);
+    const [avatarPreview, setAvatarPreview] = useState(null);
+    const [avatarFile, setAvatarFile] = useState(null);
+    const fileInputRef = useRef(null);
     const [backTarget, setBackTarget] = useState("/chat");
 
     const clearPersistedState = () => {
@@ -116,15 +120,94 @@ const Profile = (props) => {
                     <Button type="primary" danger onClick={logout}>Выйти</Button>
                 ]}
             >
-                <Meta
-                    avatar={
-                        <Avatar src={currentUser.profilePicture} className="user-avatar-circle">
+                <div className="profile-header-centered">
+                    <div
+                        className="avatar-edit-wrapper"
+                        onClick={() => fileInputRef.current?.click()}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(event) => event.key === "Enter" && fileInputRef.current?.click()}
+                    >
+                        <Avatar
+                            src={avatarPreview || currentUser.profilePicture}
+                            className="user-avatar-circle"
+                        >
                             {currentUser.name?.[0]?.toUpperCase()}
                         </Avatar>
-                    }
-                    title={currentUser.name}
-                    description={"@" + currentUser.username}
-                />
+                        <div className="avatar-edit-overlay">
+                            {avatarUploading ? (
+                                <Spin size="small" />
+                            ) : (
+                                <i className="fa fa-camera" aria-hidden="true" />
+                            )}
+                        </div>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            ref={fileInputRef}
+                            className="avatar-file-input"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                e.target.value = "";
+                                if (!file) return;
+                                if (!file.type.startsWith("image/")) {
+                                    message.warning("Выберите файл изображения");
+                                    return;
+                                }
+                                const url = URL.createObjectURL(file);
+                                setAvatarPreview(url);
+                                setAvatarFile(file);
+                            }}
+                        />
+                    </div>
+                    <div className="profile-header-name">{currentUser.name}</div>
+                    <div className="profile-header-username">{"@" + currentUser.username}</div>
+                </div>
+                <div className="avatar-actions-row">
+                    <Button
+                        size="small"
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        Изменить фотографию
+                    </Button>
+                    {avatarPreview && (
+                        <>
+                            <Button
+                                type="primary"
+                                size="small"
+                                loading={avatarUploading}
+                                onClick={() => {
+                                    if (!avatarFile || avatarUploading) return;
+                                    setAvatarUploading(true);
+                                    uploadAvatar(avatarFile)
+                                        .then((response) => {
+                                            setLoggedInUser(response);
+                                            setAvatarPreview(null);
+                                            setAvatarFile(null);
+                                            message.success("Аватар обновлён");
+                                        })
+                                        .catch((error) => {
+                                            message.error(error?.message || "Не удалось обновить аватар");
+                                        })
+                                        .finally(() => {
+                                            setAvatarUploading(false);
+                                        });
+                                }}
+                            >
+                                Сохранить
+                            </Button>
+                            <Button
+                                size="small"
+                                onClick={() => {
+                                    setAvatarPreview(null);
+                                    setAvatarFile(null);
+                                }}
+                            >
+                                Отменить
+                            </Button>
+                        </>
+                    )}
+                </div>
 
                 <Divider>Профиль</Divider>
                 <Form

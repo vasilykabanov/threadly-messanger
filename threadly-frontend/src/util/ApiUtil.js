@@ -169,6 +169,34 @@ export function updateProfile(updateProfileRequest) {
     });
 }
 
+export function uploadAvatar(file) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    const token = localStorage.getItem("accessToken");
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const headers = new Headers();
+    headers.append("Authorization", "Bearer " + token);
+
+    return fetch(AUTH_SERVICE + "/users/me/avatar", {
+        method: "POST",
+        headers,
+        body: formData,
+    }).then(async (response) => {
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            if (response.status === 401 && token) {
+                localStorage.removeItem("accessToken");
+                window.location.href = "/login";
+            }
+            return Promise.reject({ status: response.status, ...json });
+        }
+        return json;
+    });
+}
+
 export function changePassword(changePasswordRequest) {
     if (!localStorage.getItem("accessToken")) {
         return Promise.reject("No access token set.");

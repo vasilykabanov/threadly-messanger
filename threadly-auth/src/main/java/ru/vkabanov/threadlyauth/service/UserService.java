@@ -2,12 +2,16 @@ package ru.vkabanov.threadlyauth.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.coobird.thumbnailator.Thumbnails;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import ru.vkabanov.threadlyauth.client.ChatContactsClient;
 import ru.vkabanov.threadlyauth.exception.BadRequestException;
 import ru.vkabanov.threadlyauth.exception.EmailAlreadyExistsException;
 import ru.vkabanov.threadlyauth.exception.ResourceNotFoundException;
@@ -16,20 +20,18 @@ import ru.vkabanov.threadlyauth.model.Profile;
 import ru.vkabanov.threadlyauth.model.RegistrationStatus;
 import ru.vkabanov.threadlyauth.model.Role;
 import ru.vkabanov.threadlyauth.model.User;
-import ru.vkabanov.threadlyauth.client.ChatContactsClient;
-import ru.vkabanov.threadlyauth.repository.UserRepository;
 import ru.vkabanov.threadlyauth.payload.UpdateEmailBeforeVerificationRequest;
 import ru.vkabanov.threadlyauth.payload.UpdateProfileRequest;
+import ru.vkabanov.threadlyauth.repository.UserRepository;
 
-import org.springframework.data.domain.PageRequest;
-
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -45,6 +47,7 @@ public class UserService {
     private final EmailService emailService;
     private final RegistrationApprovalService registrationApprovalService;
     private final ChatContactsClient chatContactsClient;
+    private final AvatarStorageService avatarStorageService;
 
     private static final int SEARCH_MAX_RESULTS = 20;
 
@@ -285,6 +288,107 @@ public class UserService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         return userRepository.save(user);
+    }
+
+    /**
+     * Загрузка и обновление аватара пользователя.
+     * - только изображения (PNG, JPEG, WebP)
+     * - размер до 5 МБ
+     * - ресайз до 256x256, center crop, JPEG 80%
+     */
+    public User updateAvatar(String userId, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("Файл не передан");
+        }
+
+        if (!avatarStorageService.isEnabled()) {
+            throw new BadRequestException("Хранилище изображений временно недоступно");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null ||
+                !(contentType.equalsIgnoreCase("image/png")
+                        || contentType.equalsIgnoreCase("image/jpeg")
+                        || contentType.equalsIgnoreCase("image/jpg")
+                        || contentType.equalsIgnoreCase("image/webp"))) {
+            throw new BadRequestException("Допустимы только PNG, JPEG и WebP");
+        }
+
+        long maxSizeBytes = 5L * 1024 * 1024;
+        if (file.getSize() > maxSizeBytes) {
+            throw new BadRequestException("Размер файла не более 5 МБ");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(userId));
+
+        String oldKey = null;
+        Profile profile = user.getUserProfile();
+        if (profile != null) {
+            oldKey = profile.getProfilePictureUrl();
+        } else {
+            profile = new Profile();
+        }
+
+        String objectKey = "avatars/" + userId + "/" + UUID.randomUUID() + ".jpg";
+
+        try (InputStream inputStream = file.getInputStream()) {
+            BufferedImage original = ImageIO.read(inputStream);
+            if (original == null) {
+                throw new BadRequestException("Файл не является изображением");
+            }
+
+            int width = original.getWidth();
+            int height = original.getHeight();
+            int size = Math.min(width, height);
+            int x = (width - size) / 2;
+            int y = (height - size) / 2;
+            BufferedImage cropped = original.getSubimage(x, y, size, size);
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            Thumbnails.of(cropped)
+                    .size(256, 256)
+                    .outputFormat("jpg")
+                    .outputQuality(0.8f)
+                    .toOutputStream(baos);
+
+            byte[] bytes = baos.toByteArray();
+            try (InputStream processedStream = new ByteArrayInputStream(bytes)) {
+                avatarStorageService.upload(processedStream, bytes.length, "image/jpeg", objectKey);
+            }
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to process avatar image for user {}: {}", userId, e.getMessage());
+            throw new BadRequestException("Не удалось обработать изображение");
+        }
+
+        profile.setProfilePictureUrl(objectKey);
+        user.setUserProfile(profile);
+
+        User saved = userRepository.save(user);
+
+        if (oldKey != null && !oldKey.isBlank() && !oldKey.equals(objectKey)) {
+            avatarStorageService.delete(oldKey);
+        }
+
+        try {
+            String basePath = "/api/auth/users/" + saved.getId() + "/avatar";
+            String finalUrl = appendVersionParam(basePath, saved.getUpdatedAt());
+            chatContactsClient.notifyAvatarUpdated(saved.getId(), finalUrl);
+        } catch (Exception ex) {
+            log.warn("Failed to notify chat service about avatar update for user {}: {}", saved.getId(), ex.getMessage());
+        }
+
+        return saved;
+    }
+
+    private String appendVersionParam(String url, Instant updatedAt) {
+        if (updatedAt == null || url == null || url.isBlank()) {
+            return url;
+        }
+        String separator = url.contains("?") ? "&" : "?";
+        return url + separator + "v=" + updatedAt.toEpochMilli();
     }
 
     public User updateProfile(String userId, UpdateProfileRequest request) {

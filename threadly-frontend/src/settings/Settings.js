@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {Card, Button, Modal, Form, Input, Switch, message} from "antd";
-import {changePassword, getCurrentUser, updateProfile, ensurePushSubscribed} from "../util/ApiUtil";
+import {changePassword, getCurrentUser, updateProfile, ensurePushSubscribed, uploadAvatar} from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
 import {loggedInUser, uiThemeMode} from "../atom/globalState";
 import Avatar from "../profile/Avatar";
@@ -13,12 +13,18 @@ const Settings = (props) => {
     const [passwordForm] = Form.useForm();
     const [savingProfile, setSavingProfile] = useState(false);
     const [changingPassword, setChangingPassword] = useState(false);
+    const [avatarUploading, setAvatarUploading] = useState(false);
 
     const [profileModalOpen, setProfileModalOpen] = useState(false);
     const [passwordModalOpen, setPasswordModalOpen] = useState(false);
     const [designModalOpen, setDesignModalOpen] = useState(false);
     const [pushEnabled, setPushEnabled] = useState(false);
     const [pushLoading, setPushLoading] = useState(false);
+    const [avatarPreview, setAvatarPreview] = useState(null);
+    const [avatarFile, setAvatarFile] = useState(null);
+    const [isAvatarViewerOpen, setIsAvatarViewerOpen] = useState(false);
+
+    const avatarFileInputRef = React.useRef(null);
 
     const clearPersistedState = () => {
         const persisted = sessionStorage.getItem("recoil-persist");
@@ -92,7 +98,7 @@ const Settings = (props) => {
             email: currentUser.email,
             profilePictureUrl: currentUser.profilePicture,
         });
-    }, [currentUser?.username, profileForm, profileModalOpen]);
+    }, [currentUser?.username, currentUser?.profilePicture, profileForm, profileModalOpen]);
 
     useEffect(() => {
         try {
@@ -158,14 +164,79 @@ const Settings = (props) => {
             </div>
             <Card style={{width: "100%"}} bordered={false}>
                 <div className="profile-header-centered">
-                    <Avatar
-                        src={currentUser.profilePicture}
-                        name={currentUser.name}
-                        size={100}
-                    />
+                    <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                            if (avatarPreview || currentUser.profilePicture) {
+                                setIsAvatarViewerOpen(true);
+                            }
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && (avatarPreview || currentUser.profilePicture)) {
+                                setIsAvatarViewerOpen(true);
+                            }
+                        }}
+                    >
+                        <Avatar
+                            src={avatarPreview || currentUser.profilePicture}
+                            name={currentUser.name}
+                            size={100}
+                        />
+                    </div>
                     <div className="profile-header-name">{currentUser.name}</div>
                     <div className="profile-header-username">@{currentUser.username}</div>
                 </div>
+
+                <input
+                    type="file"
+                    accept="image/*"
+                    ref={avatarFileInputRef}
+                    className="avatar-file-input"
+                    onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        if (!file) return;
+                        if (!file.type.startsWith("image/")) {
+                            message.warning("Выберите файл изображения");
+                            return;
+                        }
+                        const url = URL.createObjectURL(file);
+                        setAvatarPreview(url);
+                        setAvatarFile(file);
+                         Modal.confirm({
+                             title: "Сохранить новое фото профиля?",
+                             okText: "Сохранить",
+                             cancelText: "Отмена",
+                             centered: true,
+                             onOk: () => {
+                                 if (!file) return;
+                                 setAvatarUploading(true);
+                                 return uploadAvatar(file)
+                                     .then((response) => {
+                                         setLoggedInUser(response);
+                                         profileForm.setFieldsValue({
+                                             ...profileForm.getFieldsValue(),
+                                             profilePictureUrl: response.profilePicture,
+                                         });
+                                         setAvatarPreview(null);
+                                         setAvatarFile(null);
+                                         message.success("Аватар обновлён");
+                                     })
+                                     .catch((error) => {
+                                         message.error(error?.message || "Не удалось обновить аватар");
+                                     })
+                                     .finally(() => {
+                                         setAvatarUploading(false);
+                                     });
+                             },
+                             onCancel: () => {
+                                 setAvatarPreview(null);
+                                 setAvatarFile(null);
+                             },
+                         });
+                    }}
+                />
 
                 <div className="settings-menu">
                     <button
@@ -176,6 +247,18 @@ const Settings = (props) => {
                         <span className="settings-menu-left">
                             <i className="fa fa-user" aria-hidden="true"></i>
                             <span>Профиль</span>
+                        </span>
+                        <span className="settings-menu-arrow">›</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        className="settings-menu-item"
+                        onClick={() => avatarFileInputRef.current?.click()}
+                    >
+                        <span className="settings-menu-left">
+                            <i className="fa fa-camera" aria-hidden="true"></i>
+                            <span>Изменить фотографию</span>
                         </span>
                         <span className="settings-menu-arrow">›</span>
                     </button>
@@ -290,9 +373,51 @@ const Settings = (props) => {
                     </Form.Item>
 
                     <Form.Item style={{marginBottom: 0}}>
-                        <Button type="primary" htmlType="submit" loading={savingProfile} block>
-                            Сохранить
-                        </Button>
+                        <div style={{display: "flex", gap: 8}}>
+                            <Button type="primary" htmlType="submit" loading={savingProfile} style={{flex: 1}}>
+                                Сохранить
+                            </Button>
+                            {avatarPreview && (
+                                <>
+                                    <Button
+                                        type="default"
+                                        loading={avatarUploading}
+                                        onClick={() => {
+                                            if (!avatarFile || avatarUploading) return;
+                                            setAvatarUploading(true);
+                                            uploadAvatar(avatarFile)
+                                                .then((response) => {
+                                                    setLoggedInUser(response);
+                                                    profileForm.setFieldsValue({
+                                                        ...profileForm.getFieldsValue(),
+                                                        profilePictureUrl: response.profilePicture,
+                                                    });
+                                                    setAvatarPreview(null);
+                                                    setAvatarFile(null);
+                                                    message.success("Аватар обновлён");
+                                                })
+                                                .catch((error) => {
+                                                    message.error(error?.message || "Не удалось обновить аватар");
+                                                })
+                                                .finally(() => {
+                                                    setAvatarUploading(false);
+                                                });
+                                        }}
+                                    >
+                                        Сохранить фото
+                                    </Button>
+                                    <Button
+                                        type="link"
+                                        onClick={() => {
+                                            setAvatarPreview(null);
+                                            setAvatarFile(null);
+                                        }}
+                                    >
+                                        Отменить
+                                    </Button>
+                                </>
+                            )}
+                        </div>
                     </Form.Item>
                 </Form>
             </Modal>
@@ -378,6 +503,23 @@ const Settings = (props) => {
                         onChange={(checked) => setThemeMode(checked ? "dark" : "light")}
                     />
                 </div>
+            </Modal>
+
+            <Modal
+                open={isAvatarViewerOpen}
+                footer={null}
+                onCancel={() => setIsAvatarViewerOpen(false)}
+                width="80%"
+                className="photo-viewer-modal"
+                centered
+            >
+                {(avatarPreview || currentUser.profilePicture) && (
+                    <img
+                        src={avatarPreview || currentUser.profilePicture}
+                        alt={currentUser.name || currentUser.username || "Аватар"}
+                        className="photo-viewer-image"
+                    />
+                )}
             </Modal>
 
             <div className="mobile-bottom-nav">

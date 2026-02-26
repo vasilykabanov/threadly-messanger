@@ -136,6 +136,8 @@ const Chat = (props) => {
     const [activePhotoIndex, setActivePhotoIndex] = useState(0);
     const [viewerBlobUrl, setViewerBlobUrl] = useState(null);
     const viewerBlobRef = useRef(null);
+    const [isAvatarViewerOpen, setIsAvatarViewerOpen] = useState(false);
+    const [isContactAvatarViewerOpen, setIsContactAvatarViewerOpen] = useState(false);
 
     useEffect(() => {
         document.body.classList.add("chat-page");
@@ -418,6 +420,7 @@ const Chat = (props) => {
         );
         stompClient.subscribe("/user/" + uid + "/queue/sent-ack", onSentAckReceived);
         stompClient.subscribe("/topic/status", onStatusReceived);
+        stompClient.subscribe("/topic/avatar-updated", onAvatarUpdated);
 
         const pending = pendingMessagesRef.current.splice(0, pendingMessagesRef.current.length);
         pending.forEach((payload) => {
@@ -527,6 +530,28 @@ const Chat = (props) => {
         );
         setActiveContact((prev) =>
             prev && prev.id === data.userId ? { ...prev, status: data.status } : prev
+        );
+    };
+
+    const onAvatarUpdated = (msg) => {
+        let data;
+        try {
+            data = typeof msg.body === "string" ? JSON.parse(msg.body) : msg.body;
+        } catch (e) {
+            return;
+        }
+        if (!data || !data.userId) return;
+
+        setContacts((prevContacts) =>
+            prevContacts.map((contact) =>
+                contact.id === data.userId ? { ...contact, profilePicture: data.avatarUrl } : contact
+            )
+        );
+        setActiveContact((prev) =>
+            prev && prev.id === data.userId ? { ...prev, profilePicture: data.avatarUrl } : prev
+        );
+        setLoggedInUser((prev) =>
+            prev && prev.id === data.userId ? { ...prev, profilePicture: data.avatarUrl } : prev
         );
     };
 
@@ -1022,10 +1047,24 @@ const Chat = (props) => {
                     <div className="wrap">
                         <div
                             className={`avatar-wrapper ${currentUser.status || "online"}`}
-                            onClick={goToSettings}
+                            onClick={() => {
+                                if (currentUser.profilePicture) {
+                                    setIsAvatarViewerOpen(true);
+                                } else {
+                                    goToSettings();
+                                }
+                            }}
                             role="button"
                             tabIndex={0}
-                            onKeyDown={(event) => event.key === "Enter" && goToSettings()}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                    if (currentUser.profilePicture) {
+                                        setIsAvatarViewerOpen(true);
+                                    } else {
+                                        goToSettings();
+                                    }
+                                }
+                            }}
                         >
                             <Avatar
                                 name={currentUser.name}
@@ -1345,11 +1384,26 @@ const Chat = (props) => {
                     </div>
                 ) : (
                     <div className="contact-profile-card">
-                        <Avatar
-                            name={profileData?.name || activeContact?.name}
-                            src={profileData?.profilePicture || activeContact?.profilePicture}
-                            size={96}
-                        />
+                        <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                                if (profileData?.profilePicture || activeContact?.profilePicture) {
+                                    setIsContactAvatarViewerOpen(true);
+                                }
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && (profileData?.profilePicture || activeContact?.profilePicture)) {
+                                    setIsContactAvatarViewerOpen(true);
+                                }
+                            }}
+                        >
+                            <Avatar
+                                name={profileData?.name || activeContact?.name}
+                                src={profileData?.profilePicture || activeContact?.profilePicture}
+                                size={96}
+                            />
+                        </div>
                         <div className="contact-profile-title">
                             {profileData?.name || activeContact?.name}
                         </div>
@@ -1546,6 +1600,40 @@ const Chat = (props) => {
                         </button>
                     </div>
                 )}
+            </Modal>
+
+            <Modal
+                open={isContactAvatarViewerOpen}
+                footer={null}
+                onCancel={() => setIsContactAvatarViewerOpen(false)}
+                width="80%"
+                className="photo-viewer-modal"
+                centered
+            >
+                {(profileData?.profilePicture || activeContact?.profilePicture) && (
+                    <img
+                        src={profileData?.profilePicture || activeContact?.profilePicture}
+                        alt={profileData?.name || activeContact?.name || activeContact?.username || "Аватар"}
+                        className="photo-viewer-image"
+                    />
+                )}
+            </Modal>
+
+            <Modal
+                open={isAvatarViewerOpen}
+                footer={null}
+                onCancel={() => setIsAvatarViewerOpen(false)}
+                width="80%"
+                className="photo-viewer-modal"
+                centered
+            >
+                {currentUser.profilePicture ? (
+                    <img
+                        src={currentUser.profilePicture}
+                        alt={currentUser.name || currentUser.username || "Аватар"}
+                        className="photo-viewer-image"
+                    />
+                ) : null}
             </Modal>
         </div>
     );
