@@ -53,6 +53,7 @@ public class SecurityCredentialsConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers(HttpMethod.POST, "/update-email-before-verification").permitAll()
                 .antMatchers(HttpMethod.GET, "/admin/registration/approve").permitAll()
                 .antMatchers(HttpMethod.GET, "/admin/registration/reject").permitAll()
+                .antMatchers(HttpMethod.GET, "/users/*/avatar").permitAll()
                 .anyRequest().authenticated();
     }
 

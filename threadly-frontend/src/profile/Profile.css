@@ -124,6 +124,44 @@ body.theme-new.theme-new-light .mobile-nav-item {
     cursor: pointer;
 }
 
+.avatar-edit-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.avatar-edit-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(15,23,42,0.15), rgba(15,23,42,0.6));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out;
+    color: #e2e8f0;
+    pointer-events: none;
+}
+
+.avatar-edit-wrapper:hover .avatar-edit-overlay {
+    opacity: 1;
+}
+
+.avatar-edit-overlay .fa-camera {
+    font-size: 24px;
+}
+
+.avatar-file-input {
+    display: none;
+}
+
+.avatar-actions-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 8px;
+}
+
 .profile-header-centered {
     display: flex;
     flex-direction: column;

@@ -4,6 +4,7 @@ import lombok.Data;
 
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 
 @Data
@@ -15,6 +16,7 @@ public class UpdateProfileRequest {
 
     @NotBlank
     @Size(min = 3, max = 15)
+    @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Логин может содержать только латинские буквы, цифры, - и _")
     private String username;
 
     @NotBlank

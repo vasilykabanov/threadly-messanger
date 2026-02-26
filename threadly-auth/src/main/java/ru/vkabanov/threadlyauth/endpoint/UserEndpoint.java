@@ -7,14 +7,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import ru.vkabanov.threadlyauth.exception.BadRequestException;
 import ru.vkabanov.threadlyauth.exception.EmailAlreadyExistsException;
 import ru.vkabanov.threadlyauth.exception.ResourceNotFoundException;
@@ -25,9 +20,14 @@ import ru.vkabanov.threadlyauth.payload.ApiResponse;
 import ru.vkabanov.threadlyauth.payload.ChangePasswordRequest;
 import ru.vkabanov.threadlyauth.payload.UpdateProfileRequest;
 import ru.vkabanov.threadlyauth.payload.UserSummary;
+import ru.vkabanov.threadlyauth.service.AvatarStorageService;
 import ru.vkabanov.threadlyauth.service.UserService;
 
 import javax.validation.Valid;
+import java.io.InputStream;
+import java.time.Instant;
+
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 
 @RestController
@@ -36,8 +36,10 @@ public class UserEndpoint {
 
     @Autowired
     private UserService userService;
+    @Autowired
+    private AvatarStorageService avatarStorageService;
 
-    @GetMapping(value = "/users/{username}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/users/{username}", produces = APPLICATION_JSON_VALUE)
     public ResponseEntity<?> findUser(@PathVariable("username") String username) {
         log.info("retrieving user {}", username);
 
@@ -46,13 +48,13 @@ public class UserEndpoint {
                 .orElseThrow(() -> new ResourceNotFoundException(username));
     }
 
-    @GetMapping(value = "/users", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/users", produces = APPLICATION_JSON_VALUE)
     public ResponseEntity<?> findAll() {
         log.info("retrieving all users");
         return ResponseEntity.ok(userService.findAll());
     }
 
-    @GetMapping(value = "/users/summaries", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/users/summaries", produces = APPLICATION_JSON_VALUE)
     public ResponseEntity<?> findAllUserSummaries(@AuthenticationPrincipal ThreadlyUserDetails userDetails,
                                                   @RequestHeader(value = "Authorization", required = false) String authorization) {
         log.info("retrieving user summaries (only with conversation)");
@@ -64,7 +66,7 @@ public class UserEndpoint {
                 .map(this::convertTo));
     }
 
-    @GetMapping(value = "/users/search", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/users/search", produces = APPLICATION_JSON_VALUE)
     public ResponseEntity<?> searchUsers(@RequestParam("q") String query,
                                          @AuthenticationPrincipal ThreadlyUserDetails userDetails) {
         return ResponseEntity.ok(userService
@@ -73,19 +75,21 @@ public class UserEndpoint {
                 .map(this::convertTo));
     }
 
-    @GetMapping(value = "/users/me", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/users/me", produces = APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('USER')")
     @ResponseStatus(HttpStatus.OK)
     public UserSummary getCurrentUser(@AuthenticationPrincipal ThreadlyUserDetails userDetails) {
         String displayName = userDetails.getUserProfile() != null
                 ? userDetails.getUserProfile().getDisplayName()
                 : null;
-        String profilePicture = userDetails.getUserProfile() != null
+        String profilePictureKey = userDetails.getUserProfile() != null
                 ? userDetails.getUserProfile().getProfilePictureUrl()
                 : null;
+        String profilePicture = profilePictureKey != null && !profilePictureKey.isBlank()
+                ? buildAvatarUrl(userDetails.getId(), userDetails.getUpdatedAt())
+                : null;
 
-        return UserSummary
-                .builder()
+        return UserSummary.builder()
                 .id(userDetails.getId())
                 .username(userDetails.getUsername())
                 .name(displayName)
@@ -94,11 +98,49 @@ public class UserEndpoint {
                 .build();
     }
 
-    @PutMapping(value = "/users/me", produces = MediaType.APPLICATION_JSON_VALUE)
+    /**
+     * Загрузка/обновление аватара текущего пользователя.
+     */
+    @PostMapping(value = "/users/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<UserSummary> updateProfile(
-            @AuthenticationPrincipal ThreadlyUserDetails userDetails,
-            @Valid @RequestBody UpdateProfileRequest request) {
+    public ResponseEntity<UserSummary> uploadAvatar(@AuthenticationPrincipal ThreadlyUserDetails userDetails,
+                                                    @RequestPart("file") MultipartFile file) {
+        User updated = userService.updateAvatar(userDetails.getId(), file);
+        return ResponseEntity.ok(convertTo(updated));
+    }
+
+    /**
+     * Прокси-эндпойнт для аватара пользователя (same-origin, обход ORB).
+     */
+    @GetMapping(value = "/users/{userId}/avatar")
+    public ResponseEntity<StreamingResponseBody> getAvatar(@PathVariable String userId) {
+        return userService.findById(userId)
+                .flatMap(user -> {
+                    if (user.getUserProfile() == null || user.getUserProfile().getProfilePictureUrl() == null) {
+                        return java.util.Optional.<ResponseEntity<StreamingResponseBody>>empty();
+                    }
+                    String objectKey = user.getUserProfile().getProfilePictureUrl();
+                    return avatarStorageService.getObjectStream(objectKey)
+                            .map(result -> {
+                                MediaType mediaType = MediaType.parseMediaType(result.getContentType());
+                                StreamingResponseBody body = outputStream -> {
+                                    try (InputStream in = result.getStream()) {
+                                        in.transferTo(outputStream);
+                                    }
+                                };
+                                return ResponseEntity.ok()
+                                        .contentType(mediaType)
+                                        .header("Cache-Control", "private, max-age=3600")
+                                        .body(body);
+                            });
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping(value = "/users/me", produces = APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<UserSummary> updateProfile(@AuthenticationPrincipal ThreadlyUserDetails userDetails,
+                                                     @Valid @RequestBody UpdateProfileRequest request) {
         try {
             User updatedUser = userService.updateProfile(userDetails.getId(), request);
             return ResponseEntity.ok(convertTo(updatedUser));
@@ -107,19 +149,17 @@ public class UserEndpoint {
         }
     }
 
-    @PutMapping(value = "/users/me/password", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value = "/users/me/password", produces = APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<ApiResponse> changePassword(
-            @AuthenticationPrincipal ThreadlyUserDetails userDetails,
-            @Valid @RequestBody ChangePasswordRequest request) {
+    public ResponseEntity<ApiResponse> changePassword(@AuthenticationPrincipal ThreadlyUserDetails userDetails,
+                                                      @Valid @RequestBody ChangePasswordRequest request) {
         userService.changePassword(userDetails.getId(), request.getCurrentPassword(), request.getNewPassword());
         return ResponseEntity.ok(new ApiResponse(true, "Пароль изменён"));
     }
 
-    @GetMapping(value = "/users/summary/{username}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/users/summary/{username}", produces = APPLICATION_JSON_VALUE)
     public ResponseEntity<?> getUserSummary(@PathVariable("username") String username) {
         log.info("retrieving user {}", username);
-
         return userService.findByUsername(username)
                 .map(user -> ResponseEntity.ok(convertTo(user)))
                 .orElseThrow(() -> new ResourceNotFoundException(username));
@@ -129,16 +169,28 @@ public class UserEndpoint {
         String displayName = user.getUserProfile() != null
                 ? user.getUserProfile().getDisplayName()
                 : null;
-        String profilePicture = user.getUserProfile() != null
+        String profilePictureKey = user.getUserProfile() != null
                 ? user.getUserProfile().getProfilePictureUrl()
                 : null;
-        return UserSummary
-                .builder()
+        String profilePicture = profilePictureKey != null && !profilePictureKey.isBlank()
+                ? buildAvatarUrl(user.getId(), user.getUpdatedAt())
+                : null;
+
+        return UserSummary.builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .name(displayName)
                 .email(user.getEmail())
                 .profilePicture(profilePicture)
                 .build();
+    }
+
+    private String buildAvatarUrl(String userId, Instant updatedAt) {
+        String basePath = "/api/auth/users/" + userId + "/avatar";
+        if (updatedAt == null) {
+            return basePath;
+        }
+        String separator = basePath.contains("?") ? "&" : "?";
+        return basePath + separator + "v=" + updatedAt.toEpochMilli();
     }
 }
