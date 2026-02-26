@@ -28,7 +28,7 @@ const App = (props) => {
         <div className="App theme-new">
             <BrowserRouter>
                 <Switch>
-                    <PrivateRoute exact path="/" component={Profile} />
+                    <PrivateRoute exact path="/" component={Chat} />
                     <Route exact path="/login" render={(props) => <Signin {...props} />}/>
                     <Route exact path="/signup" render={(props) => <Signup {...props} />}/>
                     <Route exact path="/verify-email" render={(props) => <VerifyEmail {...props} />}/>
@@ -37,6 +37,7 @@ const App = (props) => {
                     <Route exact path="/admin/registration/approve" render={(props) => <AdminRegistrationApproval {...props} />}/>
                     <Route exact path="/admin/registration/reject" render={(props) => <AdminRegistrationApproval {...props} />}/>
                     <PrivateRoute exact path="/chat" component={Chat} />
+                    <PrivateRoute exact path="/profile" component={Profile} />
                     <PrivateRoute exact path="/settings" component={Settings} />
                     <Redirect to="/login" />
                 </Switch>
