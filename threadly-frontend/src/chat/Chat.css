@@ -3389,26 +3389,7 @@ body.theme-new.theme-new-dark .group-member-item {
     color: var(--color-status-busy);
 }
 
-/* --- Favorites row entrance --- */
-#frame #sidepanel #contacts ul li.contact:first-child .favorites-avatar {
-    animation: scaleInBounce 0.5s ease-out 0.1s both;
-}
-
-.favorites-avatar {
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
-}
-
-.favorites-avatar:hover {
-    transform: scale(1.12) rotate(5deg);
-}
-
-.favorites-icon {
-    transition: transform 0.3s ease;
-}
-
-#frame #sidepanel #contacts ul li.contact:hover .favorites-icon {
-    transform: scale(1.2) rotate(15deg);
-}
+/* --- Favorites row (no extra animations) --- */
 
 /* --- Group avatar entrance --- */
 .group-avatar {
@@ -4015,13 +3996,7 @@ body.theme-new .send-btn:hover {
     box-shadow: 0 8px 28px rgba(99, 102, 241, 0.5), 0 0 40px rgba(139, 92, 246, 0.2) !important;
 }
 
-body.theme-new .favorites-avatar {
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
-}
-
-body.theme-new .favorites-avatar:hover {
-    box-shadow: 0 0 16px rgba(251, 191, 36, 0.4);
-}
+/* theme-new: favorites - no special effects */
 
 body.theme-new .group-avatar {
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;

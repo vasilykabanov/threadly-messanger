@@ -520,8 +520,10 @@ const Chat = (props) => {
             return next;
         });
         setLastMessageByContact((prev) => {
-            if (saved.recipientId && prev[saved.recipientId]?.content === saved.content && !prev[saved.recipientId]?.id) {
-                return { ...prev, [saved.recipientId]: { ...prev[saved.recipientId], ...saved, id: saved.id, status: saved.status || "RECEIVED" } };
+            const isSelfChat = saved.senderId === saved.recipientId;
+            const key = isSelfChat ? "_favorites" : saved.recipientId;
+            if (key && prev[key]?.content === saved.content && !prev[key]?.id) {
+                return { ...prev, [key]: { ...prev[key], ...saved, id: saved.id, status: saved.status || "RECEIVED" } };
             }
             return prev;
         });
@@ -699,9 +701,13 @@ const Chat = (props) => {
         };
 
         setMessages((prev) => [...prev, outgoingMessage]);
-        setLastMessageByContact((prev) => ({ ...prev, [activeContact.id]: outgoingMessage }));
-        if (!contacts.some((contact) => contact.id === activeContact.id)) {
-            setContacts([activeContact, ...contacts]);
+        if (activeContact._isFavorites) {
+            setLastMessageByContact((prev) => ({ ...prev, ["_favorites"]: outgoingMessage }));
+        } else {
+            setLastMessageByContact((prev) => ({ ...prev, [activeContact.id]: outgoingMessage }));
+            if (!contacts.some((contact) => contact.id === activeContact.id)) {
+                setContacts([activeContact, ...contacts]);
+            }
         }
 
         const payload = {
@@ -758,9 +764,13 @@ const Chat = (props) => {
         uploadImageMessage(file, chatId)
             .then((saved) => {
                 setMessages((prev) => [...prev, { ...saved, status: saved.status || "RECEIVED" }]);
-                setLastMessageByContact((prev) => ({ ...prev, [activeContact.id]: saved }));
-                if (!contacts.some((c) => c.id === activeContact.id)) {
-                    setContacts([activeContact, ...contacts]);
+                if (activeContact._isFavorites) {
+                    setLastMessageByContact((prev) => ({ ...prev, ["_favorites"]: saved }));
+                } else {
+                    setLastMessageByContact((prev) => ({ ...prev, [activeContact.id]: saved }));
+                    if (!contacts.some((c) => c.id === activeContact.id)) {
+                        setContacts([activeContact, ...contacts]);
+                    }
                 }
             })
             .catch((err) => {
@@ -1073,9 +1083,13 @@ const Chat = (props) => {
         uploadMedia(file, chatId, currentUser.id, activeContact.id, mediaType)
             .then((saved) => {
                 setMessages((prev) => [...prev, { ...saved, status: saved.status || "RECEIVED" }]);
-                setLastMessageByContact((prev) => ({ ...prev, [activeContact.id]: saved }));
-                if (!contacts.some((c) => c.id === activeContact.id)) {
-                    setContacts([activeContact, ...contacts]);
+                if (activeContact._isFavorites) {
+                    setLastMessageByContact((prev) => ({ ...prev, ["_favorites"]: saved }));
+                } else {
+                    setLastMessageByContact((prev) => ({ ...prev, [activeContact.id]: saved }));
+                    if (!contacts.some((c) => c.id === activeContact.id)) {
+                        setContacts([activeContact, ...contacts]);
+                    }
                 }
             })
             .catch((err) => {
@@ -1171,7 +1185,27 @@ const Chat = (props) => {
         });
     };
 
-    const filteredContacts = contacts.filter((contact) =>
+    // Build a combined contacts list that includes Favorites as a regular sorted item
+    const contactsWithFavorites = (() => {
+        if (!currentUser?.id) return contacts;
+        const fav = makeFavoritesContact(currentUser);
+        // Don't add if already present (shouldn't happen, but guard)
+        const withoutSelf = contacts.filter((c) => c.id !== currentUser.id);
+        const all = [fav, ...withoutSelf];
+        // Sort by last message timestamp (favorites uses "_favorites" key)
+        return all.sort((a, b) => {
+            const keyA = a._isFavorites ? "_favorites" : a.id;
+            const keyB = b._isFavorites ? "_favorites" : b.id;
+            const msgA = lastMessageByContact[keyA];
+            const msgB = lastMessageByContact[keyB];
+            if (!msgA && !msgB) return 0;
+            if (!msgA) return 1;
+            if (!msgB) return -1;
+            return new Date(msgB.timestamp).getTime() - new Date(msgA.timestamp).getTime();
+        });
+    })();
+
+    const filteredContacts = contactsWithFavorites.filter((contact) =>
         isFuzzyMatch(searchQuery, contact.username || contact.name)
     );
 
@@ -1189,9 +1223,10 @@ const Chat = (props) => {
                 setHasMoreMessages(Boolean(data?.hasMore));
                 setMessagesPage(data?.nextPage != null ? data.nextPage : 0);
                 if (items.length > 0) {
+                    const key = contact._isFavorites ? "_favorites" : contact.id;
                     setLastMessageByContact((prev) => ({
                         ...prev,
-                        [contact.id]: items[0],
+                        [key]: items[0],
                     }));
                 }
                 setContacts((prev) =>
@@ -1730,34 +1765,6 @@ const Chat = (props) => {
                         ) : null}
                     </div>
                     <ul>
-                        {/* Избранное (Saved Messages) */}
-                        {currentUser?.id && (
-                            <li
-                                key="favorites"
-                                onClick={() => {
-                                    setActiveGroup(null);
-                                    setActiveContact(makeFavoritesContact(currentUser));
-                                }}
-                                className={
-                                    activeContact?._isFavorites
-                                        ? "contact active"
-                                        : "contact"
-                                }
-                            >
-                                <div className="wrap">
-                                    <div className="avatar-wrapper favorites-avatar">
-                                        <span className="favorites-icon">⭐</span>
-                                    </div>
-                                    <div className="meta">
-                                        <div className="meta-header">
-                                            <p className="name">Избранное</p>
-                                        </div>
-                                        <p className="preview">Сохранённые сообщения</p>
-                                    </div>
-                                </div>
-                            </li>
-                        )}
-
                         {/* Группы */}
                         {groups.length > 0 && (
                             <>
@@ -1792,52 +1799,64 @@ const Chat = (props) => {
                             </>
                         )}
 
-                        {/* Контакты */}
-                        {filteredContacts.map((contact) => (
+                        {/* Контакты (включая Избранное) */}
+                        {filteredContacts.map((contact) => {
+                            const isFav = contact._isFavorites;
+                            const lastMsgKey = isFav ? "_favorites" : contact.id;
+                            const lastMsg = lastMessageByContact[lastMsgKey];
+                            return (
                             <li
-                                key={contact.id}
+                                key={isFav ? "favorites" : contact.id}
                                 onClick={() => {
                                     setActiveGroup(null);
                                     setActiveContact(contact);
                                 }}
                                 className={
-                                    activeContact && contact.id === activeContact.id
-                                        ? "contact active"
-                                        : "contact"
+                                    isFav
+                                        ? (activeContact?._isFavorites ? "contact active" : "contact")
+                                        : (activeContact && contact.id === activeContact.id
+                                            ? "contact active"
+                                            : "contact")
                                 }
                             >
                                 <div className="wrap">
-                                    <div className={`avatar-wrapper ${contact.status}`}>
-                                        <Avatar
-                                            name={contact.name}
-                                            src={contact.profilePicture}
-                                            size={44}
-                                        />
-                                    </div>
+                                    {isFav ? (
+                                        <div className="avatar-wrapper favorites-avatar">
+                                            <span className="favorites-icon">⭐</span>
+                                        </div>
+                                    ) : (
+                                        <div className={`avatar-wrapper ${contact.status}`}>
+                                            <Avatar
+                                                name={contact.name}
+                                                src={contact.profilePicture}
+                                                size={44}
+                                            />
+                                        </div>
+                                    )}
                                     <div className="meta">
                                         <div className="meta-header">
                                             <p className="name">{contact.name}</p>
                                             <span className="meta-right">
-                                                {lastMessageByContact[contact.id]?.timestamp && (
+                                                {lastMsg?.timestamp && (
                                                     <span className="last-time">
-                                                        {formatLastMessageDate(lastMessageByContact[contact.id].timestamp)}
+                                                        {formatLastMessageDate(lastMsg.timestamp)}
                                                     </span>
                                                 )}
                                             </span>
                                         </div>
                                         <p className="preview">
-                                            {lastMessageByContact[contact.id]
-                                                ? (lastMessageByContact[contact.id].messageType === "IMAGE"
+                                            {lastMsg
+                                                ? (lastMsg.messageType === "IMAGE"
                                                     ? "[Фото]"
-                                                    : lastMessageByContact[contact.id].messageType === "VIDEO_CIRCLE"
+                                                    : lastMsg.messageType === "VIDEO_CIRCLE"
                                                         ? "🔵 Видеосообщение"
-                                                        : lastMessageByContact[contact.id].messageType === "VOICE"
+                                                        : lastMsg.messageType === "VOICE"
                                                             ? "🎤 Голосовое"
-                                                            : lastMessageByContact[contact.id].content ?? "")
-                                                : "Нет сообщений"}
+                                                            : lastMsg.content ?? "")
+                                                : (isFav ? "Сохранённые сообщения" : "Нет сообщений")}
                                         </p>
                                         <span className="meta-badge-cell">
-                                            {contact.newMessages > 0 && (
+                                            {!isFav && contact.newMessages > 0 && (
                                                 <span className="unread-badge"
                                                       aria-label={`Непрочитанных: ${contact.newMessages}`}>
                                                     {contact.newMessages > 99 ? "99+" : contact.newMessages}
@@ -1847,7 +1866,8 @@ const Chat = (props) => {
                                     </div>
                                 </div>
                             </li>
-                        ))}
+                            );
+                        })}
                     </ul>
                 </div>
                 <div id="bottom-bar">

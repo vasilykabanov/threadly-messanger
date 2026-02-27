@@ -28,15 +28,18 @@ public class ChatRoomService {
                             .senderId(senderId)
                             .recipientId(recipientId)
                             .build();
-
-                    ChatRoom recipientSender = ChatRoom
-                            .builder()
-                            .chatId(chatId)
-                            .senderId(recipientId)
-                            .recipientId(senderId)
-                            .build();
                     chatRoomRepository.save(senderRecipient);
-                    chatRoomRepository.save(recipientSender);
+
+                    // For normal chats (different users) create the reverse mapping too
+                    if (!senderId.equals(recipientId)) {
+                        ChatRoom recipientSender = ChatRoom
+                                .builder()
+                                .chatId(chatId)
+                                .senderId(recipientId)
+                                .recipientId(senderId)
+                                .build();
+                        chatRoomRepository.save(recipientSender);
+                    }
 
                     return Optional.of(chatId);
                 });
