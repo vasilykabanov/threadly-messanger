@@ -113,6 +113,7 @@ const Chat = (props) => {
     const messagesListRef = useRef(null);
     const heartbeatIntervalRef = useRef(null);
     const connectUserIdRef = useRef(null);
+    const loadingMessagesForContactIdRef = useRef(null);
     const pendingMessagesRef = useRef([]);
     const pendingTimeoutsRef = useRef({});
     const [isUserNearBottom, setIsUserNearBottom] = useState(true);
@@ -257,6 +258,9 @@ const Chat = (props) => {
 
     useEffect(() => {
         if (!activeContact?.id) return;
+        // Защита от двойного вызова (React Strict Mode / двойной рендер): не стартуем второй запрос для того же контакта.
+        if (loadingMessagesForContactIdRef.current === activeContact.id) return;
+        loadingMessagesForContactIdRef.current = activeContact.id;
 
         // При переключении на другого собеседника считаем, что пользователь "у низа",
         // и сразу показываем конец нового чата.
@@ -710,7 +714,19 @@ const Chat = (props) => {
 
     const stopVideoRecording = () => {
         const recorder = videoMediaRecorderRef.current;
-        if (!recorder || recorder.state === "inactive") return;
+
+        // Если рекордер уже остановлен (или недоступен), но чанки есть — просто отправляем то, что записано
+        if ((!recorder || recorder.state === "inactive") && videoChunksRef.current.length > 0) {
+            const blob = new Blob(videoChunksRef.current, { type: "video/webm" });
+            sendMediaMessage(blob, "VIDEO_CIRCLE");
+            cleanupVideoRecording();
+            return;
+        }
+
+        if (!recorder || recorder.state === "inactive") {
+            return;
+        }
+
         recorder.onstop = () => {
             const blob = new Blob(videoChunksRef.current, { type: "video/webm" });
             sendMediaMessage(blob, "VIDEO_CIRCLE");
@@ -965,6 +981,7 @@ const Chat = (props) => {
         setHasMoreMessages(true);
         getChatMessagesPage(contact.id, currentUser.id, 0, 50)
             .then((data) => {
+                if (loadingMessagesForContactIdRef.current !== contact.id) return;
                 const items = data?.items || [];
                 const ordered = [...items].reverse();
                 setMessages(ordered);
@@ -979,6 +996,11 @@ const Chat = (props) => {
                 setContacts((prev) =>
                     prev.map((c) => (c.id === contact.id ? {...c, newMessages: 0} : c))
                 );
+            })
+            .finally(() => {
+                if (loadingMessagesForContactIdRef.current === contact.id) {
+                    loadingMessagesForContactIdRef.current = null;
+                }
             });
     };
 
@@ -1198,6 +1220,7 @@ const Chat = (props) => {
     const handleMessagesScroll = () => {
         const container = messagesContainerRef.current;
         if (!container) return;
+        if (!messages.length) return;
 
         const distanceFromBottom =
             container.scrollHeight - container.scrollTop - container.clientHeight;
@@ -1389,11 +1412,8 @@ const Chat = (props) => {
                             <li
                                 key={contact.id}
                                 onClick={() => {
-                                    if (activeContact?.id !== contact.id) {
-                                        setActiveContact(contact);
-                                    } else {
-                                        loadChatForContact(contact);
-                                    }
+                                    // Всегда просто выбираем контакт, загрузка чата происходит в useEffect по activeContact.id
+                                    setActiveContact(contact);
                                 }}
                                 className={
                                     activeContact && contact.id === activeContact.id
@@ -1526,7 +1546,11 @@ const Chat = (props) => {
                                                 <MessageBubble
                                                     content={msg.content}
                                                     timestamp={msg.timestamp}
-                                                    onLongPress={(e, position) => openContextMenu(e, position, msg.content)}
+                                                    onLongPress={(e, position) => {
+                                                        const type = msg.messageType || "TEXT";
+                                                        if (type !== "TEXT") return;
+                                                        openContextMenu(e, position, msg.content);
+                                                    }}
                                                     isPullGestureRef={isPullGestureRef}
                                                     renderMessageText={renderMessageText}
                                                     formatTime={formatTime}

@@ -38,6 +38,16 @@ const MessageBubble = ({
     const mediaBlobRef = useRef(null);
     const mediaCancelledRef = useRef(false);
 
+    // Video circle player
+    const videoRef = useRef(null);
+    const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+
+    // Voice player
+    const audioRef = useRef(null);
+    const [isVoicePlaying, setIsVoicePlaying] = useState(false);
+    const [voiceCurrent, setVoiceCurrent] = useState(0);
+    const [voiceDuration, setVoiceDuration] = useState(0);
+
     const handleCloseLightbox = () => {
         setLightboxOpen(false);
         lightboxJustClosedRef.current = true;
@@ -83,6 +93,10 @@ const MessageBubble = ({
         mediaCancelledRef.current = false;
         setMediaBlobUrl(null);
         setMediaLoading(true);
+        setIsVoicePlaying(false);
+        setIsVideoPlaying(false);
+        setVoiceCurrent(0);
+        setVoiceDuration(0);
         fetchMediaAsBlobUrl(messageId).then((url) => {
             if (mediaCancelledRef.current) {
                 if (url) URL.revokeObjectURL(url);
@@ -102,6 +116,108 @@ const MessageBubble = ({
             }
         };
     }, [messageId, messageType]);
+
+    // Sync voice player state with <audio>
+    useEffect(() => {
+        if (messageType !== "VOICE") return;
+        const audioEl = audioRef.current;
+        if (!audioEl) return;
+
+        const handleLoadedMetadata = () => {
+            const d = audioEl.duration;
+            if (Number.isFinite(d) && d > 0) {
+                setVoiceDuration(d);
+            }
+        };
+        const handleTimeUpdate = () => {
+            const t = audioEl.currentTime || 0;
+            setVoiceCurrent(t);
+            // На некоторых браузерах duration появляется только во время воспроизведения
+            const d = audioEl.duration;
+            if (!voiceDuration && Number.isFinite(d) && d > 0) {
+                setVoiceDuration(d);
+            }
+        };
+        const handleEnded = () => {
+            setIsVoicePlaying(false);
+            const d = audioEl.duration;
+            if (Number.isFinite(d) && d > 0) {
+                setVoiceDuration(d);
+                setVoiceCurrent(d);
+            }
+        };
+
+        audioEl.addEventListener("loadedmetadata", handleLoadedMetadata);
+        audioEl.addEventListener("timeupdate", handleTimeUpdate);
+        audioEl.addEventListener("ended", handleEnded);
+
+        return () => {
+            audioEl.removeEventListener("loadedmetadata", handleLoadedMetadata);
+            audioEl.removeEventListener("timeupdate", handleTimeUpdate);
+            audioEl.removeEventListener("ended", handleEnded);
+        };
+    }, [messageType, mediaBlobUrl]);
+
+    // Sync video circle state with <video>
+    useEffect(() => {
+        if (messageType !== "VIDEO_CIRCLE") return;
+        const el = videoRef.current;
+        if (!el) return;
+
+        const handleEnded = () => {
+            setIsVideoPlaying(false);
+        };
+        const handlePause = () => {
+            // На pause тоже сбрасываем флаг, чтобы иконка вернулась в состояние play
+            setIsVideoPlaying(false);
+        };
+
+        el.addEventListener("ended", handleEnded);
+        el.addEventListener("pause", handlePause);
+
+        return () => {
+            el.removeEventListener("ended", handleEnded);
+            el.removeEventListener("pause", handlePause);
+        };
+    }, [messageType, mediaBlobUrl]);
+
+    const toggleVoicePlayback = () => {
+        if (!audioRef.current) return;
+        if (isVoicePlaying) {
+            audioRef.current.pause();
+            setIsVoicePlaying(false);
+        } else {
+            audioRef.current
+                .play()
+                .then(() => setIsVoicePlaying(true))
+                .catch(() => setIsVoicePlaying(false));
+        }
+    };
+
+    const formatVoiceTime = (seconds) => {
+        const safe = Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+        const m = Math.floor(safe / 60)
+            .toString()
+            .padStart(2, "0");
+        const s = Math.floor(safe % 60)
+            .toString()
+            .padStart(2, "0");
+        return `${m}:${s}`;
+    };
+
+    const toggleVideoPlayback = () => {
+        const el = videoRef.current;
+        if (!el) return;
+        if (isVideoPlaying) {
+            el.pause();
+            setIsVideoPlaying(false);
+        } else {
+            el
+                .play()
+                .then(() => setIsVideoPlaying(true))
+                .catch(() => setIsVideoPlaying(false));
+        }
+    };
 
     const longPressHandlers = useLongPress({
         onLongPress: handleLongPress,
@@ -136,33 +252,93 @@ const MessageBubble = ({
             {isVideoCircle ? (
                 <span className="message-bubble-video-circle-wrap">
                     {mediaBlobUrl ? (
-                        <video
-                            src={mediaBlobUrl}
-                            className="video-circle-player"
-                            playsInline
-                            controls
-                            preload="metadata"
-                            onLoadedData={() => {
-                                if (onImageLoad) requestAnimationFrame(() => onImageLoad());
-                            }}
-                        />
+                        <>
+                            <video
+                                ref={videoRef}
+                                src={mediaBlobUrl}
+                                className="video-circle-player"
+                                playsInline
+                                preload="metadata"
+                                onLoadedData={() => {
+                                    if (onImageLoad) requestAnimationFrame(() => onImageLoad());
+                                }}
+                                muted={false}
+                            />
+                            <button
+                                type="button"
+                                className={`video-circle-play-btn ${isVideoPlaying ? "video-circle-play-btn--playing" : ""}`}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleVideoPlayback();
+                                }}
+                                aria-label={isVideoPlaying ? "Пауза видео" : "Воспроизвести видео"}
+                            >
+                                {isVideoPlaying ? (
+                                    <span className="video-circle-icon video-circle-icon--pause" />
+                                ) : (
+                                    <span className="video-circle-icon video-circle-icon--play" />
+                                )}
+                            </button>
+                        </>
                     ) : mediaLoading ? (
-                        <span className="video-circle-placeholder"><LoadingOutlined spin /></span>
+                        <span className="video-circle-placeholder">
+                            <LoadingOutlined spin />
+                        </span>
                     ) : (
                         <span className="video-circle-placeholder">🔵</span>
                     )}
                 </span>
             ) : isVoice ? (
-                <span className="message-bubble-voice-wrap">
+                <span
+                    className="message-bubble-voice-wrap"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }}
+                >
                     {mediaBlobUrl ? (
-                        <audio
-                            src={mediaBlobUrl}
-                            className="voice-player"
-                            controls
-                            preload="metadata"
-                        />
+                        <>
+                            <button
+                                type="button"
+                                className={`voice-play-btn ${isVoicePlaying ? "voice-play-btn--playing" : ""}`}
+                                onClick={toggleVoicePlayback}
+                                aria-label={isVoicePlaying ? "Пауза голосового сообщения" : "Воспроизвести голосовое сообщение"}
+                            >
+                                {isVoicePlaying ? (
+                                    <span className="voice-play-icon voice-play-icon--pause" />
+                                ) : (
+                                    <span className="voice-play-icon voice-play-icon--play" />
+                                )}
+                            </button>
+                            <div className="voice-wave">
+                                <div
+                                    className={`voice-wave-fill ${
+                                        isVoicePlaying ? "voice-wave-fill--active" : ""
+                                    }`}
+                                    style={{
+                                        width:
+                                            voiceDuration > 0
+                                                ? `${Math.min(100, Math.max(0, (voiceCurrent / voiceDuration) * 100))}%`
+                                                : "0%",
+                                    }}
+                                />
+                            </div>
+                            <span className="voice-time">
+                                {formatVoiceTime(voiceCurrent || 0)} / {formatVoiceTime(voiceDuration || voiceCurrent || 0)}
+                            </span>
+                            <audio
+                                ref={audioRef}
+                                src={mediaBlobUrl}
+                                preload="metadata"
+                                style={{ display: "none" }}
+                            />
+                        </>
                     ) : mediaLoading ? (
-                        <span className="voice-placeholder"><LoadingOutlined spin /> Загрузка…</span>
+                        <span className="voice-placeholder">
+                            <LoadingOutlined spin /> Загрузка…
+                        </span>
                     ) : (
                         <span className="voice-placeholder">🎤 Голосовое сообщение</span>
                     )}
