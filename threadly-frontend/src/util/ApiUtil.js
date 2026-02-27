@@ -94,6 +94,24 @@ export function updateEmailBeforeVerification(payload) {
     });
 }
 
+export function forgotPassword(usernameOrEmail) {
+    return request({
+        url: AUTH_SERVICE + "/forgot-password",
+        method: "POST",
+        body: JSON.stringify({ usernameOrEmail }),
+        skipAuthRedirect: true,
+    });
+}
+
+export function resetPassword(payload) {
+    return request({
+        url: AUTH_SERVICE + "/reset-password",
+        method: "POST",
+        body: JSON.stringify(payload),
+        skipAuthRedirect: true,
+    });
+}
+
 export function approveRegistration(token) {
     return request({
         url: AUTH_SERVICE + "/admin/registration/approve?token=" + encodeURIComponent(token),
@@ -378,6 +396,67 @@ export function getChatImages(chatId, page = 0, size = 60) {
         url: CHAT_SERVICE + "/chats/" + encodeURIComponent(chatId) + "/images?" + params.toString(),
         method: "GET",
     });
+}
+
+// -------------------------
+// Media (VIDEO_CIRCLE, VOICE)
+// -------------------------
+
+/**
+ * Загрузка медиафайла (видеокружок или голосовое) в чат.
+ * Возвращает созданное ChatMessage.
+ */
+export function uploadMedia(file, chatId, senderId, recipientId, messageType) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    const token = localStorage.getItem("accessToken");
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("chatId", chatId);
+    formData.append("senderId", senderId);
+    formData.append("recipientId", recipientId);
+    formData.append("messageType", messageType);
+
+    const headers = new Headers();
+    headers.append("Authorization", "Bearer " + token);
+
+    return fetch(CHAT_SERVICE + "/media/upload", {
+        method: "POST",
+        headers,
+        body: formData,
+    }).then(async (response) => {
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            if (response.status === 401 && token) {
+                localStorage.removeItem("accessToken");
+                window.location.href = "/login";
+            }
+            return Promise.reject({ status: response.status, ...json });
+        }
+        return json;
+    });
+}
+
+/**
+ * Скачать медиафайл (видеокружок/голосовое) как blob URL через прокси.
+ * Возвращает blob URL для использования в <video>/<audio>. Вызывающий должен вызвать URL.revokeObjectURL().
+ */
+export function fetchMediaAsBlobUrl(messageId) {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+        return Promise.resolve(null);
+    }
+    return fetch(CHAT_SERVICE + "/media/" + encodeURIComponent(messageId), {
+        method: "GET",
+        headers: { Authorization: "Bearer " + token },
+    })
+        .then((res) => {
+            if (!res.ok) return null;
+            return res.blob();
+        })
+        .then((blob) => (blob ? URL.createObjectURL(blob) : null))
+        .catch(() => null);
 }
 
 // -------------------------

@@ -18,6 +18,7 @@ import ru.vkabanov.threadlyauth.service.UserService;
 
 import javax.validation.Valid;
 import java.net.URI;
+import java.util.Map;
 
 @RestController
 @Slf4j
@@ -81,5 +82,21 @@ public class AuthEndpoint {
             @Valid @RequestBody UpdateEmailBeforeVerificationRequest request) {
         userService.updateEmailBeforeVerification(request);
         return ResponseEntity.ok(new ApiResponse(true, "Email updated. Please check your new email to verify your account."));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        String maskedEmail = userService.initiatePasswordReset(request.getUsernameOrEmail());
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "maskedEmail", maskedEmail,
+                "message", "Ссылка для сброса пароля отправлена на почту"
+        ));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ConfirmResetPasswordRequest request) {
+        userService.confirmPasswordReset(request);
+        return ResponseEntity.ok(new ApiResponse(true, "Пароль успешно изменён"));
     }
 }

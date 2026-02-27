@@ -40,4 +40,11 @@ public class ChatMessage {
    /** Presigned URL для отображения изображения. Не сохраняется в БД, заполняется при отдаче клиенту. */
    @Transient
    private String imageUrl;
+
+   /** Ключ объекта в MinIO для медиа-файлов (VIDEO_CIRCLE, VOICE). */
+   private String mediaKey;
+
+   /** URL для скачивания/стриминга медиа. Не сохраняется в БД, формируется при отдаче клиенту. */
+   @Transient
+   private String mediaDownloadUrl;
 }

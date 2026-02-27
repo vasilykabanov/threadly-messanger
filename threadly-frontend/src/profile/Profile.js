@@ -209,6 +209,14 @@ const Profile = (props) => {
                         rules={[
                             {required: true, message: "Введите имя пользователя"},
                             {min: 3, max: 15, message: "От 3 до 15 символов"},
+                            {
+                                validator: (_, value) => {
+                                    if (!value) return Promise.resolve();
+                                    return /^[a-zA-Z0-9_-]+$/.test(value)
+                                        ? Promise.resolve()
+                                        : Promise.reject(new Error("Только латиница, цифры, - и _"));
+                                },
+                            },
                         ]}
                     >
                         <Input placeholder="username"/>

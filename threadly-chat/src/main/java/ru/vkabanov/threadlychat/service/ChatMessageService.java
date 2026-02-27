@@ -63,6 +63,10 @@ public class ChatMessageService {
             String content = saved.getContent();
             if (saved.getMessageType() == MessageType.IMAGE) {
                 content = content != null ? content : "[Photo]";
+            } else if (saved.getMessageType() == MessageType.VIDEO_CIRCLE) {
+                content = "🔵 Видеосообщение";
+            } else if (saved.getMessageType() == MessageType.VOICE) {
+                content = "🎤 Голосовое сообщение";
             }
             pushNotificationService.sendToUser(chatMessage.getRecipientId(), Map.of(
                     "type", "chat_message",
@@ -153,6 +157,7 @@ public class ChatMessageService {
                 })
                 .orElseThrow(() -> new ResourceNotFoundException("can't find message (" + id + ")"));
         enrichWithImageUrl(message);
+        enrichWithMediaUrl(message);
         return message;
     }
 
@@ -236,6 +241,10 @@ public class ChatMessageService {
                 if (m.getMessageType() == MessageType.IMAGE && m.getImageKey() != null) {
                     imageStorageService.delete(m.getImageKey());
                 }
+                if ((m.getMessageType() == MessageType.VIDEO_CIRCLE || m.getMessageType() == MessageType.VOICE)
+                        && m.getMediaKey() != null) {
+                    imageStorageService.delete(m.getMediaKey());
+                }
             }
         }
         repository.deleteByChatId(chatId);
@@ -300,7 +309,18 @@ public class ChatMessageService {
 
     private void enrichWithImageUrls(List<ChatMessage> messages) {
         if (messages != null) {
-            messages.forEach(this::enrichWithImageUrl);
+            messages.forEach(m -> {
+                enrichWithImageUrl(m);
+                enrichWithMediaUrl(m);
+            });
         }
+    }
+
+    private void enrichWithMediaUrl(ChatMessage message) {
+        if (message == null) return;
+        if (message.getMessageType() != MessageType.VIDEO_CIRCLE && message.getMessageType() != MessageType.VOICE) return;
+        if (message.getMediaKey() == null || message.getMediaKey().isBlank()) return;
+        // Для медиа используем эндпоинт /media/{messageId} (стриминг через прокси с авторизацией)
+        message.setMediaDownloadUrl("/media/" + message.getId());
     }
 }

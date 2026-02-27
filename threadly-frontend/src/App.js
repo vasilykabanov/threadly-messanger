@@ -9,6 +9,8 @@ import VerifyEmail from "./verify-email/VerifyEmail";
 import CheckEmail from "./check-email/CheckEmail";
 import UpdateEmail from "./update-email/UpdateEmail";
 import AdminRegistrationApproval from "./admin-registration/AdminRegistrationApproval";
+import ForgotPassword from "./forgot-password/ForgotPassword";
+import ResetPassword from "./reset-password/ResetPassword";
 import "./App.css";
 import PrivateRoute from "./PrivateRoute";
 import {useRecoilValue} from "recoil";
@@ -31,6 +33,8 @@ const App = (props) => {
                     <PrivateRoute exact path="/" component={Chat} />
                     <Route exact path="/login" render={(props) => <Signin {...props} />}/>
                     <Route exact path="/signup" render={(props) => <Signup {...props} />}/>
+                    <Route exact path="/forgot-password" render={(props) => <ForgotPassword {...props} />}/>
+                    <Route exact path="/reset-password" render={(props) => <ResetPassword {...props} />}/>
                     <Route exact path="/verify-email" render={(props) => <VerifyEmail {...props} />}/>
                     <Route exact path="/check-email" render={(props) => <CheckEmail {...props} />}/>
                     <Route exact path="/update-email" render={(props) => <UpdateEmail {...props} />}/>
