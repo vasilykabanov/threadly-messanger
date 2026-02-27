@@ -460,6 +460,94 @@ export function fetchMediaAsBlobUrl(messageId) {
 }
 
 // -------------------------
+// Groups
+// -------------------------
+
+export function createGroup(name, memberIds) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups",
+        method: "POST",
+        body: JSON.stringify({ name, memberIds }),
+    });
+}
+
+export function getMyGroups() {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups/my",
+        method: "GET",
+    });
+}
+
+export function getGroup(groupId) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId),
+        method: "GET",
+    });
+}
+
+export function renameGroup(groupId, name) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId) + "/rename",
+        method: "PUT",
+        body: JSON.stringify({ name }),
+    });
+}
+
+export function addGroupMembers(groupId, memberIds) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId) + "/members/add",
+        method: "PUT",
+        body: JSON.stringify({ memberIds }),
+    });
+}
+
+export function removeGroupMember(groupId, userId) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId) + "/members/" + encodeURIComponent(userId),
+        method: "DELETE",
+    });
+}
+
+export function deleteGroup(groupId) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId),
+        method: "DELETE",
+    });
+}
+
+export function getGroupMessages(groupId, page = 0, size = 50) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    return request({
+        url: CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId) + "/messages?" + params.toString(),
+        method: "GET",
+    });
+}
+
+// -------------------------
 // Web Push
 // -------------------------
 

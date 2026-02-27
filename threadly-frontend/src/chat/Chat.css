@@ -2699,3 +2699,1426 @@ body.theme-new.theme-new-light .unread-badge {
     right: 16px;
     bottom: 12px;
 }
+
+/* ========================
+   Favorites (Saved Messages)
+   ======================== */
+.favorites-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    flex-shrink: 0;
+}
+
+.favorites-icon {
+    font-size: 22px;
+    line-height: 1;
+}
+
+.favorites-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: none;
+    border: none;
+    cursor: default;
+}
+
+/* ========================
+   Group Avatar
+   ======================== */
+.group-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    flex-shrink: 0;
+}
+
+.group-icon {
+    font-size: 22px;
+    line-height: 1;
+}
+
+.group-msg-sender {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #667eea;
+    margin-bottom: 2px;
+}
+
+body.theme-new.theme-new-light .group-msg-sender {
+    color: #4f46e5;
+}
+
+/* ========================
+   Create Group Modal
+   ======================== */
+.create-group-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.group-member-search-results {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #fff;
+    margin-bottom: 8px;
+}
+
+body.theme-new.theme-new-dark .group-member-search-results {
+    border-color: #374151;
+    background: #1e293b;
+}
+
+.group-member-search-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 14px;
+}
+
+.group-member-search-item:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.group-selected-members {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.group-selected-label {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.group-member-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #667eea;
+    color: #fff;
+    border-radius: 14px;
+    padding: 2px 10px 2px 10px;
+    font-size: 13px;
+}
+
+.group-member-tag-remove {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    padding: 0 2px;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.group-member-tag-remove:hover {
+    color: #fff;
+}
+
+/* ========================
+   Group Info Drawer
+   ======================== */
+.group-info-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.group-info-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.group-info-icon {
+    font-size: 48px;
+    flex-shrink: 0;
+}
+
+.group-info-name-wrap {
+    flex: 1;
+}
+
+.group-info-name-wrap h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.group-rename-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.group-info-members-section h4 {
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.group-add-member {
+    margin-bottom: 12px;
+}
+
+.group-add-member-results {
+    max-height: 160px;
+    overflow-y: auto;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    margin-top: 4px;
+    background: #fff;
+}
+
+body.theme-new.theme-new-dark .group-add-member-results {
+    border-color: #374151;
+    background: #1e293b;
+}
+
+.group-members-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.group-member-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.theme-new.theme-new-dark .group-member-item {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.group-member-name {
+    flex: 1;
+    font-size: 14px;
+}
+
+.group-admin-badge {
+    font-size: 11px;
+    color: #667eea;
+    font-weight: 600;
+}
+
+.group-you-badge {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.group-member-remove-btn {
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.group-member-remove-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.group-info-actions {
+    margin-top: 16px;
+}
+
+/* Bottom bar group button */
+.bottom-bar-btn {
+    color: var(--color-text-light);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px 12px;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.bottom-bar-btn:hover {
+    opacity: 0.8;
+}
+
+/* ================================================================
+   🎬 COMPREHENSIVE ANIMATIONS & MICRO-INTERACTIONS
+   ================================================================ */
+
+/* --- Keyframes Library --- */
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.85);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes scaleInBounce {
+    0% {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    60% {
+        opacity: 1;
+        transform: scale(1.08);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes popIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.3);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+    70% {
+        transform: scale(0.96);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes slideInFromLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInFromRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+@keyframes gentlePulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.9;
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% center;
+    }
+    100% {
+        background-position: 200% center;
+    }
+}
+
+@keyframes ripple {
+    0% {
+        transform: scale(0);
+        opacity: 0.4;
+    }
+    100% {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+@keyframes badgeBounce {
+    0%, 100% {
+        transform: scale(1);
+    }
+    30% {
+        transform: scale(1.25);
+    }
+    60% {
+        transform: scale(0.9);
+    }
+    80% {
+        transform: scale(1.08);
+    }
+}
+
+@keyframes statusPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 currentColor;
+    }
+    50% {
+        box-shadow: 0 0 0 4px transparent;
+    }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+    20%, 40%, 60%, 80% { transform: translateX(2px); }
+}
+
+@keyframes messageSlideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes messageSlideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes breathe {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(139, 92, 246, 0);
+    }
+}
+
+@keyframes spinIn {
+    from {
+        opacity: 0;
+        transform: rotate(-180deg) scale(0.5);
+    }
+    to {
+        opacity: 1;
+        transform: rotate(0deg) scale(1);
+    }
+}
+
+@keyframes typing-dot {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* --- Frame & Sidepanel entrance --- */
+
+#frame {
+    animation: fadeIn 0.4s ease-out;
+}
+
+#frame #sidepanel {
+    animation: fadeInLeft 0.5s ease-out;
+}
+
+#frame .content {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* --- Profile section animation --- */
+
+#frame #sidepanel #profile {
+    animation: fadeInDown 0.4s ease-out 0.1s both;
+}
+
+#frame #sidepanel #profile .wrap img,
+#frame #sidepanel #profile .wrap .avatar-wrapper {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+#frame #sidepanel #profile .wrap img:hover,
+#frame #sidepanel #profile .wrap .avatar-wrapper:hover {
+    transform: scale(1.1);
+}
+
+#frame #sidepanel #profile .wrap p {
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+#frame #sidepanel #profile .wrap p:hover {
+    transform: translateX(2px);
+}
+
+/* --- Search bar animation --- */
+
+#frame #sidepanel #search {
+    animation: fadeInDown 0.4s ease-out 0.15s both;
+    transition: background 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+#frame #sidepanel #search:focus-within {
+    transform: scale(1.02);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+#frame #sidepanel #search input {
+    transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease, padding 0.3s ease, background 0.3s ease;
+}
+
+#frame #sidepanel #search label i {
+    transition: transform 0.3s ease, color 0.3s ease;
+}
+
+#frame #sidepanel #search:focus-within label i {
+    transform: scale(1.15);
+    color: var(--color-accent, #667eea);
+}
+
+/* --- Search results animation --- */
+
+.search-results {
+    animation: fadeInDown 0.25s ease-out;
+}
+
+.search-result-item {
+    animation: fadeInUp 0.2s ease-out both;
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.search-result-item:nth-child(1) { animation-delay: 0.02s; }
+.search-result-item:nth-child(2) { animation-delay: 0.04s; }
+.search-result-item:nth-child(3) { animation-delay: 0.06s; }
+.search-result-item:nth-child(4) { animation-delay: 0.08s; }
+.search-result-item:nth-child(5) { animation-delay: 0.1s; }
+
+.search-result-item:hover {
+    transform: translateX(4px);
+}
+
+.search-result-item:active {
+    transform: scale(0.98);
+}
+
+/* --- Contact list items — staggered entrance & interactions --- */
+
+#frame #sidepanel #contacts ul li.contact {
+    animation: fadeInUp 0.35s ease-out both;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.25s ease, opacity 0.2s ease;
+    will-change: transform, opacity;
+}
+
+/* Staggered delay for first 15 contacts */
+#frame #sidepanel #contacts ul li.contact:nth-child(1) { animation-delay: 0.03s; }
+#frame #sidepanel #contacts ul li.contact:nth-child(2) { animation-delay: 0.06s; }
+#frame #sidepanel #contacts ul li.contact:nth-child(3) { animation-delay: 0.09s; }
+#frame #sidepanel #contacts ul li.contact:nth-child(4) { animation-delay: 0.12s; }
+#frame #sidepanel #contacts ul li.contact:nth-child(5) { animation-delay: 0.15s; }
+#frame #sidepanel #contacts ul li.contact:nth-child(6) { animation-delay: 0.18s; }
+#frame #sidepanel #contacts ul li.contact:nth-child(7) { animation-delay: 0.21s; }
+#frame #sidepanel #contacts ul li.contact:nth-child(8) { animation-delay: 0.24s; }
+#frame #sidepanel #contacts ul li.contact:nth-child(9) { animation-delay: 0.27s; }
+#frame #sidepanel #contacts ul li.contact:nth-child(10) { animation-delay: 0.3s; }
+#frame #sidepanel #contacts ul li.contact:nth-child(11) { animation-delay: 0.33s; }
+#frame #sidepanel #contacts ul li.contact:nth-child(12) { animation-delay: 0.36s; }
+#frame #sidepanel #contacts ul li.contact:nth-child(13) { animation-delay: 0.39s; }
+#frame #sidepanel #contacts ul li.contact:nth-child(14) { animation-delay: 0.42s; }
+#frame #sidepanel #contacts ul li.contact:nth-child(15) { animation-delay: 0.45s; }
+
+#frame #sidepanel #contacts ul li.contact:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+#frame #sidepanel #contacts ul li.contact:active {
+    transform: scale(0.98);
+    transition-duration: 0.1s;
+}
+
+#frame #sidepanel #contacts ul li.contact.active {
+    animation: none;
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.2);
+}
+
+/* Contact avatar hover bounce */
+#frame #sidepanel #contacts ul li.contact .wrap .avatar-wrapper {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#frame #sidepanel #contacts ul li.contact:hover .wrap .avatar-wrapper {
+    transform: scale(1.08);
+}
+
+/* --- Contact name & preview text transitions --- */
+#frame #sidepanel #contacts ul li.contact .wrap .meta .name {
+    transition: color 0.2s ease;
+}
+
+#frame #sidepanel #contacts ul li.contact .wrap .meta .preview {
+    transition: color 0.3s ease, transform 0.2s ease;
+}
+
+/* --- Unread badge bounce animation --- */
+.unread-badge {
+    animation: badgeBounce 0.5s ease-out;
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.unread-badge:hover {
+    transform: scale(1.1);
+}
+
+/* --- Status dots pulse animation --- */
+.avatar-wrapper.online::after {
+    animation: statusPulse 2s ease-in-out infinite;
+    color: var(--color-status-online);
+}
+
+.avatar-wrapper.busy::after {
+    animation: statusPulse 1.5s ease-in-out infinite;
+    color: var(--color-status-busy);
+}
+
+/* --- Favorites row entrance --- */
+#frame #sidepanel #contacts ul li.contact:first-child .favorites-avatar {
+    animation: scaleInBounce 0.5s ease-out 0.1s both;
+}
+
+.favorites-avatar {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+.favorites-avatar:hover {
+    transform: scale(1.12) rotate(5deg);
+}
+
+.favorites-icon {
+    transition: transform 0.3s ease;
+}
+
+#frame #sidepanel #contacts ul li.contact:hover .favorites-icon {
+    transform: scale(1.2) rotate(15deg);
+}
+
+/* --- Group avatar entrance --- */
+.group-avatar {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+.group-avatar:hover {
+    transform: scale(1.1);
+}
+
+.group-icon {
+    transition: transform 0.3s ease;
+}
+
+#frame #sidepanel #contacts ul li.contact:hover .group-icon {
+    transform: scale(1.15);
+}
+
+/* --- Chat content area enter --- */
+
+#frame .content .contact-profile {
+    animation: fadeInDown 0.3s ease-out;
+    transition: background 0.3s ease;
+}
+
+/* --- Messages entrance animations --- */
+
+#frame .content .messages ul li.sent {
+    animation: messageSlideInRight 0.3s ease-out both;
+}
+
+#frame .content .messages ul li.replies {
+    animation: messageSlideInLeft 0.3s ease-out both;
+}
+
+/* Message bubbles hover */
+.message-bubble {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.message-bubble:hover {
+    transform: translateY(-1px);
+}
+
+.message-bubble:active {
+    transform: scale(0.98);
+    transition-duration: 0.1s;
+}
+
+/* --- Date separator animation --- */
+.date-separator {
+    animation: fadeIn 0.4s ease-out;
+}
+
+.date-separator span {
+    animation: scaleIn 0.3s ease-out;
+    transition: background 0.2s ease;
+}
+
+/* --- Message input area animation --- */
+
+.message-input {
+    animation: slideUp 0.3s ease-out;
+}
+
+.chat-input {
+    transition: box-shadow 0.3s ease, background 0.3s ease, transform 0.2s ease;
+}
+
+.chat-input:focus {
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+    transform: scale(1.01);
+}
+
+/* --- Send button entrance & interaction --- */
+
+.send-btn {
+    animation: popIn 0.3s ease-out;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.send-btn:hover {
+    transform: scale(1.1) !important;
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.45) !important;
+}
+
+.send-btn:active {
+    transform: scale(0.92) !important;
+    transition-duration: 0.1s !important;
+}
+
+/* --- Attachment button animation --- */
+
+.attachment {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, color 0.2s ease !important;
+}
+
+.attachment:hover {
+    transform: scale(1.15) rotate(15deg) !important;
+}
+
+.attachment:active {
+    transform: scale(0.9) !important;
+}
+
+/* --- Media buttons (mic/video) animations --- */
+
+.media-btn {
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease, background 0.2s ease !important;
+}
+
+.media-btn:hover {
+    transform: scale(1.2) !important;
+}
+
+.media-btn:active {
+    transform: scale(0.85) !important;
+    transition-duration: 0.1s !important;
+}
+
+.voice-btn:hover i {
+    animation: gentlePulse 1s ease-in-out infinite;
+}
+
+.video-btn:hover i {
+    animation: gentlePulse 1s ease-in-out infinite;
+}
+
+/* --- Voice recording bar animation --- */
+
+.voice-recording-bar {
+    animation: fadeInLeft 0.3s ease-out;
+}
+
+.voice-rec-cancel {
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.voice-rec-cancel:hover {
+    transform: scale(1.15) rotate(90deg);
+}
+
+.voice-rec-send {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.voice-rec-send:hover {
+    transform: scale(1.2);
+}
+
+/* --- Video recording overlay animation --- */
+
+.video-recording-overlay {
+    animation: fadeIn 0.4s ease-out;
+}
+
+.video-recording-preview {
+    animation: scaleInBounce 0.5s ease-out;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.video-rec-buttons button {
+    animation: fadeInUp 0.3s ease-out both;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease !important;
+}
+
+.video-rec-buttons button:nth-child(1) { animation-delay: 0.1s; }
+.video-rec-buttons button:nth-child(2) { animation-delay: 0.15s; }
+.video-rec-buttons button:nth-child(3) { animation-delay: 0.2s; }
+.video-rec-buttons button:nth-child(4) { animation-delay: 0.25s; }
+
+.video-rec-buttons button:hover {
+    transform: scale(1.15) !important;
+}
+
+.video-rec-buttons button:active {
+    transform: scale(0.9) !important;
+}
+
+/* --- Video circle player animation --- */
+
+.video-circle-player {
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.video-circle-play-btn {
+    animation: scaleIn 0.3s ease-out;
+    transition: opacity 0.3s ease, transform 0.2s ease, background 0.2s ease !important;
+}
+
+.video-circle-play-btn:hover {
+    transform: scale(1.1);
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.video-circle-play-btn:active {
+    transform: scale(0.92);
+}
+
+/* --- Voice player animation --- */
+
+.voice-play-btn {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.voice-play-btn:hover {
+    transform: scale(1.12);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+}
+
+.voice-play-btn:active {
+    transform: scale(0.9);
+}
+
+/* --- No contact selected floating animation --- */
+
+.no-contact-selected {
+    animation: fadeIn 0.6s ease-out;
+}
+
+.no-contact-selected p {
+    animation: float 3s ease-in-out infinite;
+}
+
+/* --- Back button animation --- */
+
+.back-btn {
+    transition: transform 0.2s ease, color 0.2s ease !important;
+}
+
+.back-btn:hover {
+    transform: translateX(-3px) !important;
+}
+
+.back-btn:active {
+    transform: scale(0.9) !important;
+}
+
+/* --- Close chat button animation --- */
+
+.close-chat-btn {
+    transition: transform 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.close-chat-btn:hover {
+    transform: rotate(90deg);
+}
+
+.close-chat-btn:active {
+    transform: scale(0.85) rotate(90deg);
+}
+
+/* --- Contact profile header in chat --- */
+
+.contact-profile-trigger {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.contact-profile-trigger:hover {
+    opacity: 0.85;
+    transform: translateX(2px);
+}
+
+.contact-profile-trigger:active {
+    transform: scale(0.97);
+}
+
+.contact-profile-name {
+    transition: color 0.2s ease;
+}
+
+/* --- Drawer profile card animation --- */
+
+.contact-profile-card {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+.contact-profile-card > * {
+    animation: fadeInUp 0.3s ease-out both;
+}
+
+.contact-profile-card > *:nth-child(1) { animation-delay: 0.05s; }
+.contact-profile-card > *:nth-child(2) { animation-delay: 0.1s; }
+.contact-profile-card > *:nth-child(3) { animation-delay: 0.15s; }
+.contact-profile-card > *:nth-child(4) { animation-delay: 0.2s; }
+.contact-profile-card > *:nth-child(5) { animation-delay: 0.25s; }
+
+/* --- Delete chat button animation --- */
+
+.delete-chat-btn {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.delete-chat-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
+}
+
+.delete-chat-btn:active {
+    transform: scale(0.96);
+}
+
+/* --- Photos grid animation --- */
+
+.photos-grid-item {
+    animation: scaleIn 0.3s ease-out both;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.photos-grid-item:nth-child(3n+1) { animation-delay: 0.03s; }
+.photos-grid-item:nth-child(3n+2) { animation-delay: 0.06s; }
+.photos-grid-item:nth-child(3n)   { animation-delay: 0.09s; }
+
+.photos-grid-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+}
+
+.photos-grid-item:active {
+    transform: scale(0.96);
+}
+
+/* --- Photo viewer animation --- */
+
+.photo-viewer-content {
+    animation: scaleIn 0.3s ease-out;
+}
+
+.photo-viewer-image {
+    animation: fadeIn 0.4s ease-out;
+    transition: transform 0.3s ease;
+}
+
+.photo-viewer-nav {
+    transition: transform 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+}
+
+.photo-viewer-nav:hover:not(:disabled) {
+    transform: scale(1.15);
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.photo-viewer-nav:active:not(:disabled) {
+    transform: scale(0.92);
+}
+
+/* --- Bottom bar buttons animation --- */
+
+#frame #sidepanel #bottom-bar button {
+    transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+#frame #sidepanel #bottom-bar button:hover {
+    transform: translateY(-1px);
+}
+
+#frame #sidepanel #bottom-bar button:active {
+    transform: scale(0.96);
+}
+
+#frame #sidepanel #bottom-bar button i {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#frame #sidepanel #bottom-bar button:hover i {
+    transform: scale(1.2);
+}
+
+/* --- Mobile bottom nav animations --- */
+
+.mobile-bottom-nav {
+    animation: slideUp 0.35s ease-out;
+}
+
+.mobile-nav-item {
+    transition: color 0.25s ease, transform 0.2s ease;
+    position: relative;
+}
+
+.mobile-nav-item::after {
+    content: "";
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: var(--color-accent, #a78bfa);
+    border-radius: 1px;
+    transition: width 0.3s ease, left 0.3s ease;
+}
+
+.mobile-nav-item.active::after {
+    width: 24px;
+    left: calc(50% - 12px);
+}
+
+.mobile-nav-item:active {
+    transform: scale(0.9);
+}
+
+.mobile-nav-item i {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.mobile-nav-item:hover i,
+.mobile-nav-item.active i {
+    transform: scale(1.15);
+}
+
+/* --- Chat open/close mobile transition --- */
+
+@media screen and (max-width: 768px) {
+    #frame.chat-open .content {
+        animation: slideInFromRight 0.3s ease-out;
+    }
+
+    #frame #sidepanel {
+        transition: opacity 0.2s ease;
+    }
+}
+
+/* --- Connection label animation --- */
+
+.connection-label {
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* --- Menu drawer animation --- */
+
+.chat-menu-item {
+    transition: transform 0.2s ease, background 0.2s ease !important;
+}
+
+.chat-menu-item:hover {
+    transform: translateX(6px) !important;
+}
+
+.chat-menu-item:active {
+    transform: scale(0.97) !important;
+}
+
+/* --- Menu trigger (hamburger) animation --- */
+
+.menu-trigger {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
+}
+
+.menu-trigger:hover {
+    transform: scale(1.15);
+}
+
+.menu-trigger:active {
+    transform: scale(0.9);
+}
+
+/* --- Status options dropdown animation --- */
+
+#frame #sidepanel #profile .wrap #status-options.active {
+    animation: fadeInDown 0.25s ease-out;
+}
+
+#frame #sidepanel #profile .wrap #status-options ul li {
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+#frame #sidepanel #profile .wrap #status-options ul li:hover {
+    transform: translateX(4px);
+}
+
+/* --- Create Group Modal animations --- */
+
+.create-group-form {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.group-member-search-results {
+    animation: fadeInDown 0.2s ease-out;
+}
+
+.group-member-search-item {
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.group-member-search-item:hover {
+    transform: translateX(4px);
+}
+
+.group-member-search-item:active {
+    transform: scale(0.97);
+}
+
+.group-member-tag {
+    animation: popIn 0.3s ease-out;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.group-member-tag:hover {
+    transform: scale(1.05);
+}
+
+.group-member-tag-remove {
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.group-member-tag-remove:hover {
+    transform: scale(1.3) rotate(90deg);
+}
+
+/* --- Group Info Drawer animations --- */
+
+.group-info-content {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+.group-info-header {
+    animation: fadeInLeft 0.3s ease-out;
+}
+
+.group-info-icon {
+    animation: scaleInBounce 0.5s ease-out;
+    transition: transform 0.3s ease;
+}
+
+.group-info-icon:hover {
+    transform: scale(1.15) rotate(5deg);
+}
+
+.group-members-list {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.group-member-item {
+    animation: fadeInLeft 0.25s ease-out both;
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.group-member-item:nth-child(1) { animation-delay: 0.03s; }
+.group-member-item:nth-child(2) { animation-delay: 0.06s; }
+.group-member-item:nth-child(3) { animation-delay: 0.09s; }
+.group-member-item:nth-child(4) { animation-delay: 0.12s; }
+.group-member-item:nth-child(5) { animation-delay: 0.15s; }
+
+.group-member-item:hover {
+    transform: translateX(4px);
+}
+
+.group-member-remove-btn {
+    transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.group-member-remove-btn:hover {
+    transform: scale(1.2) rotate(90deg);
+}
+
+/* --- Group message sender name animation --- */
+
+.group-msg-sender {
+    animation: fadeIn 0.2s ease-out;
+}
+
+/* --- Avatar viewer modal animation --- */
+
+.photo-viewer-modal .ant-modal-content {
+    animation: scaleIn 0.3s ease-out;
+}
+
+/* --- Image in message bubble animation --- */
+
+.message-bubble-image {
+    transition: transform 0.3s ease, border-radius 0.3s ease;
+}
+
+.message-bubble-image-clickable:hover {
+    transform: scale(1.02);
+}
+
+.message-bubble-image-clickable:active {
+    transform: scale(0.98);
+}
+
+/* --- Scrollbar thumb animation for contacts --- */
+
+#frame #sidepanel #contacts::-webkit-scrollbar-thumb {
+    transition: background 0.3s ease;
+}
+
+#frame #sidepanel #contacts::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(148, 163, 184, 0.6);
+}
+
+/* --- Enhanced cosmic theme glow animations --- */
+
+body.theme-new #frame #sidepanel #contacts ul li.contact.active {
+    animation: breathe 2s ease-in-out infinite;
+}
+
+body.theme-new .send-btn:hover {
+    animation: none;
+    box-shadow: 0 8px 28px rgba(99, 102, 241, 0.5), 0 0 40px rgba(139, 92, 246, 0.2) !important;
+}
+
+body.theme-new .favorites-avatar {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+body.theme-new .favorites-avatar:hover {
+    box-shadow: 0 0 16px rgba(251, 191, 36, 0.4);
+}
+
+body.theme-new .group-avatar {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+body.theme-new .group-avatar:hover {
+    box-shadow: 0 0 16px rgba(102, 126, 234, 0.4);
+}
+
+body.theme-new .video-recording-preview {
+    animation: scaleInBounce 0.5s ease-out, breathe 2s ease-in-out 0.5s infinite;
+}
+
+body.theme-new .unread-badge {
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+/* --- Smooth scroll indicator pulse --- */
+
+#frame #sidepanel #contacts .contacts-pull-spinner {
+    animation: contacts-pull-spin 0.8s linear infinite, gentlePulse 1.5s ease-in-out infinite;
+}
+
+/* --- Group selected members area --- */
+
+.group-selected-members {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* --- Ripple effect for buttons (via pseudo-element) --- */
+
+.send-btn::after,
+.media-btn::after,
+.attachment::after,
+#frame #sidepanel #bottom-bar button::after,
+.mobile-nav-item::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.send-btn:active::after,
+.media-btn:active::after,
+.attachment:active::after,
+#frame #sidepanel #bottom-bar button:active::after,
+.mobile-nav-item:active::before {
+    opacity: 1;
+    animation: ripple 0.5s ease-out;
+}
+
+/* --- Ensure position relative for ripple elements --- */
+.media-btn,
+.mobile-nav-item,
+#frame #sidepanel #bottom-bar button {
+    position: relative;
+    overflow: hidden;
+}
+
+/* --- Smooth theme transition --- */
+body.theme-new,
+body.theme-new.theme-new-light,
+body.theme-new.theme-new-dark {
+    transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+/* --- Enhanced message input wrap animation --- */
+.message-input .wrap {
+    transition: box-shadow 0.3s ease, background 0.3s ease;
+}
+
+.message-input .wrap:focus-within {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+body.theme-new .message-input .wrap:focus-within {
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.15);
+}
+
+/* --- Loading older messages spinner animation --- */
+
+.messages-loading-older {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* --- Reduce motion for accessibility --- */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

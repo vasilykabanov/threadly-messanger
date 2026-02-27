@@ -43,11 +43,12 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    transition: background-color 0.15s ease;
+    transition: background-color 0.15s ease, transform 0.15s ease;
 }
 
 .message-context-menu-item:hover {
     background: var(--color-panel-hover, #32465a);
+    transform: translateX(4px);
 }
 
 .message-context-menu-item:active {

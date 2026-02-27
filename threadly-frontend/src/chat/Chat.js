@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useLayoutEffect, useRef, useState} from "react";
-import {Button, Drawer, message, Spin, Modal} from "antd";
+import {Button, Drawer, message, Spin, Modal, Input} from "antd";
 import {
     getUsers,
     findChatMessage,
@@ -18,6 +18,13 @@ import {
     getChatMessagesPage,
     uploadMedia,
     fetchMediaAsBlobUrl,
+    createGroup,
+    getMyGroups,
+    getGroupMessages,
+    renameGroup,
+    addGroupMembers,
+    removeGroupMember,
+    deleteGroup as deleteGroupApi,
 } from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
 import {
@@ -163,6 +170,36 @@ const Chat = (props) => {
     const voiceChunksRef = useRef([]);
     const voiceTimerRef = useRef(null);
 
+    // Groups
+    const [groups, setGroups] = useState([]);
+    const [activeGroup, setActiveGroup] = useState(null); // when chatting in a group
+    const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+    const [newGroupName, setNewGroupName] = useState("");
+    const [newGroupMembers, setNewGroupMembers] = useState([]);
+    const [groupSearchQuery, setGroupSearchQuery] = useState("");
+    const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
+    const [groupInfoData, setGroupInfoData] = useState(null);
+    const [editGroupName, setEditGroupName] = useState("");
+    const [addMemberQuery, setAddMemberQuery] = useState("");
+    const [addMemberResults, setAddMemberResults] = useState([]);
+    const [groupMemberSearchResults, setGroupMemberSearchResults] = useState([]);
+
+    // Helper: build a "Favorites" pseudo-contact from currentUser
+    const makeFavoritesContact = (user) => ({
+        id: user.id,
+        name: "Избранное",
+        username: user.username,
+        profilePicture: null,
+        _isFavorites: true,
+    });
+
+    // Connect video stream to preview element AFTER the overlay has rendered
+    useEffect(() => {
+        if (isVideoRecording && videoPreviewRef.current && videoStreamRef.current) {
+            videoPreviewRef.current.srcObject = videoStreamRef.current;
+        }
+    }, [isVideoRecording]);
+
     useEffect(() => {
         document.body.classList.add("chat-page");
         document.documentElement.classList.add("chat-page");
@@ -204,6 +241,7 @@ const Chat = (props) => {
 
         connect(userId);
         loadContacts(undefined, userId);
+        loadGroups();
         ensurePushSubscribed(userId).catch(() => {});
 
         const handleVisibilityChange = () => {
@@ -448,6 +486,7 @@ const Chat = (props) => {
         stompClient.subscribe("/user/" + uid + "/queue/sent-ack", onSentAckReceived);
         stompClient.subscribe("/topic/status", onStatusReceived);
         stompClient.subscribe("/topic/avatar-updated", onAvatarUpdated);
+        stompClient.subscribe("/user/" + uid + "/queue/group-update", onGroupUpdate);
 
         const pending = pendingMessagesRef.current.splice(0, pendingMessagesRef.current.length);
         pending.forEach((payload) => {
@@ -582,11 +621,67 @@ const Chat = (props) => {
         );
     };
 
+    const onGroupUpdate = (msg) => {
+        let data;
+        try {
+            data = typeof msg.body === "string" ? JSON.parse(msg.body) : msg.body;
+        } catch (e) {
+            return;
+        }
+        if (!data) return;
+        // If group was deleted
+        if (data.deleted) {
+            setGroups((prev) => prev.filter((g) => g.id !== data.id));
+            if (activeGroup?.id === data.id) {
+                setActiveGroup(null);
+                setActiveContact(null);
+                setMessages([]);
+            }
+            return;
+        }
+        // Otherwise it's a group update
+        setGroups((prev) => {
+            const idx = prev.findIndex((g) => g.id === data.id);
+            if (idx >= 0) {
+                const next = [...prev];
+                next[idx] = data;
+                return next;
+            }
+            return [...prev, data];
+        });
+    };
+
     const PENDING_FAIL_SEC = 20;
 
     const sendMessage = (msg) => {
         const trimmed = msg.trim();
-        if (!trimmed || !activeContact?.id || !currentUser?.id) {
+        if (!trimmed) return;
+
+        // Group message
+        if (activeGroup) {
+            const now = new Date();
+            const outgoing = {
+                senderId: currentUser.id,
+                senderName: currentUser.name,
+                content: trimmed,
+                timestamp: now,
+                status: "PENDING",
+                chatId: "group_" + activeGroup.id,
+            };
+            setMessages((prev) => [...prev, outgoing]);
+            const payload = {
+                groupId: activeGroup.id,
+                senderId: currentUser.id,
+                senderName: currentUser.name,
+                content: trimmed,
+            };
+            if (stompClient && stompClient.connected) {
+                stompClient.send("/app/group-chat", {}, JSON.stringify(payload));
+            }
+            return;
+        }
+
+        if (!activeContact?.id || !currentUser?.id) {
             return;
         }
 
@@ -680,15 +775,41 @@ const Chat = (props) => {
     // ========================
     const startVideoRecording = async () => {
         if (!activeContact?.id || !currentUser?.id) return;
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode, width: { ideal: 480 }, height: { ideal: 480 } },
-                audio: true,
-            });
-            videoStreamRef.current = stream;
-            if (videoPreviewRef.current) {
-                videoPreviewRef.current.srcObject = stream;
+
+        const constraints = {
+            video: { facingMode, width: { ideal: 480 }, height: { ideal: 480 } },
+            audio: true,
+        };
+
+        let stream = null;
+        // Retry up to 3 times — PWA standalone mode can intermittently deny on first attempt
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                break;
+            } catch (err) {
+                if (attempt < 2 && (err.name === "NotAllowedError" || err.name === "NotReadableError")) {
+                    await new Promise((r) => setTimeout(r, 500));
+                    continue;
+                }
+                if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+                    message.error("Нет доступа к камере или микрофону. Разрешите в настройках браузера.");
+                } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+                    message.error("Камера или микрофон не найдены");
+                } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+                    message.error("Камера или микрофон заняты другим приложением");
+                } else {
+                    message.error("Не удалось получить доступ к камере");
+                }
+                console.error("Camera access error:", err);
+                return;
             }
+        }
+        if (!stream) return;
+
+        try {
+            videoStreamRef.current = stream;
+            // NOTE: srcObject is set in the useEffect [isVideoRecording] after overlay renders
             const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
                 ? "video/webm;codecs=vp9,opus"
                 : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
@@ -700,6 +821,9 @@ const Chat = (props) => {
             recorder.ondataavailable = (e) => {
                 if (e.data.size > 0) videoChunksRef.current.push(e.data);
             };
+            recorder.onerror = (e) => {
+                console.error("MediaRecorder error:", e);
+            };
             recorder.start(200);
             setIsVideoRecording(true);
             setVideoRecordingTime(0);
@@ -707,32 +831,57 @@ const Chat = (props) => {
                 setVideoRecordingTime((prev) => prev + 1);
             }, 1000);
         } catch (err) {
-            message.error("Не удалось получить доступ к камере");
-            console.error("Camera access error:", err);
+            console.error("MediaRecorder init error:", err);
+            stream.getTracks().forEach((t) => t.stop());
+            videoStreamRef.current = null;
+            message.error("Не удалось начать запись");
         }
     };
 
     const stopVideoRecording = () => {
         const recorder = videoMediaRecorderRef.current;
 
-        // Если рекордер уже остановлен (или недоступен), но чанки есть — просто отправляем то, что записано
-        if ((!recorder || recorder.state === "inactive") && videoChunksRef.current.length > 0) {
-            const blob = new Blob(videoChunksRef.current, { type: "video/webm" });
-            sendMediaMessage(blob, "VIDEO_CIRCLE");
-            cleanupVideoRecording();
-            return;
-        }
-
-        if (!recorder || recorder.state === "inactive") {
-            return;
-        }
-
-        recorder.onstop = () => {
-            const blob = new Blob(videoChunksRef.current, { type: "video/webm" });
-            sendMediaMessage(blob, "VIDEO_CIRCLE");
+        const sendCollectedChunks = () => {
+            if (videoChunksRef.current.length > 0) {
+                const blob = new Blob(videoChunksRef.current, { type: "video/webm" });
+                sendMediaMessage(blob, "VIDEO_CIRCLE");
+            }
             cleanupVideoRecording();
         };
-        recorder.stop();
+
+        // Recorder already stopped or unavailable — send whatever chunks we have
+        if (!recorder || recorder.state === "inactive") {
+            sendCollectedChunks();
+            return;
+        }
+
+        // Request any remaining buffered data
+        try { recorder.requestData(); } catch (_) {}
+
+        let sent = false;
+        recorder.onstop = () => {
+            if (sent) return;
+            sent = true;
+            sendCollectedChunks();
+        };
+
+        // Safety timeout — if onstop doesn't fire within 2s, send anyway
+        setTimeout(() => {
+            if (!sent) {
+                sent = true;
+                sendCollectedChunks();
+            }
+        }, 2000);
+
+        try {
+            recorder.stop();
+        } catch (err) {
+            console.warn("recorder.stop() error:", err);
+            if (!sent) {
+                sent = true;
+                sendCollectedChunks();
+            }
+        }
     };
 
     const cancelVideoRecording = () => {
@@ -762,20 +911,45 @@ const Chat = (props) => {
         const newMode = facingMode === "user" ? "environment" : "user";
         setFacingMode(newMode);
         if (!isVideoRecording) return;
-        // Restart stream with new camera
-        if (videoStreamRef.current) {
-            videoStreamRef.current.getTracks().forEach((t) => t.stop());
-        }
+
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
+            // Only request a new VIDEO track — keep existing audio running
+            const newCamStream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: newMode, width: { ideal: 480 }, height: { ideal: 480 } },
-                audio: true,
             });
-            videoStreamRef.current = stream;
+            const newVideoTrack = newCamStream.getVideoTracks()[0];
+            if (!newVideoTrack) throw new Error("No video track from new camera");
+
+            // Replace the video track inside the MediaRecorder's source stream
+            const recorder = videoMediaRecorderRef.current;
+            const recStream = recorder?.stream;
+            if (recStream) {
+                const oldVideoTrack = recStream.getVideoTracks()[0];
+                if (oldVideoTrack) {
+                    recStream.removeTrack(oldVideoTrack);
+                    oldVideoTrack.stop();
+                }
+                recStream.addTrack(newVideoTrack);
+            } else {
+                // Fallback: just stop old video tracks
+                if (videoStreamRef.current) {
+                    videoStreamRef.current.getVideoTracks().forEach((t) => t.stop());
+                }
+            }
+
+            // Stop any extra audio tracks from the new getUserMedia call
+            newCamStream.getAudioTracks().forEach((t) => t.stop());
+
+            // Update the stream ref to the recorder's stream (which now has the new video track)
+            videoStreamRef.current = recStream || newCamStream;
+
+            // Refresh the preview
             if (videoPreviewRef.current) {
-                videoPreviewRef.current.srcObject = stream;
+                videoPreviewRef.current.srcObject = null;
+                videoPreviewRef.current.srcObject = videoStreamRef.current;
             }
         } catch (err) {
+            console.error("Switch camera error:", err);
             message.error("Не удалось переключить камеру");
         }
     };
@@ -803,8 +977,33 @@ const Chat = (props) => {
     // ========================
     const startVoiceRecording = async () => {
         if (!activeContact?.id || !currentUser?.id) return;
+
+        let stream = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                break;
+            } catch (err) {
+                if (attempt < 2 && (err.name === "NotAllowedError" || err.name === "NotReadableError")) {
+                    await new Promise((r) => setTimeout(r, 500));
+                    continue;
+                }
+                if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+                    message.error("Нет доступа к микрофону. Разрешите в настройках браузера.");
+                } else if (err.name === "NotFoundError") {
+                    message.error("Микрофон не найден");
+                } else if (err.name === "NotReadableError") {
+                    message.error("Микрофон занят другим приложением");
+                } else {
+                    message.error("Не удалось получить доступ к микрофону");
+                }
+                console.error("Microphone access error:", err);
+                return;
+            }
+        }
+        if (!stream) return;
+
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             voiceStreamRef.current = stream;
             const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
                 ? "audio/webm;codecs=opus"
@@ -822,8 +1021,10 @@ const Chat = (props) => {
                 setVoiceRecordingTime((prev) => prev + 1);
             }, 1000);
         } catch (err) {
-            message.error("Не удалось получить доступ к микрофону");
-            console.error("Microphone access error:", err);
+            console.error("Voice recorder init error:", err);
+            stream.getTracks().forEach((t) => t.stop());
+            voiceStreamRef.current = null;
+            message.error("Не удалось начать запись");
         }
     };
 
@@ -1037,6 +1238,125 @@ const Chat = (props) => {
             .finally(() => setProfileLoading(false));
     };
 
+    const loadGroups = () => {
+        getMyGroups()
+            .then((list) => setGroups(list || []))
+            .catch(() => setGroups([]));
+    };
+
+    // Open group chat
+    const openGroupChat = (group) => {
+        setActiveGroup(group);
+        setActiveContact(null);
+        setMessages([]);
+        setMessagesPage(0);
+        setHasMoreMessages(true);
+        getGroupMessages(group.id, 0, 50)
+            .then((data) => {
+                const items = data?.items || [];
+                setMessages([...items].reverse());
+                setHasMoreMessages(Boolean(data?.hasMore));
+                setMessagesPage(data?.nextPage != null ? data.nextPage : 0);
+            })
+            .catch(() => {});
+    };
+
+    // Group creation
+    const handleCreateGroup = () => {
+        if (!newGroupName.trim()) {
+            message.warning("Введите название группы");
+            return;
+        }
+        const memberIds = newGroupMembers.map((m) => m.id);
+        createGroup(newGroupName.trim(), memberIds)
+            .then((group) => {
+                setGroups((prev) => [...prev, group]);
+                setIsCreateGroupOpen(false);
+                setNewGroupName("");
+                setNewGroupMembers([]);
+                message.success("Группа создана");
+                openGroupChat(group);
+            })
+            .catch(() => message.error("Не удалось создать группу"));
+    };
+
+    const handleRenameGroup = (groupId) => {
+        if (!editGroupName.trim()) return;
+        renameGroup(groupId, editGroupName.trim())
+            .then((updated) => {
+                setGroups((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+                setGroupInfoData(updated);
+                if (activeGroup?.id === updated.id) setActiveGroup(updated);
+                message.success("Группа переименована");
+            })
+            .catch(() => message.error("Не удалось переименовать"));
+    };
+
+    const handleAddGroupMember = (groupId, user) => {
+        addGroupMembers(groupId, [user.id])
+            .then((updated) => {
+                setGroups((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+                setGroupInfoData(updated);
+                setAddMemberQuery("");
+                setAddMemberResults([]);
+                message.success(`${user.name} добавлен(а)`);
+            })
+            .catch(() => message.error("Не удалось добавить участника"));
+    };
+
+    const handleRemoveGroupMember = (groupId, userId) => {
+        removeGroupMember(groupId, userId)
+            .then((updated) => {
+                setGroups((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+                setGroupInfoData(updated);
+            })
+            .catch(() => message.error("Не удалось удалить участника"));
+    };
+
+    const handleDeleteGroup = (groupId) => {
+        deleteGroupApi(groupId)
+            .then(() => {
+                setGroups((prev) => prev.filter((g) => g.id !== groupId));
+                if (activeGroup?.id === groupId) {
+                    setActiveGroup(null);
+                    setActiveContact(null);
+                    setMessages([]);
+                }
+                setIsGroupInfoOpen(false);
+                message.success("Группа удалена");
+            })
+            .catch(() => message.error("Не удалось удалить группу"));
+    };
+
+    const handleLeaveGroup = (groupId) => {
+        removeGroupMember(groupId, currentUser.id)
+            .then(() => {
+                setGroups((prev) => prev.filter((g) => g.id !== groupId));
+                if (activeGroup?.id === groupId) {
+                    setActiveGroup(null);
+                    setActiveContact(null);
+                    setMessages([]);
+                }
+                setIsGroupInfoOpen(false);
+                message.success("Вы покинули группу");
+            })
+            .catch(() => message.error("Не удалось покинуть группу"));
+    };
+
+    // Search members for adding to group
+    useEffect(() => {
+        if (!addMemberQuery.trim()) {
+            setAddMemberResults([]);
+            return;
+        }
+        const t = setTimeout(() => {
+            searchUsers(addMemberQuery)
+                .then((list) => setAddMemberResults(list || []))
+                .catch(() => setAddMemberResults([]));
+        }, 300);
+        return () => clearTimeout(t);
+    }, [addMemberQuery]);
+
     const loadContacts = (forceContactId, userIdForApi) => {
         const uid = getUserIdFromToken() ?? userIdForApi ?? currentUser?.id;
         if (!uid) return;
@@ -1115,6 +1435,7 @@ const Chat = (props) => {
 
     const closeChat = () => {
         setActiveContact(null);
+        setActiveGroup(null);
         setMessages([]);
     };
 
@@ -1205,6 +1526,7 @@ const Chat = (props) => {
             connect(uid);
         }
         loadContacts(undefined, uid);
+        loadGroups();
     };
 
     const {scrollRef: contactsScrollRef, pullDistance, isRefreshing: isContactsRefreshing, isPullGestureRef} =
@@ -1264,7 +1586,7 @@ const Chat = (props) => {
         }
     };
 
-    const isMobileChatOpen = isMobile && !!activeContact;
+    const isMobileChatOpen = isMobile && (!!activeContact || !!activeGroup);
 
     const handlePhotosScroll = () => {
         const el = photosScrollRef.current;
@@ -1408,11 +1730,74 @@ const Chat = (props) => {
                         ) : null}
                     </div>
                     <ul>
+                        {/* Избранное (Saved Messages) */}
+                        {currentUser?.id && (
+                            <li
+                                key="favorites"
+                                onClick={() => {
+                                    setActiveGroup(null);
+                                    setActiveContact(makeFavoritesContact(currentUser));
+                                }}
+                                className={
+                                    activeContact?._isFavorites
+                                        ? "contact active"
+                                        : "contact"
+                                }
+                            >
+                                <div className="wrap">
+                                    <div className="avatar-wrapper favorites-avatar">
+                                        <span className="favorites-icon">⭐</span>
+                                    </div>
+                                    <div className="meta">
+                                        <div className="meta-header">
+                                            <p className="name">Избранное</p>
+                                        </div>
+                                        <p className="preview">Сохранённые сообщения</p>
+                                    </div>
+                                </div>
+                            </li>
+                        )}
+
+                        {/* Группы */}
+                        {groups.length > 0 && (
+                            <>
+                                {groups.map((group) => (
+                                    <li
+                                        key={`group-${group.id}`}
+                                        onClick={() => {
+                                            setActiveContact(null);
+                                            openGroupChat(group);
+                                        }}
+                                        className={
+                                            activeGroup && activeGroup.id === group.id
+                                                ? "contact active"
+                                                : "contact"
+                                        }
+                                    >
+                                        <div className="wrap">
+                                            <div className="avatar-wrapper group-avatar">
+                                                <span className="group-icon">👥</span>
+                                            </div>
+                                            <div className="meta">
+                                                <div className="meta-header">
+                                                    <p className="name">{group.name}</p>
+                                                </div>
+                                                <p className="preview">
+                                                    {group.memberIds?.size || group.memberIds?.length || Object.keys(group.memberIds || {}).length} участник(ов)
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </li>
+                                ))}
+                            </>
+                        )}
+
+                        {/* Контакты */}
                         {filteredContacts.map((contact) => (
                             <li
                                 key={contact.id}
                                 onClick={() => {
-                                    // Всегда просто выбираем контакт, загрузка чата происходит в useEffect по activeContact.id
+                                    setActiveGroup(null);
                                     setActiveContact(contact);
                                 }}
                                 className={
@@ -1466,16 +1851,19 @@ const Chat = (props) => {
                     </ul>
                 </div>
                 <div id="bottom-bar">
-                    {/*<button id="addcontact">*/}
-                    {/*  <i class="fa fa-user fa-fw" aria-hidden="true"></i>{" "}*/}
-                    {/*  <span>Profile</span>*/}
-                    {/*</button>*/}
-
                     <button
                         id="addcontact"
                         onClick={() => props.history.push("/profile")}>
                         <i className="fa fa-user fa-fw" aria-hidden="true"></i>{" "}
                         <span>Профиль</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setIsCreateGroupOpen(true)}
+                        className="bottom-bar-btn"
+                    >
+                        <i className="fa fa-users fa-fw" aria-hidden="true"></i>{" "}
+                        <span>Группа</span>
                     </button>
                     <button
                         id="settings"
@@ -1487,26 +1875,138 @@ const Chat = (props) => {
                 </div>
             </div>
             <div className="content">
-                {activeContact ? (
+                {activeGroup ? (
                     <>
                         <div className="contact-profile">
-                            <button className="back-btn" onClick={() => setActiveContact(null)}>
+                            <button className="back-btn" onClick={closeChat}>
                                 ←
                             </button>
                             <button
                                 type="button"
                                 className="contact-profile-trigger"
-                                onClick={() => setIsProfileOpen(true)}
+                                onClick={() => {
+                                    setGroupInfoData(activeGroup);
+                                    setEditGroupName(activeGroup.name);
+                                    setIsGroupInfoOpen(true);
+                                }}
                             >
-                                <div className={`avatar-wrapper ${activeContact.status || "offline"}`}>
-                                    <Avatar
-                                        name={activeContact.name}
-                                        src={activeContact.profilePicture}
-                                        size={44}
-                                    />
+                                <div className="avatar-wrapper group-avatar">
+                                    <span className="group-icon" style={{fontSize: 22}}>👥</span>
                                 </div>
-                                <span className="contact-profile-name">{activeContact.name}</span>
+                                <span className="contact-profile-name">{activeGroup.name}</span>
                             </button>
+                            <button
+                                type="button"
+                                className="close-chat-btn"
+                                onClick={closeChat}
+                                aria-label="Закрыть чат"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <div
+                            key={`group-${activeGroup.id}`}
+                            className="messages"
+                            ref={messagesContainerRef}
+                            onScroll={handleMessagesScroll}
+                        >
+                            <ul ref={messagesListRef}>
+                                {messages.map((msg, index) => {
+                                    const showDate = isNewDay(msg.timestamp, messages[index - 1]?.timestamp);
+                                    return (
+                                        <React.Fragment key={msg.id || `${msg.senderId}-${msg.timestamp}-${index}`}>
+                                            {showDate && (
+                                                <li className="date-separator">
+                                                    <span>{formatDate(msg.timestamp)}</span>
+                                                </li>
+                                            )}
+                                            <li className={msg.senderId === currentUser.id ? "sent" : "replies"}>
+                                                {msg.senderId !== currentUser.id && (
+                                                    <span className="group-msg-sender">{msg.senderName || "Участник"}</span>
+                                                )}
+                                                <MessageBubble
+                                                    content={msg.content}
+                                                    timestamp={msg.timestamp}
+                                                    onLongPress={(e, position) => {
+                                                        const type = msg.messageType || "TEXT";
+                                                        if (type !== "TEXT") return;
+                                                        openContextMenu(e, position, msg.content);
+                                                    }}
+                                                    isPullGestureRef={isPullGestureRef}
+                                                    renderMessageText={renderMessageText}
+                                                    formatTime={formatTime}
+                                                    isOwn={msg.senderId === currentUser.id}
+                                                    status={msg.status}
+                                                    messageType={msg.messageType || "TEXT"}
+                                                    imageUrl={msg.imageUrl}
+                                                    messageId={msg.id}
+                                                    onImageLoad={scrollMessagesToBottomIfNear}
+                                                />
+                                            </li>
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </ul>
+                        </div>
+
+                        <div className="message-input">
+                            <div className="wrap">
+                                <input
+                                    className="chat-input"
+                                    name="user_input"
+                                    placeholder="Напишите сообщение..."
+                                    value={text}
+                                    onChange={(event) => setText(event.target.value)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter") {
+                                            sendMessage(text);
+                                            setText("");
+                                        }
+                                    }}
+                                />
+                                {text.trim() && (
+                                    <Button
+                                        className="send-btn"
+                                        icon={<i className="fa fa-paper-plane"/>}
+                                        onClick={() => {
+                                            sendMessage(text);
+                                            setText("");
+                                        }}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    </>
+                ) : activeContact ? (
+                    <>
+                        <div className="contact-profile">
+                            <button className="back-btn" onClick={closeChat}>
+                                ←
+                            </button>
+                            {activeContact._isFavorites ? (
+                                <div className="contact-profile-trigger favorites-header">
+                                    <div className="avatar-wrapper favorites-avatar">
+                                        <span className="favorites-icon" style={{fontSize: 22}}>⭐</span>
+                                    </div>
+                                    <span className="contact-profile-name">Избранное</span>
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="contact-profile-trigger"
+                                    onClick={() => setIsProfileOpen(true)}
+                                >
+                                    <div className={`avatar-wrapper ${activeContact.status || "offline"}`}>
+                                        <Avatar
+                                            name={activeContact.name}
+                                            src={activeContact.profilePicture}
+                                            size={44}
+                                        />
+                                    </div>
+                                    <span className="contact-profile-name">{activeContact.name}</span>
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 className="close-chat-btn"
@@ -1964,6 +2464,192 @@ const Chat = (props) => {
                     />
                 ) : null}
             </Modal>
+
+            {/* Create Group Modal */}
+            <Modal
+                title="Создать группу"
+                open={isCreateGroupOpen}
+                onCancel={() => {
+                    setIsCreateGroupOpen(false);
+                    setNewGroupName("");
+                    setNewGroupMembers([]);
+                    setGroupSearchQuery("");
+                }}
+                onOk={handleCreateGroup}
+                okText="Создать"
+                cancelText="Отменить"
+                className="create-group-modal"
+            >
+                <div className="create-group-form">
+                    <Input
+                        placeholder="Название группы"
+                        value={newGroupName}
+                        onChange={(e) => setNewGroupName(e.target.value)}
+                        style={{ marginBottom: 12 }}
+                    />
+                    <Input
+                        placeholder="Поиск участников..."
+                        value={groupSearchQuery}
+                        onChange={(e) => {
+                            setGroupSearchQuery(e.target.value);
+                            if (e.target.value.trim()) {
+                                searchUsers(e.target.value)
+                                    .then((list) => {
+                                        const addedIds = new Set(newGroupMembers.map(m => m.id));
+                                        const filtered = (list || []).filter(u => u.id !== currentUser.id && !addedIds.has(u.id));
+                                        setGroupMemberSearchResults(filtered);
+                                    })
+                                    .catch(() => setGroupMemberSearchResults([]));
+                            } else {
+                                setGroupMemberSearchResults([]);
+                            }
+                        }}
+                        style={{ marginBottom: 8 }}
+                    />
+                    {groupMemberSearchResults.length > 0 && groupSearchQuery.trim() && (
+                        <div className="group-member-search-results">
+                            {groupMemberSearchResults.map((user) => (
+                                <div
+                                    key={user.id}
+                                    className="group-member-search-item"
+                                    onClick={() => {
+                                        setNewGroupMembers((prev) => [...prev, user]);
+                                        setGroupSearchQuery("");
+                                        setGroupMemberSearchResults([]);
+                                    }}
+                                >
+                                    <Avatar name={user.name} src={user.profilePicture} size={28} />
+                                    <span>{user.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {newGroupMembers.length > 0 && (
+                        <div className="group-selected-members">
+                            <span className="group-selected-label">Участники:</span>
+                            {newGroupMembers.map((m) => (
+                                <span key={m.id} className="group-member-tag">
+                                    {m.name}
+                                    <button
+                                        type="button"
+                                        className="group-member-tag-remove"
+                                        onClick={() => setNewGroupMembers((prev) => prev.filter((x) => x.id !== m.id))}
+                                    >
+                                        ✕
+                                    </button>
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </Modal>
+
+            {/* Group Info Drawer */}
+            <Drawer
+                title="Информация о группе"
+                placement="right"
+                onClose={() => {
+                    setIsGroupInfoOpen(false);
+                    setAddMemberQuery("");
+                    setAddMemberResults([]);
+                }}
+                visible={isGroupInfoOpen}
+                destroyOnClose
+                className="group-info-drawer"
+            >
+                {groupInfoData && (
+                    <div className="group-info-content">
+                        <div className="group-info-header">
+                            <span className="group-info-icon">👥</span>
+                            <div className="group-info-name-wrap">
+                                {groupInfoData.creatorId === currentUser.id ? (
+                                    <div className="group-rename-row">
+                                        <Input
+                                            value={editGroupName}
+                                            onChange={(e) => setEditGroupName(e.target.value)}
+                                            onPressEnter={() => handleRenameGroup(groupInfoData.id)}
+                                            style={{ flex: 1 }}
+                                        />
+                                        <Button
+                                            size="small"
+                                            type="primary"
+                                            onClick={() => handleRenameGroup(groupInfoData.id)}
+                                        >
+                                            Сохранить
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <h3>{groupInfoData.name}</h3>
+                                )}
+                            </div>
+                        </div>
+                        <div className="group-info-members-section">
+                            <h4>Участники ({Array.from(groupInfoData.memberIds || []).length})</h4>
+                            {groupInfoData.creatorId === currentUser.id && (
+                                <div className="group-add-member">
+                                    <Input
+                                        placeholder="Добавить участника..."
+                                        value={addMemberQuery}
+                                        onChange={(e) => setAddMemberQuery(e.target.value)}
+                                        size="small"
+                                    />
+                                    {addMemberResults.length > 0 && (
+                                        <div className="group-add-member-results">
+                                            {addMemberResults
+                                                .filter((u) => !Array.from(groupInfoData.memberIds || []).includes(u.id))
+                                                .map((user) => (
+                                                    <div
+                                                        key={user.id}
+                                                        className="group-member-search-item"
+                                                        onClick={() => handleAddGroupMember(groupInfoData.id, user)}
+                                                    >
+                                                        <Avatar name={user.name} src={user.profilePicture} size={24} />
+                                                        <span>{user.name}</span>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            <ul className="group-members-list">
+                                {Array.from(groupInfoData.memberIds || []).map((memberId) => {
+                                    const member = allUsers.find((u) => u.id === memberId) || (memberId === currentUser.id ? currentUser : null);
+                                    return (
+                                        <li key={memberId} className="group-member-item">
+                                            <Avatar name={member?.name || memberId} src={member?.profilePicture} size={32} />
+                                            <span className="group-member-name">
+                                                {member?.name || memberId}
+                                                {memberId === groupInfoData.creatorId && <span className="group-admin-badge"> (создатель)</span>}
+                                                {memberId === currentUser.id && <span className="group-you-badge"> (вы)</span>}
+                                            </span>
+                                            {groupInfoData.creatorId === currentUser.id && memberId !== currentUser.id && (
+                                                <button
+                                                    type="button"
+                                                    className="group-member-remove-btn"
+                                                    onClick={() => handleRemoveGroupMember(groupInfoData.id, memberId)}
+                                                >
+                                                    ✕
+                                                </button>
+                                            )}
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </div>
+                        <div className="group-info-actions">
+                            {groupInfoData.creatorId === currentUser.id ? (
+                                <Button danger type="primary" block onClick={() => handleDeleteGroup(groupInfoData.id)}>
+                                    Удалить группу
+                                </Button>
+                            ) : (
+                                <Button danger block onClick={() => handleLeaveGroup(groupInfoData.id)}>
+                                    Покинуть группу
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </Drawer>
         </div>
     );
 };

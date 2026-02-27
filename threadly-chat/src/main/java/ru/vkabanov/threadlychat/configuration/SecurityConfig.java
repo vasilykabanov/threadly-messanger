@@ -33,8 +33,8 @@ public class SecurityConfig {
                 .authorizeRequests()
                 .antMatchers("/push/vapid-public-key").permitAll()
                 .antMatchers("/ws/**").permitAll()
-                // Все REST-ручки чата (сообщения, изображения, медиа, push) доступны только после авторизации
-                .antMatchers("/messages/**", "/chats/**", "/push/**", "/media/**").authenticated()
+                // Все REST-ручки чата (сообщения, изображения, медиа, группы, push) доступны только после авторизации
+                .antMatchers("/messages/**", "/chats/**", "/push/**", "/media/**", "/groups/**").authenticated()
                 .anyRequest().authenticated()
                 .and()
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
