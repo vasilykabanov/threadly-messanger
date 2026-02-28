@@ -14,6 +14,7 @@ import ru.vkabanov.threadlychat.model.ChatImagesPage;
 import ru.vkabanov.threadlychat.model.ChatMessagesPage;
 import ru.vkabanov.threadlychat.security.CurrentUser;
 import ru.vkabanov.threadlychat.service.ChatMessageService;
+import ru.vkabanov.threadlychat.service.ChatGroupService;
 import ru.vkabanov.threadlychat.service.ImageMessageService;
 import ru.vkabanov.threadlychat.service.UserStatusService;
 
@@ -30,6 +31,7 @@ public class ChatController {
     private final ChatMessageService chatMessageService;
     private final UserStatusService userStatusService;
     private final ImageMessageService imageMessageService;
+    private final ChatGroupService chatGroupService;
 
     @GetMapping(value = "/messages/{senderId}/{recipientId}/count", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Long> countNewMessages(@PathVariable String senderId, @PathVariable String recipientId,
@@ -52,7 +54,13 @@ public class ChatController {
     public ResponseEntity<ChatMessage> findMessage(@PathVariable String id,
                                                    @AuthenticationPrincipal CurrentUser currentUser) {
         ChatMessage message = chatMessageService.findById(id);
-        ensureParticipant(currentUser.getUserId(), message.getSenderId(), message.getRecipientId());
+        // Для групповых сообщений проверяем участие в группе
+        if (message.getChatId() != null && message.getChatId().startsWith("group_")) {
+            String groupId = message.getChatId().substring(6);
+            chatGroupService.getGroup(groupId, currentUser.getUserId());
+        } else {
+            ensureParticipant(currentUser.getUserId(), message.getSenderId(), message.getRecipientId());
+        }
         return ResponseEntity.ok(message);
     }
 

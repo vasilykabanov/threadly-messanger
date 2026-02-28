@@ -24,6 +24,9 @@ const MessageBubble = ({
     imageUrl,
     messageId,
     onImageLoad,
+    onReadStatusClick,
+    readBy,
+    groupMemberCount,
 }) => {
     const [proxyImageUrl, setProxyImageUrl] = useState(null);
     const [imageLoadError, setImageLoadError] = useState(false);
@@ -237,6 +240,10 @@ const MessageBubble = ({
     const isPending = isOwn && status === "PENDING";
     const isFailed = isOwn && status === "FAILED";
 
+    const isGroupContext = groupMemberCount > 0;
+    const readCount = isGroupContext ? Math.max(0, (readBy?.length || 1) - 1) : 0;
+    const totalOthers = isGroupContext ? Math.max(0, groupMemberCount - 1) : 0;
+
     const isImage = messageType === "IMAGE";
     const isVideoCircle = messageType === "VIDEO_CIRCLE";
     const isVoice = messageType === "VOICE";
@@ -417,11 +424,36 @@ const MessageBubble = ({
                         <CloseCircleOutlined className="read-icon failed" />
                     </span>
                 )}
-                {showReadIndicator && (
+                {isGroupContext && isOwn && !isPending && !isFailed && (
                     <span
-                        className="read-indicator"
+                        className="read-indicator read-indicator-clickable"
+                        title={`Прочитали: ${readCount}/${totalOthers}`}
+                        aria-label={`Прочитали: ${readCount} из ${totalOthers}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (onReadStatusClick) onReadStatusClick();
+                        }}
+                        role="button"
+                        tabIndex={0}
+                    >
+                        {readCount >= totalOthers && totalOthers > 0 ? (
+                            <EyeOutlined className="read-icon read" />
+                        ) : (
+                            <EyeInvisibleOutlined className="read-icon unread" />
+                        )}
+                    </span>
+                )}
+                {!isGroupContext && showReadIndicator && (
+                    <span
+                        className="read-indicator read-indicator-clickable"
                         title={isRead(status) ? "Прочитано" : "Доставлено"}
                         aria-label={isRead(status) ? "Прочитано" : "Доставлено"}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (onReadStatusClick) onReadStatusClick();
+                        }}
+                        role="button"
+                        tabIndex={0}
                     >
                         {isRead(status) ? (
                             <EyeOutlined className="read-icon read" />

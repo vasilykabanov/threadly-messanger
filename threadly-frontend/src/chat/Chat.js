@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useLayoutEffect, useRef, useState} from "react";
-import {Button, Drawer, message, Spin, Modal, Input} from "antd";
+import {Button, Drawer, message, Spin, Modal, Input, Switch, notification} from "antd";
 import {
     getUsers,
     findChatMessage,
@@ -25,6 +25,11 @@ import {
     addGroupMembers,
     removeGroupMember,
     deleteGroup as deleteGroupApi,
+    uploadGroupMedia,
+    uploadGroupAvatar,
+    getGroupAvatarUrl,
+    toggleGroupMute,
+    markGroupMessagesRead,
 } from "../util/ApiUtil";
 import {useRecoilState} from "recoil";
 import {
@@ -183,6 +188,9 @@ const Chat = (props) => {
     const [addMemberQuery, setAddMemberQuery] = useState("");
     const [addMemberResults, setAddMemberResults] = useState([]);
     const [groupMemberSearchResults, setGroupMemberSearchResults] = useState([]);
+    const [lastGroupMessage, setLastGroupMessage] = useState({});
+    const activeGroupRef = useRef(null);
+    const activeContactRef = useRef(null);
 
     // Helper: build a "Favorites" pseudo-contact from currentUser
     const makeFavoritesContact = (user) => ({
@@ -192,6 +200,16 @@ const Chat = (props) => {
         profilePicture: null,
         _isFavorites: true,
     });
+
+    // Keep activeGroupRef in sync so WS handlers can read it outside React closure
+    useEffect(() => {
+        activeGroupRef.current = activeGroup;
+    }, [activeGroup]);
+
+    // Keep activeContactRef in sync so WS handlers can read it outside React closure
+    useEffect(() => {
+        activeContactRef.current = activeContact;
+    }, [activeContact]);
 
     // Connect video stream to preview element AFTER the overlay has rendered
     useEffect(() => {
@@ -313,7 +331,7 @@ const Chat = (props) => {
         // - если пользователь пролистал вверх, позицию не трогаем.
         const container = messagesContainerRef.current;
         if (!container) return;
-        if (!activeContact?.id) return;
+        if (!activeContact?.id && !activeGroup) return;
         if (!messages.length) return;
         if (!isUserNearBottom) return;
 
@@ -321,13 +339,13 @@ const Chat = (props) => {
             top: container.scrollHeight,
             behavior: "auto",
         });
-    }, [messages.length, activeContact?.id, isUserNearBottom]);
+    }, [messages.length, activeContact?.id, activeGroup?.id, isUserNearBottom]);
 
     useEffect(() => {
         // После загрузки фото высота списка сообщений растёт — снова прокручиваем вниз, если пользователь у конца
         const container = messagesContainerRef.current;
         const listEl = messagesListRef.current;
-        if (!container || !listEl || !activeContact?.id || !messages.length) return;
+        if (!container || !listEl || (!activeContact?.id && !activeGroup) || !messages.length) return;
 
         const resizeObserver = new ResizeObserver(() => {
             if (!isUserNearBottom) return;
@@ -338,7 +356,7 @@ const Chat = (props) => {
         });
         resizeObserver.observe(listEl);
         return () => resizeObserver.disconnect();
-    }, [activeContact?.id, messages.length, isUserNearBottom]);
+    }, [activeContact?.id, activeGroup?.id, messages.length, isUserNearBottom]);
 
     useLayoutEffect(() => {
         const restore = scrollRestoreRef.current;
@@ -487,6 +505,7 @@ const Chat = (props) => {
         stompClient.subscribe("/topic/status", onStatusReceived);
         stompClient.subscribe("/topic/avatar-updated", onAvatarUpdated);
         stompClient.subscribe("/user/" + uid + "/queue/group-update", onGroupUpdate);
+        stompClient.subscribe("/user/" + uid + "/queue/group-messages", onGroupMessageReceived);
 
         const pending = pendingMessagesRef.current.splice(0, pendingMessagesRef.current.length);
         pending.forEach((payload) => {
@@ -500,33 +519,77 @@ const Chat = (props) => {
 
     const onSentAckReceived = (msg) => {
         const saved = typeof msg.body === "string" ? JSON.parse(msg.body) : msg.body;
-        if (!saved?.id || saved.senderId !== currentUser?.id) return;
+        const myId = connectUserIdRef.current || getUserIdFromToken() || currentUser?.id;
+        if (!saved?.id || saved.senderId !== myId) return;
+
+        const isGroupMsg = saved.chatId && saved.chatId.startsWith("group_");
+
         setMessages((prev) => {
+            // Already have this message — skip
+            if (prev.some((m) => m.id === saved.id)) return prev;
+
             const idx = prev.findIndex(
                 (m) =>
-                    m.senderId === currentUser.id &&
+                    m.senderId === myId &&
                     !m.id &&
                     m.content === saved.content &&
                     Math.abs(new Date(m.timestamp).getTime() - new Date(saved.timestamp).getTime()) < 5000
             );
-            if (idx === -1) return prev;
-            const tempId = prev[idx]._clientTempId;
-            if (tempId && pendingTimeoutsRef.current[tempId]) {
-                clearTimeout(pendingTimeoutsRef.current[tempId]);
-                delete pendingTimeoutsRef.current[tempId];
+
+            if (idx >= 0) {
+                // Optimistic match found — replace with server version (sent from THIS device)
+                const tempId = prev[idx]._clientTempId;
+                if (tempId && pendingTimeoutsRef.current[tempId]) {
+                    clearTimeout(pendingTimeoutsRef.current[tempId]);
+                    delete pendingTimeoutsRef.current[tempId];
+                }
+                const next = [...prev];
+                next[idx] = { ...next[idx], ...saved, id: saved.id, status: saved.status || "RECEIVED" };
+                return next;
             }
-            const next = [...prev];
-            next[idx] = { ...next[idx], ...saved, id: saved.id, status: saved.status || "RECEIVED" };
-            return next;
-        });
-        setLastMessageByContact((prev) => {
-            const isSelfChat = saved.senderId === saved.recipientId;
-            const key = isSelfChat ? "_favorites" : saved.recipientId;
-            if (key && prev[key]?.content === saved.content && !prev[key]?.id) {
-                return { ...prev, [key]: { ...prev[key], ...saved, id: saved.id, status: saved.status || "RECEIVED" } };
+
+            // No optimistic match — message was sent from ANOTHER device.
+            // Append only if user is viewing the relevant chat right now.
+            if (isGroupMsg) {
+                const groupId = saved.chatId.substring(6);
+                if (activeGroupRef.current?.id === groupId) {
+                    return [...prev, { ...saved, status: saved.status || "RECEIVED" }];
+                }
+            } else {
+                const currentContact = activeContactRef.current;
+                const isSelfChat = saved.senderId === saved.recipientId;
+                const isInThisChat = isSelfChat
+                    ? !!currentContact?._isFavorites
+                    : currentContact?.id === saved.recipientId;
+                if (isInThisChat) {
+                    return [...prev, { ...saved, status: saved.status || "RECEIVED" }];
+                }
             }
             return prev;
         });
+
+        // Update sidebar last message
+        if (isGroupMsg) {
+            const groupId = saved.chatId.substring(6);
+            setLastGroupMessage((prev) => {
+                const existing = prev[groupId];
+                if (!existing || new Date(saved.timestamp) >= new Date(existing.timestamp || 0)) {
+                    return { ...prev, [groupId]: saved };
+                }
+                return prev;
+            });
+        } else {
+            setLastMessageByContact((prev) => {
+                const isSelfChat = saved.senderId === saved.recipientId;
+                const key = isSelfChat ? "_favorites" : saved.recipientId;
+                if (!key) return prev;
+                const existing = prev[key];
+                if (!existing || !existing.id || new Date(saved.timestamp) >= new Date(existing.timestamp || 0)) {
+                    return { ...prev, [key]: { ...saved, status: saved.status || "RECEIVED" } };
+                }
+                return prev;
+            });
+        }
     };
 
     const onError = (err) => {
@@ -537,6 +600,15 @@ const Chat = (props) => {
         }
         setIsConnected(false);
         stompClient = null;
+
+        // Auto-reconnect after 3 seconds
+        const uid = getUserIdFromToken();
+        if (uid) {
+            setTimeout(() => {
+                console.log("Attempting STOMP reconnect…");
+                connect(uid);
+            }, 3000);
+        }
     };
 
     const onReadReceiptReceived = (msg) => {
@@ -557,11 +629,12 @@ const Chat = (props) => {
         const notification = JSON.parse(msg.body);
         const recoilPersist = JSON.parse(sessionStorage.getItem("recoil-persist") || "{}");
         const active = recoilPersist.chatActiveContact;
+        const myId = connectUserIdRef.current || getUserIdFromToken() || currentUser?.id;
 
         // Если это сообщение, отправленное текущим пользователем,
         // мы уже добавили его оптимистически в sendMessage.
         // Здесь только обновляем контакты/счётчики, чтобы не плодить дубли.
-        if (notification.senderId === currentUser.id) {
+        if (notification.senderId === myId) {
             loadContacts(active?.id);
             return;
         }
@@ -651,6 +724,40 @@ const Chat = (props) => {
             }
             return [...prev, data];
         });
+        // Keep activeGroup in sync
+        setActiveGroup((prev) => (prev?.id === data.id ? { ...prev, ...data } : prev));
+        // Keep groupInfoData in sync
+        setGroupInfoData((prev) => (prev?.id === data.id ? { ...prev, ...data } : prev));
+    };
+
+    const onGroupMessageReceived = (msg) => {
+        let data;
+        try {
+            data = typeof msg.body === "string" ? JSON.parse(msg.body) : msg.body;
+        } catch (e) {
+            return;
+        }
+        if (!data) return;
+        const chatId = data.chatId;
+        if (!chatId || !chatId.startsWith("group_")) return;
+        const groupId = chatId.substring(6);
+
+        const myId = connectUserIdRef.current || getUserIdFromToken() || currentUser?.id;
+
+        // Обновляем lastGroupMessage для сайдбара
+        setLastGroupMessage((prev) => ({ ...prev, [groupId]: data }));
+
+        // Если это наше собственное сообщение — оно уже добавлено оптимистически в sendMessage
+        if (data.senderId === myId) return;
+
+        // Если пользователь сейчас в этом групповом чате — добавить сообщение
+        const currentActiveGroup = activeGroupRef.current;
+        if (currentActiveGroup?.id === groupId) {
+            setMessages((prev) => {
+                if (data.id && prev.some((m) => m.id === data.id)) return prev;
+                return [...prev, data];
+            });
+        }
     };
 
     const PENDING_FAIL_SEC = 20;
@@ -749,7 +856,7 @@ const Chat = (props) => {
     const handleAttachImage = (e) => {
         const file = e.target.files?.[0];
         e.target.value = "";
-        if (!file || !activeContact?.id || !currentUser?.id) return;
+        if (!file || (!activeContact?.id && !activeGroup) || !currentUser?.id) return;
         if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
             message.warning("Допустимы только JPG, PNG и WebP");
             return;
@@ -758,6 +865,23 @@ const Chat = (props) => {
             message.warning(`Размер файла не более ${MAX_IMAGE_SIZE_MB} МБ`);
             return;
         }
+
+        // Group image
+        if (activeGroup) {
+            const chatId = "group_" + activeGroup.id;
+            setImageUploading(true);
+            uploadImageMessage(file, chatId)
+                .then((saved) => {
+                    setMessages((prev) => [...prev, { ...saved, status: saved.status || "RECEIVED" }]);
+                })
+                .catch((err) => {
+                    const msg = err?.message || err?.error || "Не удалось отправить фото";
+                    message.error(msg, 3);
+                })
+                .finally(() => setImageUploading(false));
+            return;
+        }
+
         const chatId = getChatId();
         if (!chatId) return;
         setImageUploading(true);
@@ -784,7 +908,7 @@ const Chat = (props) => {
     // Video circle recording
     // ========================
     const startVideoRecording = async () => {
-        if (!activeContact?.id || !currentUser?.id) return;
+        if ((!activeContact?.id && !activeGroup) || !currentUser?.id) return;
 
         const constraints = {
             video: { facingMode, width: { ideal: 480 }, height: { ideal: 480 } },
@@ -803,13 +927,13 @@ const Chat = (props) => {
                     continue;
                 }
                 if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-                    message.error("Нет доступа к камере или микрофону. Разрешите в настройках браузера.");
+                    notification.error({ message: "Нет доступа к камере или микрофону", description: "Разрешите в настройках браузера.", duration: 6 });
                 } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
-                    message.error("Камера или микрофон не найдены");
+                    notification.error({ message: "Камера или микрофон не найдены", duration: 6 });
                 } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
-                    message.error("Камера или микрофон заняты другим приложением");
+                    notification.error({ message: "Камера или микрофон заняты", description: "Закройте другое приложение и попробуйте снова.", duration: 6 });
                 } else {
-                    message.error("Не удалось получить доступ к камере");
+                    notification.error({ message: "Не удалось получить доступ к камере", duration: 6 });
                 }
                 console.error("Camera access error:", err);
                 return;
@@ -986,7 +1110,7 @@ const Chat = (props) => {
     // Voice recording
     // ========================
     const startVoiceRecording = async () => {
-        if (!activeContact?.id || !currentUser?.id) return;
+        if ((!activeContact?.id && !activeGroup) || !currentUser?.id) return;
 
         let stream = null;
         for (let attempt = 0; attempt < 3; attempt++) {
@@ -999,13 +1123,13 @@ const Chat = (props) => {
                     continue;
                 }
                 if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-                    message.error("Нет доступа к микрофону. Разрешите в настройках браузера.");
+                    notification.error({ message: "Нет доступа к микрофону", description: "Разрешите в настройках браузера.", duration: 6 });
                 } else if (err.name === "NotFoundError") {
-                    message.error("Микрофон не найден");
+                    notification.error({ message: "Микрофон не найден", duration: 6 });
                 } else if (err.name === "NotReadableError") {
-                    message.error("Микрофон занят другим приложением");
+                    notification.error({ message: "Микрофон занят", description: "Закройте другое приложение и попробуйте снова.", duration: 6 });
                 } else {
-                    message.error("Не удалось получить доступ к микрофону");
+                    notification.error({ message: "Не удалось получить доступ к микрофону", duration: 6 });
                 }
                 console.error("Microphone access error:", err);
                 return;
@@ -1075,11 +1199,28 @@ const Chat = (props) => {
     // Send media (video/voice) helper
     // ========================
     const sendMediaMessage = (blob, mediaType) => {
-        const chatId = getChatId();
-        if (!chatId || !activeContact?.id || !currentUser?.id) return;
+        if (!currentUser?.id) return;
         const file = new File([blob], mediaType === "VIDEO_CIRCLE" ? "video.webm" : "voice.webm", { type: blob.type });
         const setUploading = mediaType === "VIDEO_CIRCLE" ? setVideoUploading : setVoiceUploading;
         setUploading(true);
+
+        // Group media
+        if (activeGroup) {
+            const chatId = "group_" + activeGroup.id;
+            uploadGroupMedia(file, chatId, currentUser.id, activeGroup.id, mediaType)
+                .then((saved) => {
+                    setMessages((prev) => [...prev, { ...saved, status: saved.status || "RECEIVED" }]);
+                })
+                .catch((err) => {
+                    const errMsg = err?.message || err?.error || "Не удалось отправить медиа";
+                    message.error(errMsg, 3);
+                })
+                .finally(() => setUploading(false));
+            return;
+        }
+
+        const chatId = getChatId();
+        if (!chatId || !activeContact?.id) return;
         uploadMedia(file, chatId, currentUser.id, activeContact.id, mediaType)
             .then((saved) => {
                 setMessages((prev) => [...prev, { ...saved, status: saved.status || "RECEIVED" }]);
@@ -1205,9 +1346,35 @@ const Chat = (props) => {
         });
     })();
 
-    const filteredContacts = contactsWithFavorites.filter((contact) =>
-        isFuzzyMatch(searchQuery, contact.username || contact.name)
-    );
+    // Build a unified sidebar list: contacts (incl. Favorites) + groups, sorted by last message timestamp
+    const unifiedSidebarItems = (() => {
+        // Contacts with favorites
+        const contactItems = contactsWithFavorites
+            .filter((c) => isFuzzyMatch(searchQuery, c.username || c.name))
+            .map((c) => {
+                const isFav = c._isFavorites;
+                const key = isFav ? "_favorites" : c.id;
+                const lastMsg = lastMessageByContact[key];
+                return { type: "contact", data: c, lastMsgTime: lastMsg?.timestamp ? new Date(lastMsg.timestamp).getTime() : 0 };
+            });
+
+        // Groups
+        const groupItems = groups
+            .filter((g) => isFuzzyMatch(searchQuery, g.name))
+            .map((g) => {
+                const grpLast = lastGroupMessage[g.id] || g.lastMessage;
+                return { type: "group", data: g, lastMsgTime: grpLast?.timestamp ? new Date(grpLast.timestamp).getTime() : 0 };
+            });
+
+        const all = [...contactItems, ...groupItems];
+        all.sort((a, b) => {
+            if (!a.lastMsgTime && !b.lastMsgTime) return 0;
+            if (!a.lastMsgTime) return 1;
+            if (!b.lastMsgTime) return -1;
+            return b.lastMsgTime - a.lastMsgTime;
+        });
+        return all;
+    })();
 
     const loadChatForContact = (contact) => {
         if (!contact?.id) return;
@@ -1292,8 +1459,14 @@ const Chat = (props) => {
                 setMessages([...items].reverse());
                 setHasMoreMessages(Boolean(data?.hasMore));
                 setMessagesPage(data?.nextPage != null ? data.nextPage : 0);
+                // Update lastGroupMessage for sidebar sorting
+                if (items.length > 0) {
+                    setLastGroupMessage((prev) => ({ ...prev, [group.id]: items[0] }));
+                }
             })
             .catch(() => {});
+        // Mark messages as read
+        markGroupMessagesRead(group.id).catch(() => {});
     };
 
     // Group creation
@@ -1305,7 +1478,6 @@ const Chat = (props) => {
         const memberIds = newGroupMembers.map((m) => m.id);
         createGroup(newGroupName.trim(), memberIds)
             .then((group) => {
-                setGroups((prev) => [...prev, group]);
                 setIsCreateGroupOpen(false);
                 setNewGroupName("");
                 setNewGroupMembers([]);
@@ -1384,8 +1556,13 @@ const Chat = (props) => {
             setAddMemberResults([]);
             return;
         }
+        const cleaned = addMemberQuery.trim().replace(/^@/, "");
+        if (!cleaned) {
+            setAddMemberResults([]);
+            return;
+        }
         const t = setTimeout(() => {
-            searchUsers(addMemberQuery)
+            searchUsers(cleaned)
                 .then((list) => setAddMemberResults(list || []))
                 .catch(() => setAddMemberResults([]));
         }, 300);
@@ -1411,8 +1588,14 @@ const Chat = (props) => {
 
                 setAllUsers(users.filter((contact) => contact.id !== uid));
 
-                return Promise.all(
-                    contactsWithHistory.map((contact) =>
+                // Also load favorites last message (self-chat)
+                const favoritesPromise = getChatMessagesPage(uid, uid, 0, 1)
+                    .then((data) => (data?.items?.length > 0 ? data.items[0] : null))
+                    .catch(() => null);
+
+                return Promise.all([
+                    favoritesPromise,
+                    ...contactsWithHistory.map((contact) =>
                         getChatMessagesPage(contact.id, uid, 0, 1).then((data) => {
                             const lastMessage = data?.items?.length > 0 ? data.items[0] : null;
                             const newMessages = Number(unreadCounts[contact.id]) || 0;
@@ -1424,16 +1607,21 @@ const Chat = (props) => {
                                 status,
                             };
                         })
-                    )
-                );
+                    ),
+                ]);
             })
-            .then((users) => {
+            .then(([favLastMsg, ...users]) => {
                 const lastMessagesMap = users.reduce((acc, contact) => {
                     if (contact.lastMessage) {
                         acc[contact.id] = contact.lastMessage;
                     }
                     return acc;
                 }, {});
+
+                // Include favorites last message
+                if (favLastMsg) {
+                    lastMessagesMap["_favorites"] = favLastMsg;
+                }
 
                 setLastMessageByContact((prev) => {
                     const merged = {...prev};
@@ -1686,6 +1874,15 @@ const Chat = (props) => {
                                 Нет соединения
                             </span>
                         )}
+                        <button
+                            type="button"
+                            className="create-group-btn"
+                            onClick={() => setIsCreateGroupOpen(true)}
+                            title="Создать группу"
+                            aria-label="Создать группу"
+                        >
+                            <i className="fa fa-plus" aria-hidden="true"></i>
+                        </button>
                     </div>
                 </div>
                 <div
@@ -1765,10 +1962,12 @@ const Chat = (props) => {
                         ) : null}
                     </div>
                     <ul>
-                        {/* Группы */}
-                        {groups.length > 0 && (
-                            <>
-                                {groups.map((group) => (
+                        {/* Unified sorted list: groups + contacts (incl. Favorites) */}
+                        {unifiedSidebarItems.map((item) => {
+                            if (item.type === "group") {
+                                const group = item.data;
+                                const grpLast = lastGroupMessage[group.id] || group.lastMessage;
+                                return (
                                     <li
                                         key={`group-${group.id}`}
                                         onClick={() => {
@@ -1783,24 +1982,44 @@ const Chat = (props) => {
                                     >
                                         <div className="wrap">
                                             <div className="avatar-wrapper group-avatar">
-                                                <span className="group-icon">👥</span>
+                                                {group.avatarUrl ? (
+                                                    <img src={group.avatarUrl} alt={group.name} className="group-avatar-img" />
+                                                ) : (
+                                                    <span className="group-icon">👥</span>
+                                                )}
                                             </div>
                                             <div className="meta">
                                                 <div className="meta-header">
                                                     <p className="name">{group.name}</p>
+                                                    <span className="meta-right">
+                                                        {grpLast?.timestamp && (
+                                                            <span className="last-time">
+                                                                {formatLastMessageDate(grpLast.timestamp)}
+                                                            </span>
+                                                        )}
+                                                    </span>
                                                 </div>
                                                 <p className="preview">
-                                                    {group.memberIds?.size || group.memberIds?.length || Object.keys(group.memberIds || {}).length} участник(ов)
+                                                    {grpLast
+                                                        ? (grpLast.messageType === "SYSTEM"
+                                                            ? grpLast.content
+                                                            : grpLast.messageType === "IMAGE"
+                                                                ? "[Фото]"
+                                                                : grpLast.messageType === "VIDEO_CIRCLE"
+                                                                    ? "🔵 Видеосообщение"
+                                                                    : grpLast.messageType === "VOICE"
+                                                                        ? "🎤 Голосовое"
+                                                                        : (grpLast.senderName ? grpLast.senderName + ": " : "") + (grpLast.content ?? ""))
+                                                        : `${Array.from(group.memberIds || []).length} участник(ов)`}
                                                 </p>
                                             </div>
                                         </div>
                                     </li>
-                                ))}
-                            </>
-                        )}
+                                );
+                            }
 
-                        {/* Контакты (включая Избранное) */}
-                        {filteredContacts.map((contact) => {
+                            // Contact item (including Favorites)
+                            const contact = item.data;
                             const isFav = contact._isFavorites;
                             const lastMsgKey = isFav ? "_favorites" : contact.id;
                             const lastMsg = lastMessageByContact[lastMsgKey];
@@ -1911,7 +2130,11 @@ const Chat = (props) => {
                                 }}
                             >
                                 <div className="avatar-wrapper group-avatar">
-                                    <span className="group-icon" style={{fontSize: 22}}>👥</span>
+                                    {activeGroup.avatarUrl ? (
+                                        <img src={activeGroup.avatarUrl} alt={activeGroup.name} className="group-avatar-img" />
+                                    ) : (
+                                        <span className="group-icon" style={{fontSize: 22}}>👥</span>
+                                    )}
                                 </div>
                                 <span className="contact-profile-name">{activeGroup.name}</span>
                             </button>
@@ -1934,6 +2157,11 @@ const Chat = (props) => {
                             <ul ref={messagesListRef}>
                                 {messages.map((msg, index) => {
                                     const showDate = isNewDay(msg.timestamp, messages[index - 1]?.timestamp);
+                                    const isSystem = msg.messageType === "SYSTEM";
+                                    const isOwn = msg.senderId === currentUser.id;
+                                    const senderUser = !isOwn && !isSystem
+                                        ? allUsers.find((u) => u.id === msg.senderId) || null
+                                        : null;
                                     return (
                                         <React.Fragment key={msg.id || `${msg.senderId}-${msg.timestamp}-${index}`}>
                                             {showDate && (
@@ -1941,9 +2169,23 @@ const Chat = (props) => {
                                                     <span>{formatDate(msg.timestamp)}</span>
                                                 </li>
                                             )}
-                                            <li className={msg.senderId === currentUser.id ? "sent" : "replies"}>
-                                                {msg.senderId !== currentUser.id && (
-                                                    <span className="group-msg-sender">{msg.senderName || "Участник"}</span>
+                                            {isSystem ? (
+                                                <li className="system-message">
+                                                    <span>{msg.content}</span>
+                                                </li>
+                                            ) : (
+                                            <li className={isOwn ? "sent" : "replies"}>
+                                                {!isOwn && (
+                                                    <div className="group-msg-sender-row">
+                                                        <div className="group-msg-avatar">
+                                                            <Avatar
+                                                                name={senderUser?.name || msg.senderName || "?"}
+                                                                src={senderUser?.profilePicture}
+                                                                size={28}
+                                                            />
+                                                        </div>
+                                                        <span className="group-msg-sender">{msg.senderName || "Участник"}</span>
+                                                    </div>
                                                 )}
                                                 <MessageBubble
                                                     content={msg.content}
@@ -1956,14 +2198,33 @@ const Chat = (props) => {
                                                     isPullGestureRef={isPullGestureRef}
                                                     renderMessageText={renderMessageText}
                                                     formatTime={formatTime}
-                                                    isOwn={msg.senderId === currentUser.id}
+                                                    isOwn={isOwn}
                                                     status={msg.status}
                                                     messageType={msg.messageType || "TEXT"}
                                                     imageUrl={msg.imageUrl}
                                                     messageId={msg.id}
                                                     onImageLoad={scrollMessagesToBottomIfNear}
+                                                    readBy={msg.readBy}
+                                                    groupMemberCount={activeGroup ? Array.from(activeGroup.memberIds || []).length : 0}
+                                                    onReadStatusClick={() => {
+                                                        if (!msg.readBy) return;
+                                                        const readers = (msg.readBy || [])
+                                                            .filter((uid) => uid !== currentUser.id)
+                                                            .map((uid) => {
+                                                                const u = allUsers.find((x) => x.id === uid);
+                                                                return u?.name || uid;
+                                                            });
+                                                        Modal.info({
+                                                            title: "Прочитали сообщение",
+                                                            content: readers.length > 0
+                                                                ? readers.map((name, i) => <div key={i}>{name}</div>)
+                                                                : "Никто ещё не прочитал",
+                                                            okText: "Закрыть",
+                                                        });
+                                                    }}
                                                 />
                                             </li>
+                                            )}
                                         </React.Fragment>
                                     );
                                 })}
@@ -1973,27 +2234,95 @@ const Chat = (props) => {
                         <div className="message-input">
                             <div className="wrap">
                                 <input
-                                    className="chat-input"
-                                    name="user_input"
-                                    placeholder="Напишите сообщение..."
-                                    value={text}
-                                    onChange={(event) => setText(event.target.value)}
-                                    onKeyDown={(event) => {
-                                        if (event.key === "Enter") {
-                                            sendMessage(text);
-                                            setText("");
-                                        }
-                                    }}
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    className="message-input-file"
+                                    aria-label="Прикрепить фото"
+                                    onChange={handleAttachImage}
                                 />
-                                {text.trim() && (
-                                    <Button
-                                        className="send-btn"
-                                        icon={<i className="fa fa-paper-plane"/>}
-                                        onClick={() => {
-                                            sendMessage(text);
-                                            setText("");
-                                        }}
-                                    />
+                                <button
+                                    type="button"
+                                    className="attachment"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={imageUploading}
+                                    aria-label="Прикрепить фото"
+                                    title="Прикрепить фото"
+                                >
+                                    {imageUploading ? (
+                                        <Spin size="small" className="attachment-spinner" />
+                                    ) : (
+                                        <i className="fa fa-paperclip" aria-hidden="true" />
+                                    )}
+                                </button>
+
+                                {isVoiceRecording ? (
+                                    <div className="voice-recording-bar">
+                                        <span className="voice-rec-indicator">●</span>
+                                        <span className="voice-rec-time">{formatRecordingTime(voiceRecordingTime)}</span>
+                                        <button type="button" className="voice-rec-cancel" onClick={cancelVoiceRecording} title="Отменить">✕</button>
+                                        <button type="button" className="voice-rec-send" onClick={stopVoiceRecording} title="Отправить">
+                                            <i className="fa fa-paper-plane" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <input
+                                            className="chat-input"
+                                            name="user_input"
+                                            placeholder="Напишите сообщение..."
+                                            value={text}
+                                            onChange={(event) => setText(event.target.value)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter") {
+                                                    sendMessage(text);
+                                                    setText("");
+                                                }
+                                            }}
+                                        />
+
+                                        {!text.trim() && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    className="media-btn voice-btn"
+                                                    onClick={startVoiceRecording}
+                                                    disabled={voiceUploading}
+                                                    title="Голосовое сообщение"
+                                                >
+                                                    {voiceUploading ? (
+                                                        <Spin size="small" />
+                                                    ) : (
+                                                        <i className="fa fa-microphone" />
+                                                    )}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="media-btn video-btn"
+                                                    onClick={startVideoRecording}
+                                                    disabled={videoUploading}
+                                                    title="Видеосообщение"
+                                                >
+                                                    {videoUploading ? (
+                                                        <Spin size="small" />
+                                                    ) : (
+                                                        <i className="fa fa-video-camera" />
+                                                    )}
+                                                </button>
+                                            </>
+                                        )}
+
+                                        {text.trim() && (
+                                            <Button
+                                                className="send-btn"
+                                                icon={<i className="fa fa-paper-plane"/>}
+                                                onClick={() => {
+                                                    sendMessage(text);
+                                                    setText("");
+                                                }}
+                                            />
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -2512,8 +2841,9 @@ const Chat = (props) => {
                         value={groupSearchQuery}
                         onChange={(e) => {
                             setGroupSearchQuery(e.target.value);
-                            if (e.target.value.trim()) {
-                                searchUsers(e.target.value)
+                            const cleaned = e.target.value.trim().replace(/^@/, "");
+                            if (cleaned) {
+                                searchUsers(cleaned)
                                     .then((list) => {
                                         const addedIds = new Set(newGroupMembers.map(m => m.id));
                                         const filtered = (list || []).filter(u => u.id !== currentUser.id && !addedIds.has(u.id));
@@ -2539,7 +2869,10 @@ const Chat = (props) => {
                                     }}
                                 >
                                     <Avatar name={user.name} src={user.profilePicture} size={28} />
-                                    <span>{user.name}</span>
+                                    <div className="group-member-search-info">
+                                        <span>{user.name}</span>
+                                        {user.username && <span className="group-member-search-username">@{user.username}</span>}
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -2580,7 +2913,47 @@ const Chat = (props) => {
                 {groupInfoData && (
                     <div className="group-info-content">
                         <div className="group-info-header">
-                            <span className="group-info-icon">👥</span>
+                            <div className="group-info-avatar-wrap">
+                                {groupInfoData.avatarUrl ? (
+                                    <img src={groupInfoData.avatarUrl} alt={groupInfoData.name} className="group-info-avatar-img" />
+                                ) : (
+                                    <span className="group-info-icon">👥</span>
+                                )}
+                                {groupInfoData.creatorId === currentUser.id && (
+                                    <>
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp"
+                                            id="group-avatar-upload"
+                                            style={{ display: "none" }}
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                e.target.value = "";
+                                                if (!file) return;
+                                                uploadGroupAvatar(groupInfoData.id, file)
+                                                    .then((updated) => {
+                                                        setGroupInfoData(updated);
+                                                        setGroups((prev) =>
+                                                            prev.map((g) => (g.id === updated.id ? { ...g, ...updated } : g))
+                                                        );
+                                                        if (activeGroup?.id === updated.id) {
+                                                            setActiveGroup((prev) => ({ ...prev, ...updated }));
+                                                        }
+                                                        message.success("Аватарка обновлена");
+                                                    })
+                                                    .catch(() => message.error("Не удалось загрузить аватарку"));
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="group-avatar-upload-btn"
+                                            onClick={() => document.getElementById("group-avatar-upload")?.click()}
+                                        >
+                                            📷
+                                        </button>
+                                    </>
+                                )}
+                            </div>
                             <div className="group-info-name-wrap">
                                 {groupInfoData.creatorId === currentUser.id ? (
                                     <div className="group-rename-row">
@@ -2624,7 +2997,10 @@ const Chat = (props) => {
                                                         onClick={() => handleAddGroupMember(groupInfoData.id, user)}
                                                     >
                                                         <Avatar name={user.name} src={user.profilePicture} size={24} />
-                                                        <span>{user.name}</span>
+                                                        <div className="group-member-search-info">
+                                                            <span>{user.name}</span>
+                                                            {user.username && <span className="group-member-search-username">@{user.username}</span>}
+                                                        </div>
                                                     </div>
                                                 ))}
                                         </div>
@@ -2637,11 +3013,14 @@ const Chat = (props) => {
                                     return (
                                         <li key={memberId} className="group-member-item">
                                             <Avatar name={member?.name || memberId} src={member?.profilePicture} size={32} />
-                                            <span className="group-member-name">
-                                                {member?.name || memberId}
-                                                {memberId === groupInfoData.creatorId && <span className="group-admin-badge"> (создатель)</span>}
-                                                {memberId === currentUser.id && <span className="group-you-badge"> (вы)</span>}
-                                            </span>
+                                            <div className="group-member-name">
+                                                <span>
+                                                    {member?.name || memberId}
+                                                    {memberId === groupInfoData.creatorId && <span className="group-admin-badge"> (создатель)</span>}
+                                                    {memberId === currentUser.id && <span className="group-you-badge"> (вы)</span>}
+                                                </span>
+                                                {member?.username && <span className="group-member-username">@{member.username}</span>}
+                                            </div>
                                             {groupInfoData.creatorId === currentUser.id && memberId !== currentUser.id && (
                                                 <button
                                                     type="button"
@@ -2655,6 +3034,30 @@ const Chat = (props) => {
                                     );
                                 })}
                             </ul>
+                        </div>
+                        <div className="group-info-mute-section">
+                            <div className="group-mute-row">
+                                <span>Уведомления отключены</span>
+                                <Switch
+                                    checked={Array.from(groupInfoData.mutedBy || []).includes(currentUser.id)}
+                                    onChange={() => {
+                                        toggleGroupMute(groupInfoData.id)
+                                            .then((updated) => {
+                                                setGroupInfoData(updated);
+                                                setGroups((prev) =>
+                                                    prev.map((g) => (g.id === updated.id ? { ...g, ...updated } : g))
+                                                );
+                                                if (activeGroup?.id === updated.id) {
+                                                    setActiveGroup((prev) => ({ ...prev, ...updated }));
+                                                }
+                                                const isMuted = Array.from(updated.mutedBy || []).includes(currentUser.id);
+                                                message.success(isMuted ? "Уведомления отключены" : "Уведомления включены");
+                                            })
+                                            .catch(() => message.error("Не удалось изменить настройку"));
+                                    }}
+                                    size="small"
+                                />
+                            </div>
                         </div>
                         <div className="group-info-actions">
                             {groupInfoData.creatorId === currentUser.id ? (

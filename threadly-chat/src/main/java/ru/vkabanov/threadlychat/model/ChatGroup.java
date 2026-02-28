@@ -33,4 +33,19 @@ public class ChatGroup {
 
     /** Дата создания */
     private Date createdAt;
+
+    /** Ключ аватарки в хранилище (MinIO) */
+    private String avatarKey;
+
+    /** Пользователи, заглушившие уведомления группы */
+    @Builder.Default
+    private Set<String> mutedBy = new java.util.HashSet<>();
+
+    /** Presigned URL аватарки (transient, не сохраняется в БД) */
+    @org.springframework.data.annotation.Transient
+    private String avatarUrl;
+
+    /** Последнее сообщение (transient, для сортировки на клиенте) */
+    @org.springframework.data.annotation.Transient
+    private ChatMessage lastMessage;
 }

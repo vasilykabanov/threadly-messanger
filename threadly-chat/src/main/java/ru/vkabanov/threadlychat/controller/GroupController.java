@@ -6,6 +6,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import ru.vkabanov.threadlychat.exception.ForbiddenException;
 import ru.vkabanov.threadlychat.model.ChatGroup;
 import ru.vkabanov.threadlychat.model.ChatMessagesPage;
@@ -45,7 +46,9 @@ public class GroupController {
     @GetMapping(value = "/my", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<ChatGroup>> getMyGroups(@AuthenticationPrincipal CurrentUser currentUser) {
         if (currentUser == null) throw new ForbiddenException("Access denied");
-        return ResponseEntity.ok(chatGroupService.getUserGroups(currentUser.getUserId()));
+        List<ChatGroup> groups = chatGroupService.getUserGroups(currentUser.getUserId());
+        groups.forEach(chatGroupService::enrichWithAvatarUrl);
+        return ResponseEntity.ok(groups);
     }
 
     /**
@@ -55,7 +58,9 @@ public class GroupController {
     public ResponseEntity<ChatGroup> getGroup(@PathVariable String groupId,
                                                @AuthenticationPrincipal CurrentUser currentUser) {
         if (currentUser == null) throw new ForbiddenException("Access denied");
-        return ResponseEntity.ok(chatGroupService.getGroup(groupId, currentUser.getUserId()));
+        ChatGroup group = chatGroupService.getGroup(groupId, currentUser.getUserId());
+        chatGroupService.enrichWithAvatarUrl(group);
+        return ResponseEntity.ok(group);
     }
 
     /**
@@ -116,5 +121,43 @@ public class GroupController {
                                                               @AuthenticationPrincipal CurrentUser currentUser) {
         if (currentUser == null) throw new ForbiddenException("Access denied");
         return ResponseEntity.ok(chatGroupService.getGroupMessages(groupId, currentUser.getUserId(), page, size));
+    }
+
+    /**
+     * Загрузить аватарку группы (только создатель).
+     */
+    @PostMapping(value = "/{groupId}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ChatGroup> uploadAvatar(@PathVariable String groupId,
+                                                   @RequestParam("file") MultipartFile file,
+                                                   @AuthenticationPrincipal CurrentUser currentUser) {
+        if (currentUser == null) throw new ForbiddenException("Access denied");
+        return ResponseEntity.ok(chatGroupService.uploadAvatar(groupId, currentUser.getUserId(), file));
+    }
+
+    /**
+     * Получить presigned URL аватарки группы.
+     */
+    @GetMapping(value = "/{groupId}/avatar-url", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, String>> getAvatarUrl(@PathVariable String groupId,
+                                                             @AuthenticationPrincipal CurrentUser currentUser) {
+        if (currentUser == null) throw new ForbiddenException("Access denied");
+        return chatGroupService.getAvatarUrl(groupId, currentUser.getUserId())
+                .map(url -> ResponseEntity.ok(Map.of("url", url)))
+                .orElse(ResponseEntity.noContent().build());
+    }
+
+    @PostMapping(value = "/{groupId}/mute", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ChatGroup> toggleMute(@PathVariable String groupId,
+                                                 @AuthenticationPrincipal CurrentUser currentUser) {
+        if (currentUser == null) throw new ForbiddenException("Access denied");
+        return ResponseEntity.ok(chatGroupService.toggleMute(groupId, currentUser.getUserId()));
+    }
+
+    @PostMapping(value = "/{groupId}/mark-read", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Long>> markRead(@PathVariable String groupId,
+                                                       @AuthenticationPrincipal CurrentUser currentUser) {
+        if (currentUser == null) throw new ForbiddenException("Access denied");
+        long count = chatGroupService.markGroupMessagesRead(groupId, currentUser.getUserId());
+        return ResponseEntity.ok(Map.of("updated", count));
     }
 }

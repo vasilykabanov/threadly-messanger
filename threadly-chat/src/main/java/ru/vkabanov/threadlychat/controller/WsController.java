@@ -36,10 +36,18 @@ public class WsController {
     @MessageMapping("/group-chat")
     public void processGroupMessage(@Payload Map<String, Object> payload) {
         String groupId = (String) payload.get("groupId");
+        String messageTypeStr = (String) payload.getOrDefault("messageType", "TEXT");
+        ru.vkabanov.threadlychat.model.MessageType msgType;
+        try {
+            msgType = ru.vkabanov.threadlychat.model.MessageType.valueOf(messageTypeStr);
+        } catch (Exception e) {
+            msgType = ru.vkabanov.threadlychat.model.MessageType.TEXT;
+        }
         ChatMessage chatMessage = ChatMessage.builder()
                 .senderId((String) payload.get("senderId"))
                 .senderName((String) payload.get("senderName"))
                 .content((String) payload.get("content"))
+                .messageType(msgType)
                 .timestamp(new java.util.Date())
                 .build();
         chatGroupService.sendGroupMessage(chatMessage, groupId);

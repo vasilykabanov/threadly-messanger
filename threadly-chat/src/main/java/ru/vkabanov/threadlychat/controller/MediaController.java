@@ -14,6 +14,7 @@ import ru.vkabanov.threadlychat.model.ChatMessage;
 import ru.vkabanov.threadlychat.model.MessageType;
 import ru.vkabanov.threadlychat.repository.ChatMessageRepository;
 import ru.vkabanov.threadlychat.security.CurrentUser;
+import ru.vkabanov.threadlychat.service.ChatGroupService;
 import ru.vkabanov.threadlychat.service.ChatMessageService;
 import ru.vkabanov.threadlychat.service.ImageStorageService;
 
@@ -33,6 +34,8 @@ public class MediaController {
     private ChatMessageService chatMessageService;
     @Autowired
     private ChatMessageRepository chatMessageRepository;
+    @Autowired
+    private ChatGroupService chatGroupService;
 
     private static final long MAX_MEDIA_SIZE = 50L * 1024 * 1024; // 50 MB
     private static final List<String> ALLOWED_MEDIA_TYPES = List.of(
@@ -102,6 +105,68 @@ public class MediaController {
     }
 
     /**
+     * Загрузка медиафайла (голосовое/видеокружок) в группу.
+     */
+    @PostMapping(value = "/upload-group", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ChatMessage> uploadGroupMedia(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("chatId") String chatId,
+            @RequestParam("senderId") String senderId,
+            @RequestParam("groupId") String groupId,
+            @RequestParam("messageType") String messageTypeStr,
+            @AuthenticationPrincipal CurrentUser currentUser) {
+
+        if (currentUser == null || !currentUser.getUserId().equals(senderId)) {
+            throw new ForbiddenException("Access denied");
+        }
+
+        if (imageStorageService == null || !imageStorageService.isEnabled()) {
+            throw new BadRequestException("Хранилище файлов недоступно");
+        }
+
+        MessageType messageType;
+        try {
+            messageType = MessageType.valueOf(messageTypeStr);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Неверный тип сообщения: " + messageTypeStr);
+        }
+
+        if (messageType != MessageType.VIDEO_CIRCLE && messageType != MessageType.VOICE) {
+            throw new BadRequestException("Этот эндпоинт только для VOICE и VIDEO_CIRCLE");
+        }
+
+        validateMediaFile(file);
+
+        String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
+        String extension = extensionFromContentType(contentType);
+        String objectKey = "media/" + chatId + "/" + UUID.randomUUID() + "." + extension;
+
+        try (InputStream is = file.getInputStream()) {
+            imageStorageService.upload(is, file.getSize(), contentType, objectKey);
+        } catch (Exception e) {
+            log.error("Group media upload failed for group {}: {}", groupId, e.getMessage());
+            throw new BadRequestException("Не удалось загрузить файл");
+        }
+
+        String contentText = messageType == MessageType.VIDEO_CIRCLE
+                ? "🔵 Видеосообщение"
+                : "🎤 Голосовое сообщение";
+
+        ChatMessage message = ChatMessage.builder()
+                .chatId("group_" + groupId)
+                .senderId(senderId)
+                .senderName(currentUser.getUsername())
+                .content(contentText)
+                .messageType(messageType)
+                .mediaKey(objectKey)
+                .timestamp(new Date())
+                .build();
+
+        ChatMessage saved = chatGroupService.sendGroupMessage(message, groupId);
+        return ResponseEntity.ok(saved);
+    }
+
+    /**
      * Стриминг медиафайла (audio/video) по ID сообщения.
      */
     @GetMapping("/{messageId}")
@@ -116,8 +181,16 @@ public class MediaController {
         ChatMessage message = chatMessageRepository.findById(messageId)
                 .orElseThrow(() -> new BadRequestException("Сообщение не найдено"));
 
+        // Check access: DM participant OR group member
         boolean participant = currentUser.getUserId().equals(message.getSenderId())
                 || currentUser.getUserId().equals(message.getRecipientId());
+        if (!participant && message.getChatId() != null && message.getChatId().startsWith("group_")) {
+            String groupId = message.getChatId().substring("group_".length());
+            try {
+                chatGroupService.getGroup(groupId, currentUser.getUserId());
+                participant = true;
+            } catch (Exception ignored) { }
+        }
         if (!participant) {
             throw new ForbiddenException("Доступ запрещён");
         }
