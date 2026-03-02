@@ -114,6 +114,7 @@ public class MediaController {
             @RequestParam("senderId") String senderId,
             @RequestParam("groupId") String groupId,
             @RequestParam("messageType") String messageTypeStr,
+            @RequestParam(value = "senderName", required = false) String senderName,
             @AuthenticationPrincipal CurrentUser currentUser) {
 
         if (currentUser == null || !currentUser.getUserId().equals(senderId)) {
@@ -155,7 +156,7 @@ public class MediaController {
         ChatMessage message = ChatMessage.builder()
                 .chatId("group_" + groupId)
                 .senderId(senderId)
-                .senderName(currentUser.getUsername())
+                .senderName(senderName != null && !senderName.isBlank() ? senderName : currentUser.getUsername())
                 .content(contentText)
                 .messageType(messageType)
                 .mediaKey(objectKey)

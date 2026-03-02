@@ -175,6 +175,7 @@ const Chat = (props) => {
     const voiceChunksRef = useRef([]);
     const voiceTimerRef = useRef(null);
     const voiceMimeTypeRef = useRef("audio/webm");
+    const videoMimeTypeRef = useRef("video/webm");
 
     // Groups
     const [groups, setGroups] = useState([]);
@@ -871,9 +872,12 @@ const Chat = (props) => {
         if (activeGroup) {
             const chatId = "group_" + activeGroup.id;
             setImageUploading(true);
-            uploadImageMessage(file, chatId)
+            uploadImageMessage(file, chatId, currentUser.name)
                 .then((saved) => {
-                    setMessages((prev) => [...prev, { ...saved, status: saved.status || "RECEIVED" }]);
+                    setMessages((prev) => {
+                        if (prev.some((m) => m.id === saved.id)) return prev;
+                        return [...prev, { ...saved, status: saved.status || "RECEIVED" }];
+                    });
                 })
                 .catch((err) => {
                     const msg = err?.message || err?.error || "Не удалось отправить фото";
@@ -888,7 +892,10 @@ const Chat = (props) => {
         setImageUploading(true);
         uploadImageMessage(file, chatId)
             .then((saved) => {
-                setMessages((prev) => [...prev, { ...saved, status: saved.status || "RECEIVED" }]);
+                setMessages((prev) => {
+                    if (prev.some((m) => m.id === saved.id)) return prev;
+                    return [...prev, { ...saved, status: saved.status || "RECEIVED" }];
+                });
                 if (activeContact._isFavorites) {
                     setLastMessageByContact((prev) => ({ ...prev, ["_favorites"]: saved }));
                 } else {
@@ -968,6 +975,7 @@ const Chat = (props) => {
                     }
                 }) || "";
             }
+            videoMimeTypeRef.current = mimeType;
             const options = mimeType ? { mimeType } : undefined;
             const recorder = options ? new MediaRecorder(stream, options) : new MediaRecorder(stream);
             videoMediaRecorderRef.current = recorder;
@@ -1104,6 +1112,28 @@ const Chat = (props) => {
                 videoPreviewRef.current.srcObject = null;
                 videoPreviewRef.current.srcObject = videoStreamRef.current;
             }
+
+            // On some browsers (e.g. iOS Safari) removing/adding a track stops the MediaRecorder.
+            // Detect this after a short delay and restart recording to ensure continuous capture.
+            const savedMimeType = videoMimeTypeRef.current;
+            const savedStream = videoStreamRef.current;
+            setTimeout(() => {
+                const r = videoMediaRecorderRef.current;
+                if (!r || r.state !== "inactive") return; // still running — all good
+                if (!savedStream) return;
+                try {
+                    const opts = savedMimeType ? { mimeType: savedMimeType } : undefined;
+                    const newRec = opts ? new MediaRecorder(savedStream, opts) : new MediaRecorder(savedStream);
+                    videoMediaRecorderRef.current = newRec;
+                    newRec.ondataavailable = (e) => {
+                        if (e.data?.size > 0) videoChunksRef.current.push(e.data);
+                    };
+                    newRec.onerror = (e) => console.error("MediaRecorder restart error:", e);
+                    newRec.start(200);
+                } catch (err) {
+                    console.warn("Failed to restart recorder after camera switch:", err);
+                }
+            }, 150);
         } catch (err) {
             console.error("Switch camera error:", err);
             message.error("Не удалось переключить камеру");
@@ -1253,9 +1283,12 @@ const Chat = (props) => {
         // Group media
         if (activeGroup) {
             const chatId = "group_" + activeGroup.id;
-            uploadGroupMedia(file, chatId, currentUser.id, activeGroup.id, mediaType)
+            uploadGroupMedia(file, chatId, currentUser.id, activeGroup.id, mediaType, currentUser.name)
                 .then((saved) => {
-                    setMessages((prev) => [...prev, { ...saved, status: saved.status || "RECEIVED" }]);
+                    setMessages((prev) => {
+                        if (prev.some((m) => m.id === saved.id)) return prev;
+                        return [...prev, { ...saved, status: saved.status || "RECEIVED" }];
+                    });
                 })
                 .catch((err) => {
                     const errMsg = err?.message || err?.error || "Не удалось отправить медиа";
@@ -1269,7 +1302,10 @@ const Chat = (props) => {
         if (!chatId || !activeContact?.id) return;
         uploadMedia(file, chatId, currentUser.id, activeContact.id, mediaType)
             .then((saved) => {
-                setMessages((prev) => [...prev, { ...saved, status: saved.status || "RECEIVED" }]);
+                setMessages((prev) => {
+                    if (prev.some((m) => m.id === saved.id)) return prev;
+                    return [...prev, { ...saved, status: saved.status || "RECEIVED" }];
+                });
                 if (activeContact._isFavorites) {
                     setLastMessageByContact((prev) => ({ ...prev, ["_favorites"]: saved }));
                 } else {
@@ -1346,30 +1382,34 @@ const Chat = (props) => {
     const renderMessageText = (content = "") => {
         if (!content) return null;
 
-        const parts = content.split(linkRegex);
-        return parts.map((part, index) => {
-            if (!part) return null;
-            linkRegex.lastIndex = 0;
-            const isLink = linkRegex.test(part);
-            linkRegex.lastIndex = 0;
+        return content.split("\n").map((line, lineIndex) => (
+            <React.Fragment key={`line-${lineIndex}`}>
+                {lineIndex > 0 && <br />}
+                {line.split(linkRegex).map((part, partIndex) => {
+                    if (!part) return null;
+                    linkRegex.lastIndex = 0;
+                    const isLink = linkRegex.test(part);
+                    linkRegex.lastIndex = 0;
 
-            if (!isLink) {
-                return <React.Fragment key={`text-${index}`}>{part}</React.Fragment>;
-            }
+                    if (!isLink) {
+                        return <React.Fragment key={`text-${partIndex}`}>{part}</React.Fragment>;
+                    }
 
-            const href = part.startsWith("http") ? part : `https://${part}`;
-            return (
-                <a
-                    key={`link-${index}`}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="message-link"
-                >
-                    {part}
-                </a>
-            );
-        });
+                    const href = part.startsWith("http") ? part : `https://${part}`;
+                    return (
+                        <a
+                            key={`link-${partIndex}`}
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="message-link"
+                        >
+                            {part}
+                        </a>
+                    );
+                })}
+            </React.Fragment>
+        ));
     };
 
     // Build a combined contacts list that includes Favorites as a regular sorted item
@@ -2313,16 +2353,23 @@ const Chat = (props) => {
                                     </div>
                                 ) : (
                                     <>
-                                        <input
+                                        <textarea
                                             className="chat-input"
                                             name="user_input"
                                             placeholder="Напишите сообщение..."
                                             value={text}
-                                            onChange={(event) => setText(event.target.value)}
+                                            rows={1}
+                                            onChange={(event) => {
+                                                setText(event.target.value);
+                                                event.target.style.height = "42px";
+                                                event.target.style.height = Math.min(event.target.scrollHeight, 120) + "px";
+                                            }}
                                             onKeyDown={(event) => {
-                                                if (event.key === "Enter") {
+                                                if (event.key === "Enter" && !event.shiftKey) {
+                                                    event.preventDefault();
                                                     sendMessage(text);
                                                     setText("");
+                                                    event.target.style.height = "42px";
                                                 }
                                             }}
                                         />
@@ -2499,16 +2546,23 @@ const Chat = (props) => {
                                     </div>
                                 ) : (
                                     <>
-                                        <input
+                                        <textarea
                                             className="chat-input"
                                             name="user_input"
                                             placeholder="Напишите сообщение..."
                                             value={text}
-                                            onChange={(event) => setText(event.target.value)}
+                                            rows={1}
+                                            onChange={(event) => {
+                                                setText(event.target.value);
+                                                event.target.style.height = "42px";
+                                                event.target.style.height = Math.min(event.target.scrollHeight, 120) + "px";
+                                            }}
                                             onKeyDown={(event) => {
-                                                if (event.key === "Enter") {
+                                                if (event.key === "Enter" && !event.shiftKey) {
+                                                    event.preventDefault();
                                                     sendMessage(text);
                                                     setText("");
+                                                    event.target.style.height = "42px";
                                                 }
                                             }}
                                         />
