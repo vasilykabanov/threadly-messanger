@@ -174,6 +174,7 @@ const Chat = (props) => {
     const voiceMediaRecorderRef = useRef(null);
     const voiceChunksRef = useRef([]);
     const voiceTimerRef = useRef(null);
+    const voiceMimeTypeRef = useRef("audio/webm");
 
     // Groups
     const [groups, setGroups] = useState([]);
@@ -942,14 +943,33 @@ const Chat = (props) => {
         if (!stream) return;
 
         try {
+            if (typeof window === "undefined" || typeof window.MediaRecorder === "undefined") {
+                message.error("Запись видео не поддерживается в этом браузере");
+                stream.getTracks().forEach((t) => t.stop());
+                return;
+            }
             videoStreamRef.current = stream;
             // NOTE: srcObject is set in the useEffect [isVideoRecording] after overlay renders
-            const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-                ? "video/webm;codecs=vp9,opus"
-                : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-                    ? "video/webm;codecs=vp8,opus"
-                    : "video/webm";
-            const recorder = new MediaRecorder(stream, { mimeType });
+            let mimeType = "";
+            if (typeof MediaRecorder !== "undefined" && typeof MediaRecorder.isTypeSupported === "function") {
+                const candidates = [
+                    "video/webm;codecs=vp9,opus",
+                    "video/webm;codecs=vp8,opus",
+                    "video/webm",
+                    "video/mp4;codecs=h264,opus",
+                    "video/mp4;codecs=h264,aac",
+                    "video/mp4",
+                ];
+                mimeType = candidates.find((t) => {
+                    try {
+                        return MediaRecorder.isTypeSupported(t);
+                    } catch (e) {
+                        return false;
+                    }
+                }) || "";
+            }
+            const options = mimeType ? { mimeType } : undefined;
+            const recorder = options ? new MediaRecorder(stream, options) : new MediaRecorder(stream);
             videoMediaRecorderRef.current = recorder;
             videoChunksRef.current = [];
             recorder.ondataavailable = (e) => {
@@ -977,7 +997,9 @@ const Chat = (props) => {
 
         const sendCollectedChunks = () => {
             if (videoChunksRef.current.length > 0) {
-                const blob = new Blob(videoChunksRef.current, { type: "video/webm" });
+                const firstChunkType = videoChunksRef.current[0]?.type;
+                const blobType = firstChunkType || "video/webm";
+                const blob = new Blob(videoChunksRef.current, { type: blobType });
                 sendMediaMessage(blob, "VIDEO_CIRCLE");
             }
             cleanupVideoRecording();
@@ -1138,11 +1160,33 @@ const Chat = (props) => {
         if (!stream) return;
 
         try {
+            if (typeof window === "undefined" || typeof window.MediaRecorder === "undefined") {
+                message.error("Запись голосовых сообщений не поддерживается в этом браузере");
+                stream.getTracks().forEach((t) => t.stop());
+                return;
+            }
             voiceStreamRef.current = stream;
-            const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-                ? "audio/webm;codecs=opus"
-                : "audio/webm";
-            const recorder = new MediaRecorder(stream, { mimeType });
+            let mimeType = "";
+            if (typeof MediaRecorder !== "undefined" && typeof MediaRecorder.isTypeSupported === "function") {
+                const candidates = [
+                    "audio/webm;codecs=opus",
+                    "audio/webm",
+                    "audio/mp4;codecs=mp4a.40.2",
+                    "audio/mp4",
+                    "audio/ogg;codecs=opus",
+                    "audio/ogg",
+                ];
+                mimeType = candidates.find((t) => {
+                    try {
+                        return MediaRecorder.isTypeSupported(t);
+                    } catch (e) {
+                        return false;
+                    }
+                }) || "";
+            }
+            voiceMimeTypeRef.current = mimeType || "audio/webm";
+            const options = mimeType ? { mimeType } : undefined;
+            const recorder = options ? new MediaRecorder(stream, options) : new MediaRecorder(stream);
             voiceMediaRecorderRef.current = recorder;
             voiceChunksRef.current = [];
             recorder.ondataavailable = (e) => {
@@ -1166,7 +1210,9 @@ const Chat = (props) => {
         const recorder = voiceMediaRecorderRef.current;
         if (!recorder || recorder.state === "inactive") return;
         recorder.onstop = () => {
-            const blob = new Blob(voiceChunksRef.current, { type: "audio/webm" });
+            const firstChunkType = voiceChunksRef.current[0]?.type;
+            const blobType = firstChunkType || voiceMimeTypeRef.current || "audio/webm";
+            const blob = new Blob(voiceChunksRef.current, { type: blobType });
             sendMediaMessage(blob, "VOICE");
             cleanupVoiceRecording();
         };
