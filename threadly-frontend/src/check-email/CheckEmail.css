@@ -1,3 +1,28 @@
+@keyframes checkEmailFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes checkEmailIconPop {
+    0% {
+        opacity: 0;
+        transform: scale(0.3);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
 .check-email-container {
     min-height: 100dvh;
     display: flex;
@@ -15,6 +40,7 @@
     background: #ffffff;
     border: 1px solid #e1e0e0;
     box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    animation: checkEmailFadeIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .check-email-logo {
@@ -27,6 +53,7 @@
     font-size: 64px;
     color: rebeccapurple;
     margin-bottom: 16px;
+    animation: checkEmailIconPop 0.6s ease-out 0.2s both;
 }
 
 .check-email-title {

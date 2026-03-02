@@ -229,3 +229,104 @@ body.theme-new.theme-new-light .ant-input-affix-wrapper input {
     background: transparent;
     color: #0f172a;
 }
+
+/* ================================================================
+   🎬 GLOBAL ANIMATIONS
+   ================================================================ */
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Smooth antd button transitions */
+body.theme-new .ant-btn {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.3s ease !important;
+}
+
+body.theme-new .ant-btn:hover {
+    transform: translateY(-1px);
+}
+
+body.theme-new .ant-btn:active {
+    transform: scale(0.97);
+    transition-duration: 0.1s !important;
+}
+
+body.theme-new .ant-btn-primary:hover {
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+}
+
+body.theme-new .ant-btn-dangerous.ant-btn-primary:hover {
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35);
+}
+
+/* Smooth antd input focus transitions */
+body.theme-new .ant-input,
+body.theme-new .ant-input-password,
+body.theme-new .ant-input-affix-wrapper {
+    transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease !important;
+}
+
+body.theme-new .ant-input:focus,
+body.theme-new .ant-input-focused,
+body.theme-new .ant-input-affix-wrapper-focused {
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+}
+
+/* Smooth antd card transitions */
+body.theme-new .ant-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    animation: fadeInUp 0.5s ease-out;
+}
+
+body.theme-new .ant-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 28px 70px rgba(2, 6, 23, 0.55);
+}
+
+/* Smooth antd switch animation */
+body.theme-new .ant-switch {
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+body.theme-new .ant-switch:hover {
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2);
+}
+
+/* Smooth antd modal animations */
+body.theme-new .ant-modal-content {
+    animation: fadeInUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Smooth antd drawer body content */
+body.theme-new .ant-drawer-content-wrapper {
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+/* Global link hover animation */
+a {
+    transition: color 0.2s ease;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

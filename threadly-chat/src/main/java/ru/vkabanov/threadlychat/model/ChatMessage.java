@@ -47,4 +47,7 @@ public class ChatMessage {
    /** URL для скачивания/стриминга медиа. Не сохраняется в БД, формируется при отдаче клиенту. */
    @Transient
    private String mediaDownloadUrl;
+
+   /** Кто прочитал это сообщение (для групповых чатов). */
+   private Set<String> readBy;
 }

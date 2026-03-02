@@ -7,9 +7,11 @@ import org.springframework.web.multipart.MultipartFile;
 import ru.vkabanov.threadlychat.configuration.ImageValidationProperties;
 import ru.vkabanov.threadlychat.exception.BadRequestException;
 import ru.vkabanov.threadlychat.exception.ForbiddenException;
+import ru.vkabanov.threadlychat.model.ChatGroup;
 import ru.vkabanov.threadlychat.model.ChatMessage;
 import ru.vkabanov.threadlychat.model.ChatRoom;
 import ru.vkabanov.threadlychat.model.MessageType;
+import ru.vkabanov.threadlychat.repository.ChatGroupRepository;
 import ru.vkabanov.threadlychat.repository.ChatRoomRepository;
 import ru.vkabanov.threadlychat.security.CurrentUser;
 
@@ -29,6 +31,10 @@ public class ImageMessageService {
 
     private final ChatRoomRepository chatRoomRepository;
 
+    private final ChatGroupRepository chatGroupRepository;
+
+    private final ChatGroupService chatGroupService;
+
     private final ImageValidationProperties imageValidation;
 
     private static final List<String> ALLOWED_EXTENSIONS = List.of("jpg", "jpeg", "png", "webp");
@@ -46,17 +52,7 @@ public class ImageMessageService {
             throw new BadRequestException("Image upload is not available");
         }
 
-        ChatRoom room = chatRoomRepository.findFirstByChatId(chatId)
-                .orElseThrow(() -> new BadRequestException("Chat not found: " + chatId));
-
         String senderId = currentUser.getUserId();
-        boolean isParticipant = room.getSenderId().equals(senderId) || room.getRecipientId().equals(senderId);
-        if (!isParticipant) {
-            throw new ForbiddenException("You are not a participant of this chat");
-        }
-
-        String recipientId = room.getSenderId().equals(senderId) ? room.getRecipientId() : room.getSenderId();
-
         validateFile(file);
 
         String contentType = file.getContentType();
@@ -72,6 +68,41 @@ public class ImageMessageService {
             log.error("Upload failed for chat {}: {}", chatId, e.getMessage());
             throw new BadRequestException("Failed to upload image");
         }
+
+        // Group image message
+        if (chatId.startsWith("group_")) {
+            String groupId = chatId.substring("group_".length());
+            ChatGroup group = chatGroupRepository.findById(groupId)
+                    .orElseThrow(() -> new BadRequestException("Group not found: " + groupId));
+            if (!group.getMemberIds().contains(senderId)) {
+                throw new ForbiddenException("You are not a member of this group");
+            }
+
+            ChatMessage message = ChatMessage.builder()
+                    .chatId(chatId)
+                    .senderId(senderId)
+                    .senderName(currentUser.getUsername())
+                    .content("[Photo]")
+                    .messageType(MessageType.IMAGE)
+                    .imageKey(objectKey)
+                    .timestamp(new java.util.Date())
+                    .build();
+
+            ChatMessage saved = chatGroupService.sendGroupMessage(message, groupId);
+            enrichWithImageUrl(saved);
+            return saved;
+        }
+
+        // DM image message
+        ChatRoom room = chatRoomRepository.findFirstByChatId(chatId)
+                .orElseThrow(() -> new BadRequestException("Chat not found: " + chatId));
+
+        boolean isParticipant = room.getSenderId().equals(senderId) || room.getRecipientId().equals(senderId);
+        if (!isParticipant) {
+            throw new ForbiddenException("You are not a participant of this chat");
+        }
+
+        String recipientId = room.getSenderId().equals(senderId) ? room.getRecipientId() : room.getSenderId();
 
         ChatMessage message = ChatMessage.builder()
                 .chatId(chatId)
@@ -165,6 +196,12 @@ public class ImageMessageService {
     private void ensureParticipant(CurrentUser currentUser, ChatMessage message) {
         boolean participant = currentUser.getUserId().equals(message.getSenderId())
                 || currentUser.getUserId().equals(message.getRecipientId());
+        if (!participant && message.getChatId() != null && message.getChatId().startsWith("group_")) {
+            String groupId = message.getChatId().substring("group_".length());
+            participant = chatGroupRepository.findById(groupId)
+                    .map(g -> g.getMemberIds().contains(currentUser.getUserId()))
+                    .orElse(false);
+        }
         if (!participant) {
             throw new ForbiddenException("You are not a participant of this conversation");
         }

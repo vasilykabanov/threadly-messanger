@@ -460,6 +460,199 @@ export function fetchMediaAsBlobUrl(messageId) {
 }
 
 // -------------------------
+// Groups
+// -------------------------
+
+export function createGroup(name, memberIds) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups",
+        method: "POST",
+        body: JSON.stringify({ name, memberIds }),
+    });
+}
+
+export function getMyGroups() {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups/my",
+        method: "GET",
+    });
+}
+
+export function getGroup(groupId) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId),
+        method: "GET",
+    });
+}
+
+export function renameGroup(groupId, name) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId) + "/rename",
+        method: "PUT",
+        body: JSON.stringify({ name }),
+    });
+}
+
+export function addGroupMembers(groupId, memberIds) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId) + "/members/add",
+        method: "PUT",
+        body: JSON.stringify({ memberIds }),
+    });
+}
+
+export function removeGroupMember(groupId, userId) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId) + "/members/" + encodeURIComponent(userId),
+        method: "DELETE",
+    });
+}
+
+export function deleteGroup(groupId) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId),
+        method: "DELETE",
+    });
+}
+
+export function getGroupMessages(groupId, page = 0, size = 50) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    return request({
+        url: CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId) + "/messages?" + params.toString(),
+        method: "GET",
+    });
+}
+
+/**
+ * Загрузка медиафайла (голосовое/видеокружок) в группу.
+ */
+export function uploadGroupMedia(file, chatId, senderId, groupId, messageType) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    const token = localStorage.getItem("accessToken");
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("chatId", chatId);
+    formData.append("senderId", senderId);
+    formData.append("groupId", groupId);
+    formData.append("messageType", messageType);
+
+    const headers = new Headers();
+    headers.append("Authorization", "Bearer " + token);
+
+    return fetch(CHAT_SERVICE + "/media/upload-group", {
+        method: "POST",
+        headers,
+        body: formData,
+    }).then(async (response) => {
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            if (response.status === 401 && token) {
+                localStorage.removeItem("accessToken");
+                window.location.href = "/login";
+            }
+            return Promise.reject({ status: response.status, ...json });
+        }
+        return json;
+    });
+}
+
+/**
+ * Загрузить аватарку группы.
+ */
+export function uploadGroupAvatar(groupId, file) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    const token = localStorage.getItem("accessToken");
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const headers = new Headers();
+    headers.append("Authorization", "Bearer " + token);
+
+    return fetch(CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId) + "/avatar", {
+        method: "POST",
+        headers,
+        body: formData,
+    }).then(async (response) => {
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            if (response.status === 401 && token) {
+                localStorage.removeItem("accessToken");
+                window.location.href = "/login";
+            }
+            return Promise.reject({ status: response.status, ...json });
+        }
+        return json;
+    });
+}
+
+/**
+ * Получить presigned URL аватарки группы.
+ */
+export function getGroupAvatarUrl(groupId) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId) + "/avatar-url",
+        method: "GET",
+    });
+}
+
+/**
+ * Переключить mute/unmute уведомлений группы.
+ */
+export function toggleGroupMute(groupId) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId) + "/mute",
+        method: "POST",
+    });
+}
+
+/**
+ * Отметить сообщения группы как прочитанные.
+ */
+export function markGroupMessagesRead(groupId) {
+    if (!localStorage.getItem("accessToken")) {
+        return Promise.reject("No access token set.");
+    }
+    return request({
+        url: CHAT_SERVICE + "/groups/" + encodeURIComponent(groupId) + "/mark-read",
+        method: "POST",
+    });
+}
+
+// -------------------------
 // Web Push
 // -------------------------
 
