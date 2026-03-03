@@ -854,11 +854,14 @@ const Chat = (props) => {
 
     const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
     const MAX_IMAGE_SIZE_MB = 10;
+    const imageUploadingRef = useRef(false);
 
     const handleAttachImage = (e) => {
         const file = e.target.files?.[0];
         e.target.value = "";
         if (!file || (!activeContact?.id && !activeGroup) || !currentUser?.id) return;
+        // Guard against double-firing of onChange (common on some mobile browsers)
+        if (imageUploadingRef.current) return;
         if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
             message.warning("Допустимы только JPG, PNG и WebP");
             return;
@@ -872,6 +875,7 @@ const Chat = (props) => {
         if (activeGroup) {
             const chatId = "group_" + activeGroup.id;
             setImageUploading(true);
+            imageUploadingRef.current = true;
             uploadImageMessage(file, chatId, currentUser.name)
                 .then((saved) => {
                     setMessages((prev) => {
@@ -883,13 +887,14 @@ const Chat = (props) => {
                     const msg = err?.message || err?.error || "Не удалось отправить фото";
                     message.error(msg, 3);
                 })
-                .finally(() => setImageUploading(false));
+                .finally(() => { setImageUploading(false); imageUploadingRef.current = false; });
             return;
         }
 
         const chatId = getChatId();
         if (!chatId) return;
         setImageUploading(true);
+        imageUploadingRef.current = true;
         uploadImageMessage(file, chatId)
             .then((saved) => {
                 setMessages((prev) => {
@@ -909,7 +914,7 @@ const Chat = (props) => {
                 const msg = err?.message || err?.error || "Не удалось отправить фото";
                 message.error(msg, 3);
             })
-            .finally(() => setImageUploading(false));
+            .finally(() => { setImageUploading(false); imageUploadingRef.current = false; });
     };
 
     // ========================
@@ -1087,8 +1092,36 @@ const Chat = (props) => {
             // Replace the video track inside the MediaRecorder's source stream
             const recorder = videoMediaRecorderRef.current;
             const recStream = recorder?.stream;
+
+            // Helper: restart the MediaRecorder on the given stream
+            const restartRecorder = (stream) => {
+                try {
+                    const savedMimeType = videoMimeTypeRef.current;
+                    const opts = savedMimeType ? { mimeType: savedMimeType } : undefined;
+                    const newRec = opts ? new MediaRecorder(stream, opts) : new MediaRecorder(stream);
+                    videoMediaRecorderRef.current = newRec;
+                    newRec.ondataavailable = (e) => {
+                        if (e.data?.size > 0) videoChunksRef.current.push(e.data);
+                    };
+                    newRec.onerror = (e) => console.error("MediaRecorder restart error:", e);
+                    newRec.start(200);
+                } catch (err) {
+                    console.warn("Failed to restart recorder after camera switch:", err);
+                }
+            };
+
             if (recStream) {
                 const oldVideoTrack = recStream.getVideoTracks()[0];
+
+                // Attach onstop handler BEFORE modifying tracks so that if the
+                // recorder stops we immediately restart it on the updated stream.
+                if (recorder && recorder.state === "recording") {
+                    recorder.onstop = () => {
+                        // Recorder was killed by track replacement — restart it
+                        restartRecorder(recStream);
+                    };
+                }
+
                 if (oldVideoTrack) {
                     recStream.removeTrack(oldVideoTrack);
                     oldVideoTrack.stop();
@@ -1113,27 +1146,15 @@ const Chat = (props) => {
                 videoPreviewRef.current.srcObject = videoStreamRef.current;
             }
 
-            // On some browsers (e.g. iOS Safari) removing/adding a track stops the MediaRecorder.
-            // Detect this after a short delay and restart recording to ensure continuous capture.
-            const savedMimeType = videoMimeTypeRef.current;
+            // Safety net: if the recorder somehow reaches inactive state without
+            // triggering onstop (edge case), restart it after a short delay.
             const savedStream = videoStreamRef.current;
             setTimeout(() => {
                 const r = videoMediaRecorderRef.current;
                 if (!r || r.state !== "inactive") return; // still running — all good
                 if (!savedStream) return;
-                try {
-                    const opts = savedMimeType ? { mimeType: savedMimeType } : undefined;
-                    const newRec = opts ? new MediaRecorder(savedStream, opts) : new MediaRecorder(savedStream);
-                    videoMediaRecorderRef.current = newRec;
-                    newRec.ondataavailable = (e) => {
-                        if (e.data?.size > 0) videoChunksRef.current.push(e.data);
-                    };
-                    newRec.onerror = (e) => console.error("MediaRecorder restart error:", e);
-                    newRec.start(200);
-                } catch (err) {
-                    console.warn("Failed to restart recorder after camera switch:", err);
-                }
-            }, 150);
+                restartRecorder(savedStream);
+            }, 300);
         } catch (err) {
             console.error("Switch camera error:", err);
             message.error("Не удалось переключить камеру");
@@ -2270,7 +2291,7 @@ const Chat = (props) => {
                                                                 size={28}
                                                             />
                                                         </div>
-                                                        <span className="group-msg-sender">{msg.senderName || "Участник"}</span>
+                                                        <span className="group-msg-sender">{senderUser?.name || msg.senderName || "Участник"}</span>
                                                     </div>
                                                 )}
                                                 <MessageBubble
