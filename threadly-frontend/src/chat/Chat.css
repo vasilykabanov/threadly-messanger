@@ -1460,7 +1460,7 @@ body.theme-new.theme-new-light .date-separator span {
     #frame #sidepanel #contacts ul li.contact .wrap img {
         width: 36px;
         height: 36px;
-        margin-right: 8px;
+        margin-right: 0px;
     }
 
     #frame #sidepanel #contacts ul li.contact .wrap .meta {
