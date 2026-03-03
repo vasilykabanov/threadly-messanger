@@ -47,7 +47,7 @@ public class ImageMessageService {
      * @param file        файл изображения (multipart)
      * @return сохранённое сообщение с заполненным imageUrl (presigned)
      */
-    public ChatMessage sendImageMessage(CurrentUser currentUser, String chatId, MultipartFile file) {
+    public ChatMessage sendImageMessage(CurrentUser currentUser, String chatId, MultipartFile file, String senderName) {
         if (!imageStorageService.isEnabled()) {
             throw new BadRequestException("Image upload is not available");
         }
@@ -81,7 +81,7 @@ public class ImageMessageService {
             ChatMessage message = ChatMessage.builder()
                     .chatId(chatId)
                     .senderId(senderId)
-                    .senderName(currentUser.getUsername())
+                    .senderName(senderName != null && !senderName.isBlank() ? senderName : currentUser.getUsername())
                     .content("[Photo]")
                     .messageType(MessageType.IMAGE)
                     .imageKey(objectKey)

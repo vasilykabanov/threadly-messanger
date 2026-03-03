@@ -72,8 +72,9 @@ public class ChatController {
     @PostMapping(value = "/messages/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ChatMessage> uploadImage(@RequestParam("file") MultipartFile file,
                                                     @RequestParam("chatId") String chatId,
+                                                    @RequestParam(value = "senderName", required = false) String senderName,
                                                     @AuthenticationPrincipal CurrentUser currentUser) {
-        ChatMessage message = imageMessageService.sendImageMessage(currentUser, chatId, file);
+        ChatMessage message = imageMessageService.sendImageMessage(currentUser, chatId, file, senderName);
         return ResponseEntity.ok(message);
     }
 

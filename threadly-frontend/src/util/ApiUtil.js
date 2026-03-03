@@ -316,7 +316,7 @@ export function deleteChat(senderId, recipientId, userId, scope = "me") {
  * Загрузка изображения в чат. multipart: file + chatId.
  * Возвращает созданное сообщение { id, chatId, senderId, recipientId, messageType: "IMAGE", imageKey, imageUrl, content, timestamp, status }.
  */
-export function uploadImageMessage(file, chatId) {
+export function uploadImageMessage(file, chatId, senderName) {
     if (!localStorage.getItem("accessToken")) {
         return Promise.reject("No access token set.");
     }
@@ -324,6 +324,7 @@ export function uploadImageMessage(file, chatId) {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("chatId", chatId);
+    if (senderName) formData.append("senderName", senderName);
 
     const headers = new Headers();
     headers.append("Authorization", "Bearer " + token);
@@ -550,7 +551,7 @@ export function getGroupMessages(groupId, page = 0, size = 50) {
 /**
  * Загрузка медиафайла (голосовое/видеокружок) в группу.
  */
-export function uploadGroupMedia(file, chatId, senderId, groupId, messageType) {
+export function uploadGroupMedia(file, chatId, senderId, groupId, messageType, senderName) {
     if (!localStorage.getItem("accessToken")) {
         return Promise.reject("No access token set.");
     }
@@ -561,6 +562,7 @@ export function uploadGroupMedia(file, chatId, senderId, groupId, messageType) {
     formData.append("senderId", senderId);
     formData.append("groupId", groupId);
     formData.append("messageType", messageType);
+    if (senderName) formData.append("senderName", senderName);
 
     const headers = new Headers();
     headers.append("Authorization", "Bearer " + token);
