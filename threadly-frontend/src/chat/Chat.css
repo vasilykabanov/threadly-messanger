@@ -1329,13 +1329,19 @@ body.theme-new.theme-new-light .date-separator span {
 .chat-input {
     flex: 1;
     height: 42px;
-    padding: 0 16px;
+    min-height: 42px;
+    padding: 11px 16px;
+    box-sizing: border-box;
     border: none;
     outline: none;
     border-radius: 999px;
     background: #ffffff;
     font-size: 14px;
+    line-height: 1.4;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* лёгкая тень для «парения» */
+    resize: none;
+    overflow-y: hidden;
+    font-family: inherit;
 }
 
 .send-btn {
@@ -2184,10 +2190,11 @@ body.theme-new.theme-new-light .search-result-empty {
     right: 0;
     bottom: 0;
     display: none;
-    padding: 12px 18px 16px;
+    padding: 12px 18px calc(16px + env(safe-area-inset-bottom));
     background: rgba(15, 23, 42, 0.9);
     border-top: 1px solid rgba(148, 163, 184, 0.2);
     backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     z-index: 50;
     gap: 12px;
     justify-content: space-around;
@@ -4403,4 +4410,109 @@ body.theme-new .group-info-members-section h4 {
 
 body.theme-new .group-member-username {
     color: #64748b;
+}
+
+/* ========================
+   Light theme: group info drawer
+   ======================== */
+body.theme-new.theme-new-light .group-info-drawer .ant-drawer-content {
+    background: #ffffff;
+}
+
+body.theme-new.theme-new-light .group-info-drawer .ant-drawer-header {
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+body.theme-new.theme-new-light .group-info-drawer .ant-drawer-title {
+    color: #1e293b;
+}
+
+body.theme-new.theme-new-light .group-info-drawer .ant-drawer-close {
+    color: #64748b;
+}
+
+body.theme-new.theme-new-light .group-info-drawer .ant-drawer-body {
+    background: #ffffff;
+    color: #1e293b;
+}
+
+body.theme-new.theme-new-light .group-info-drawer h4 {
+    color: #64748b;
+}
+
+body.theme-new.theme-new-light .group-info-drawer .ant-input {
+    background: #ffffff;
+    border-color: #d1d5db;
+    color: #1e293b;
+}
+
+body.theme-new.theme-new-light .group-info-drawer .ant-input::placeholder {
+    color: #9ca3af;
+}
+
+body.theme-new.theme-new-light .group-info-drawer .group-member-remove-btn {
+    color: #ef4444;
+}
+
+body.theme-new.theme-new-light .group-info-drawer .group-member-remove-btn:hover {
+    background: rgba(239, 68, 68, 0.08);
+}
+
+body.theme-new.theme-new-light .group-info-members-section h4 {
+    color: #64748b;
+}
+
+body.theme-new.theme-new-light .group-member-username {
+    color: #9ca3af;
+}
+
+body.theme-new.theme-new-light .group-info-mute-section {
+    border-top-color: #e5e7eb;
+    border-bottom-color: #e5e7eb;
+}
+
+body.theme-new.theme-new-light .group-info-actions button {
+    color: #1e293b;
+}
+
+/* ========================
+   Dark theme: Modal.info / Modal.confirm overrides
+   (fixes black text on dark background for read receipts dialog)
+   ======================== */
+body.theme-new .ant-modal-confirm .ant-modal-content {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+body.theme-new .ant-modal-confirm .ant-modal-confirm-title {
+    color: #e2e8f0;
+}
+
+body.theme-new .ant-modal-confirm .ant-modal-confirm-content {
+    color: #cbd5e1;
+}
+
+body.theme-new .ant-modal-confirm .ant-btn-primary {
+    background: #6366f1;
+    border-color: #6366f1;
+    color: #fff;
+}
+
+body.theme-new .ant-modal-confirm .ant-btn-primary:hover {
+    background: #818cf8;
+    border-color: #818cf8;
+}
+
+body.theme-new.theme-new-light .ant-modal-confirm .ant-modal-content {
+    background: #ffffff;
+    border: none;
+}
+
+body.theme-new.theme-new-light .ant-modal-confirm .ant-modal-confirm-title {
+    color: #1e293b;
+}
+
+body.theme-new.theme-new-light .ant-modal-confirm .ant-modal-confirm-content {
+    color: #334155;
 }
