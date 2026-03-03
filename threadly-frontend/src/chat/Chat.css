@@ -1315,7 +1315,7 @@ body.theme-new.theme-new-light .date-separator span {
     width: 100%;
     z-index: 99;
     flex-shrink: 0;
-    padding: 10px 16px calc(20px + env(safe-area-inset-bottom)) 16px; /* снизу учитываем safe-area */
+    padding: 10px 16px 20px 16px;
     box-sizing: border-box;
     background: #e6eaea;
 }
@@ -2190,7 +2190,7 @@ body.theme-new.theme-new-light .search-result-empty {
     right: 0;
     bottom: 0;
     display: none;
-    padding: 12px 18px calc(16px + env(safe-area-inset-bottom));
+    padding: 12px 18px 16px;
     background: rgba(15, 23, 42, 0.9);
     border-top: 1px solid rgba(148, 163, 184, 0.2);
     backdrop-filter: blur(16px);
@@ -3243,11 +3243,9 @@ body.theme-new .group-member-search-username {
 @keyframes slideUp {
     from {
         opacity: 0;
-        transform: translateY(100%);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
     }
 }
 
