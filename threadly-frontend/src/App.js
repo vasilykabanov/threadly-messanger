@@ -22,8 +22,9 @@ const App = (props) => {
 
     useEffect(() => {
         const nextMode = themeMode === "light" ? "theme-new-light" : "theme-new-dark";
-        document.body.classList.remove("theme-new", "theme-new-light", "theme-new-dark");
-        document.body.classList.add("theme-new", nextMode);
+        const targets = [document.body, document.documentElement];
+        targets.forEach((el) => el.classList.remove("theme-new", "theme-new-light", "theme-new-dark"));
+        targets.forEach((el) => el.classList.add("theme-new", nextMode));
     }, [themeMode]);
 
     return (
