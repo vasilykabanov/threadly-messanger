@@ -119,6 +119,8 @@ body.theme-new.theme-new-light .mobile-nav-item.danger {
     }
 
     .profile-container {
+        overflow-y: visible;
+        -webkit-overflow-scrolling: auto;
         padding-bottom: calc(190px + env(safe-area-inset-bottom));
     }
 

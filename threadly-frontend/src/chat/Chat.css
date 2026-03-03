@@ -1315,7 +1315,7 @@ body.theme-new.theme-new-light .date-separator span {
     width: 100%;
     z-index: 99;
     flex-shrink: 0;
-    padding: 10px 16px 20px 16px; /* сверху 10px, слева/справа 16px, снизу 20px */
+    padding: 10px 16px calc(20px + env(safe-area-inset-bottom)) 16px; /* снизу учитываем safe-area */
     box-sizing: border-box;
     background: #e6eaea;
 }
