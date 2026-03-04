@@ -86,6 +86,7 @@ services:
       - minio-data:/data
     ports:
       - "9000:9000"
+    restart: unless-stopped
 
   # ---------------- threadly-chat ----------------
   threadly-chat:
